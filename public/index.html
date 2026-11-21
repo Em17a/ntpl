@@ -189,12 +189,50 @@ body.watch-mode #watchStatus{color:#d2c4e6}
 .online-counter>i{width:7px;height:7px;border-radius:50%;background:#67d69a;box-shadow:0 0 9px #67d69a;display:inline-block}
 .online-counter strong{color:#fff;font-size:13px;font-variant-numeric:tabular-nums}
 @media(max-width:760px){.online-counter{gap:5px;padding:6px 8px;font-size:11px}.topbar{gap:8px}.topbar .status{display:none}}
+
+/* Guest friend system */
+.friend-profile{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border:1px solid #665078;border-radius:10px;background:#211d2a}
+.friend-profile small,.dm-heading small{display:block;color:#c3bfce;font-size:10px;margin-bottom:5px}
+.friend-profile strong{font:700 22px 'DM Mono';letter-spacing:.12em;color:#e4caff}
+.friend-visibility{display:flex;align-items:center;gap:8px;margin:12px 0;color:#d6d1df;font-size:11px}
+.friend-visibility input{width:auto;accent-color:var(--accent)}
+.friend-add-row{display:flex;gap:8px;margin:12px 0 18px}
+.friend-add-row input{min-width:0;flex:1;text-transform:uppercase}
+.friend-add-row button{white-space:nowrap}
+.friend-subsection{margin-top:18px}
+.friend-subsection h3{display:flex;align-items:center;gap:8px;font-size:13px;margin:0 0 9px}
+.friend-subsection h3 span{font:11px 'DM Mono';color:var(--accent)}
+.friend-list{display:grid;gap:8px;color:#c3bfce;font-size:11px}
+.friend-row{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #454050;border-radius:8px;background:#1b1923}
+.friend-row>span:first-child{flex:1;min-width:0}
+.friend-row button{padding:7px 10px;min-height:34px;font-size:10px;white-space:nowrap}
+.friend-name{display:grid;grid-template-columns:9px 1fr;column-gap:7px;align-items:center}
+.friend-name strong{color:#fff;font-size:12px}
+.friend-name small{grid-column:2;color:#b8b3c2;font-size:9px}
+.friend-dot{width:7px;height:7px;border-radius:50%;background:#777;grid-row:1/3}
+.friend-dot.online{background:#65d69a;box-shadow:0 0 8px #65d69a}
+.friend-muted{margin-top:8px;color:#aaa5b5;font-size:10px;line-height:1.6}
+.dm-section{margin-top:18px;padding:12px;border:1px solid #665078;border-radius:10px;background:#111018}
+.dm-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.dm-heading strong{font-size:14px;color:#fff}
+.dm-log{display:flex;flex-direction:column;gap:8px;max-height:250px;min-height:90px;overflow:auto;padding:8px;background:#0b0a10;border-radius:8px}
+.dm-message{align-self:flex-start;max-width:88%;padding:8px 10px;border-radius:9px;background:#282432;color:#eee;font-size:11px}
+.dm-message.mine{align-self:flex-end;background:#40304f}
+.dm-message p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.dm-message small{display:block;margin-top:5px;color:#c0b8cb;font-size:9px}
+.dm-message button{margin-top:8px}
+.dm-send-row{display:flex;gap:7px;margin-top:8px}
+.dm-send-row input{min-width:0;flex:1}
+.dm-send-row button{white-space:nowrap}
+.dm-invite{width:100%;margin-top:8px}
+.history-add-friend{margin-top:7px;min-height:32px;padding:6px 10px;font-size:10px}
+@media(max-width:760px){.friend-profile{padding:11px}.friend-profile strong{font-size:18px}.friend-row{flex-wrap:wrap}.friend-row>span:first-child{flex-basis:100%}.friend-row button{flex:1}.friend-add-row button{padding:8px 10px}.dm-heading{align-items:flex-start}.dm-send-row input{font-size:11px}}
 </style>
 </head>
 <body>
 <header class="topbar">
   <a class="logo" href="/"><span class="logo-icon">N</span> NIGHTPLAY</a>
-  <nav><button type="button" data-open-modal="match">开始匹配</button><button type="button" data-open-modal="join">加入房间</button><button type="button" id="watchDirectoryBtn">观战大厅</button></nav>
+  <nav><button type="button" data-open-modal="match">开始匹配</button><button type="button" data-open-modal="join">加入房间</button><button type="button" id="watchDirectoryBtn">观战大厅</button><button type="button" data-open-modal="friends">好友</button></nav>
   <span class="status"><i></i> 双人空间</span>
   <span class="online-counter" aria-live="polite"><i></i><span>在线</span><strong id="onlineCount">--</strong></span>
 </header>
@@ -212,7 +250,7 @@ body.watch-mode #watchStatus{color:#d2c4e6}
     <section class="quick-actions" aria-label="快速进入功能">
       <button class="quick-action quick-match" type="button" data-open-modal="match"><span class="quick-icon">♡</span><span><strong>开始匹配</strong><small>按性别、角色和语音偏好寻找搭档</small></span></button>
       <button class="quick-action" type="button" data-open-modal="join"><span class="quick-icon">↗</span><span><strong>邀请 / 加入</strong><small>使用房间码快速进入</small></span></button>
-<button class="quick-action" type="button" data-open-modal="history"><span class="quick-icon">▤</span><span><strong>对局历史</strong><small>查看最近的双人记录</small></span></button>
+<button class="quick-action" type="button" data-open-modal="history"><span class="quick-icon">▤</span><span><strong>对局历史</strong><small>查看最近的双人记录</small></span></button>\n      <button class="quick-action" type="button" data-open-modal="friends"><span class="quick-icon">♧</span><span><strong>好友</strong><small>添加好友、私信和邀请对局</small></span></button>
     </section>
     <section id="watchDirectory" class="watch-directory featured-watch-directory" aria-labelledby="watchDirectoryTitle">
       <div class="watch-directory-head"><div><p class="eyebrow">LIVE ROOMS · SPECTATOR</p><h2 id="watchDirectoryTitle">观战大厅</h2><p class="chat-note">浏览正在开放观战的双人房间。只有双方玩家都主动同意，房间才会出现在这里。</p></div><button id="watchRefreshBtn" type="button" class="primary">刷新房间</button></div>
@@ -224,7 +262,7 @@ body.watch-mode #watchStatus{color:#d2c4e6}
       <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal-head"><div><p class="eyebrow">NIGHTPLAY · PRIVATE ROOM</p><h2 id="modalTitle">开始你的双人体验</h2></div><button type="button" class="modal-close" aria-label="关闭" data-close-modal>×</button></div>
         <label class="field-label">你的昵称<input id="nickname" maxlength="24" placeholder="输入聊天昵称" autocomplete="nickname" required></label>
-        <div class="modal-tabs"><button type="button" class="modal-tab active" data-modal-tab="match">偏好匹配</button><button type="button" class="modal-tab" data-modal-tab="join">邀请 / 加入</button><button type="button" class="modal-tab" data-modal-tab="history">对局历史</button></div>
+        <div class="modal-tabs"><button type="button" class="modal-tab active" data-modal-tab="match">偏好匹配</button><button type="button" class="modal-tab" data-modal-tab="join">邀请 / 加入</button><button type="button" class="modal-tab" data-modal-tab="history">对局历史</button><button type="button" class="modal-tab" data-modal-tab="friends">好友</button></div>
         <section id="matchPanel" class="modal-panel">
           <p class="muted">设置你的性别、希望匹配的对象和挑战角色。只有双方偏好互相符合时才会配对。</p>
           <div class="match-grid">
@@ -250,6 +288,23 @@ body.watch-mode #watchStatus{color:#d2c4e6}
           <p class="muted">使用本设备的随机游客 ID 保存最近 30 条对局记录，无需注册。记录会在你主动离开房间或结束对局时生成。</p>
           <div id="historyList" class="result" aria-live="polite">正在读取对局历史…</div>
           <div class="match-actions"><button id="historyRefresh" type="button" class="ghost">刷新记录</button></div>
+        </section>
+        <section id="friendsPanel" class="modal-panel" hidden>
+          <div class="friend-profile">
+            <div><small>我的好友码</small><strong id="myFriendCode">加载中…</strong></div>
+            <button type="button" id="copyFriendCode" class="ghost">复制好友码</button>
+          </div>
+          <label class="friend-visibility"><input type="checkbox" id="onlineVisibility" checked> 向好友公开我的在线状态</label>
+          <div class="friend-add-row"><input id="friendCodeInput" maxlength="8" placeholder="输入对方 8 位好友码" autocomplete="off"><button type="button" id="addFriendBtn" class="primary">发送申请</button></div>
+          <section class="friend-subsection"><h3>好友申请 <span id="incomingCount">0</span></h3><div id="incomingRequests" class="friend-list">暂无新的好友申请。</div><div id="outgoingRequests" class="friend-muted"></div></section>
+          <section class="friend-subsection"><h3>我的好友</h3><div id="friendsList" class="friend-list">正在读取好友…</div></section>
+          <section id="dmSection" class="dm-section" hidden>
+            <div class="dm-heading"><div><small>好友私信</small><strong id="dmFriendName">—</strong></div><button type="button" id="dmClose" class="ghost">返回好友列表</button></div>
+            <div id="dmLog" class="dm-log" aria-live="polite"></div>
+            <form id="dmForm" class="dm-send-row"><input id="dmInput" maxlength="1000" placeholder="给好友发送私信…" autocomplete="off"><button type="submit" class="primary">发送</button></form>
+            <button type="button" id="dmInvite" class="ghost dm-invite">邀请好友进行双人对局</button>
+          </section>
+          <div class="match-actions"><button id="friendsRefresh" type="button" class="ghost">刷新好友</button></div>
         </section>
       </section>
     </div>
@@ -332,7 +387,12 @@ async function loadGameHistory(){
    const detail=document.createElement("div");detail.style.cssText="color:#aaa6b4;font-size:11px;margin-top:4px";
    const mins=Math.floor((Number(item.durationSeconds)||0)/60),secs=(Number(item.durationSeconds)||0)%60;
    detail.textContent="房间 "+item.room+" · "+(item.role==="controller"?"控制方 S":"受控方 M")+" · "+item.nickname+" · "+mins+"分"+secs+"秒";
-   row.appendChild(detail);box.appendChild(row);
+   row.appendChild(detail);
+   if(item.opponentFriendCode){
+    const add=document.createElement("button");add.type="button";add.className="ghost history-add-friend";add.textContent="添加 "+(item.opponentNickname||"对局对象")+" 为好友";
+    add.addEventListener("click",()=>sendFriendRequest(item.opponentFriendCode));row.appendChild(add);
+   }
+   box.appendChild(row);
   });
  }catch(e){box.textContent="暂时无法读取记录，请稍后刷新。"}
 }
@@ -340,15 +400,16 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
 
  // 首页弹窗：匹配与邀请共用昵称，避免重复表单。
  function setModalTab(tab){
-  const panels={match:$("#matchPanel"),join:$("#joinPanel"),history:$("#historyPanel")};
+  const panels={match:$("#matchPanel"),join:$("#joinPanel"),history:$("#historyPanel"),friends:$("#friendsPanel")};
   if(!panels[tab])tab="match";
   Object.entries(panels).forEach(([key,panel])=>panel.hidden=key!==tab);
   document.querySelectorAll("[data-modal-tab]").forEach(b=>b.classList.toggle("active",b.dataset.modalTab===tab));
-  $("#modalTitle").textContent=tab==="match"?"按偏好寻找搭档":tab==="join"?"邀请 / 加入双人房间":"我的对局历史";
+  $("#modalTitle").textContent=tab==="match"?"按偏好寻找搭档":tab==="join"?"邀请 / 加入双人房间":tab==="friends"?"好友与私信":"我的对局历史";
   if(tab==="history")loadGameHistory();
+  if(tab==="friends")loadFriends();
  }
  function openActionModal(tab){
-  setModalTab(["match","history"].includes(tab)?tab:"join");
+  setModalTab(["match","history","friends"].includes(tab)?tab:"join");
   $("#actionModal").hidden=false;
   document.body.classList.add("modal-open");
  }
@@ -360,6 +421,115 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
  document.querySelectorAll("[data-modal-tab]").forEach(b=>b.addEventListener("click",()=>setModalTab(b.dataset.modalTab)));
  document.querySelectorAll("[data-close-modal]").forEach(b=>b.addEventListener("click",closeActionModal));
  $("#historyRefresh").addEventListener("click",loadGameHistory);
+ // ===== 游客好友系统：好友码、申请、私信与对局邀请 =====
+ let activeDmFriendCode="",activeDmFriendName="";
+ async function friendApi(url,method="GET",data){
+  const options={method,cache:"no-store",headers:{}};
+  if(data){options.headers["content-type"]="application/json";options.body=JSON.stringify(data)}
+  const response=await fetch(url,options);let result={};try{result=await response.json()}catch{}
+  if(!response.ok)throw new Error(result.message||result.error||"请求失败");
+  return result;
+ }
+ async function friendPresence(){
+  const nick=$("#nickname").value.trim()||localStorage.getItem("np_nick")||"访客";
+  try{await friendApi("/api/friends/presence","POST",{guestId,nickname:nick})}catch{}
+ }
+ async function loadFriends(){
+  const list=$("#friendsList");if(!list)return;
+  list.textContent="正在读取好友…";
+  await friendPresence();
+  try{
+   const data=await friendApi("/api/friends?guestId="+encodeURIComponent(guestId));
+   $("#myFriendCode").textContent=data.profile.friendCode;
+   $("#onlineVisibility").checked=!!data.profile.onlineVisible;
+   renderFriendRequests(data.incoming||[],data.outgoing||[]);
+   renderFriendsList(data.friends||[]);
+  }catch(e){list.textContent="好友列表暂时无法加载："+e.message}
+ }
+ function renderFriendRequests(incoming,outgoing){
+  const box=$("#incomingRequests");box.replaceChildren();$("#incomingCount").textContent=String(incoming.length);
+  if(!incoming.length)box.textContent="暂无新的好友申请。";
+  incoming.forEach(item=>{
+   const row=document.createElement("div");row.className="friend-row";
+   const info=document.createElement("span");info.textContent=item.nickname+" · "+item.friendCode;
+   const accept=document.createElement("button");accept.type="button";accept.className="primary";accept.textContent="接受";
+   accept.onclick=()=>respondFriendRequest(item.id,true);
+   const reject=document.createElement("button");reject.type="button";reject.className="ghost";reject.textContent="拒绝";
+   reject.onclick=()=>respondFriendRequest(item.id,false);
+   row.append(info,accept,reject);box.append(row);
+  });
+  const out=$("#outgoingRequests");out.textContent=outgoing.length?"已发送申请："+outgoing.map(x=>x.nickname+"（"+x.friendCode+"）").join("、"):"没有待处理的发出申请。";
+ }
+ function renderFriendsList(friends){
+  const box=$("#friendsList");box.replaceChildren();
+  if(!friends.length){box.textContent="还没有好友。可以输入对方的好友码，或从对局历史中添加。";return}
+  friends.forEach(item=>{
+   const row=document.createElement("div");row.className="friend-row";
+   const info=document.createElement("span");info.className="friend-name";
+   const dot=document.createElement("i");dot.className="friend-dot"+(item.online?" online":"");
+   const name=document.createElement("strong");name.textContent=item.nickname;
+   const code=document.createElement("small");code.textContent=item.friendCode;
+   const status=document.createElement("small");status.textContent=item.online?"在线":"离线";
+   info.append(dot,name,code,status);
+   const chat=document.createElement("button");chat.type="button";chat.className="primary";chat.textContent="私信";chat.onclick=()=>openDm(item.friendCode,item.nickname);
+   const invite=document.createElement("button");invite.type="button";invite.className="ghost";invite.textContent="邀请";invite.onclick=()=>inviteFriend(item.friendCode,item.nickname);
+   row.append(info,chat,invite);box.append(row);
+  });
+ }
+ async function sendFriendRequest(friendCode){
+  try{const result=await friendApi("/api/friends/request","POST",{guestId,friendCode});toast(result.message||"好友申请已发送");$("#friendCodeInput").value="";await loadFriends()}
+  catch(e){toast(e.message)}
+ }
+ async function respondFriendRequest(requestId,accept){
+  try{await friendApi("/api/friends/respond","POST",{guestId,requestId,accept});toast(accept?"已添加好友":"已拒绝申请");await loadFriends()}
+  catch(e){toast(e.message)}
+ }
+ async function openDm(friendCode,nickname){
+  activeDmFriendCode=friendCode;activeDmFriendName=nickname;$("#dmFriendName").textContent=nickname;$("#dmSection").hidden=false;
+  await loadDm();$("#dmInput").focus();
+ }
+ async function loadDm(){
+  if(!activeDmFriendCode)return;
+  const box=$("#dmLog");box.textContent="正在加载私信…";
+  try{
+   const data=await friendApi("/api/dm?guestId="+encodeURIComponent(guestId)+"&friendCode="+encodeURIComponent(activeDmFriendCode));
+   box.replaceChildren();
+   if(!data.messages.length)box.textContent="还没有消息，向好友打个招呼吧。";
+   data.messages.forEach(item=>{
+    const row=document.createElement("div");row.className="dm-message"+(item.mine?" mine":"");
+    const body=document.createElement("p");body.textContent=item.body;row.append(body);
+    if(item.type==="invite"&&item.roomCode){
+     const join=document.createElement("button");join.type="button";join.className="ghost";join.textContent="进入房间 "+item.roomCode;
+     join.onclick=()=>{openActionModal("join");$("#roomCode").value=item.roomCode;$("#roomCode").dispatchEvent(new Event("input"))};
+     row.append(join);
+    }
+    const time=document.createElement("small");time.textContent=new Date(item.createdAt).toLocaleString("zh-CN",{hour:"2-digit",minute:"2-digit"});row.append(time);box.append(row);
+   });
+   box.scrollTop=box.scrollHeight;
+  }catch(e){box.textContent="私信暂时无法加载："+e.message}
+ }
+ async function inviteFriend(friendCode,nickname){
+  const roomCode=crypto.randomUUID().replace(/-/g,"").slice(0,8).toUpperCase();
+  try{
+   await friendApi("/api/dm","POST",{guestId,friendCode,roomCode});
+   toast("对局邀请已发送。请先进入房间，等待好友加入。");
+   $("#roomCode").value=roomCode;openActionModal("join");
+  }catch(e){toast(e.message)}
+ }
+ $("#addFriendBtn").addEventListener("click",()=>{const code=$("#friendCodeInput").value.trim().toUpperCase();if(!/^[A-F0-9]{8}$/.test(code)){toast("请输入 8 位好友码");return}sendFriendRequest(code)});
+ $("#friendCodeInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("#addFriendBtn").click()}});
+ $("#copyFriendCode").addEventListener("click",()=>{const code=$("#myFriendCode").textContent;if(!/^[A-F0-9]{8}$/.test(code))return;(navigator.clipboard?navigator.clipboard.writeText(code):Promise.reject()).then(()=>toast("好友码已复制"),()=>prompt("复制好友码：",code))});
+ $("#onlineVisibility").addEventListener("change",async e=>{try{await friendApi("/api/friends/profile","PATCH",{guestId,onlineVisible:e.target.checked,nickname:$("#nickname").value.trim()});toast("在线状态设置已保存")}catch(err){toast(err.message);e.target.checked=!e.target.checked}});
+ $("#friendsRefresh").addEventListener("click",loadFriends);
+ $("#dmClose").addEventListener("click",()=>{$("#dmSection").hidden=true;activeDmFriendCode=""});
+ $("#dmForm").addEventListener("submit",async e=>{
+  e.preventDefault();const input=$("#dmInput"),value=input.value.trim();if(!value||!activeDmFriendCode)return;
+  try{await friendApi("/api/dm","POST",{guestId,friendCode:activeDmFriendCode,text:value});input.value="";await loadDm()}
+  catch(err){toast(err.message)}
+ });
+ $("#dmInvite").addEventListener("click",()=>{if(activeDmFriendCode)inviteFriend(activeDmFriendCode,activeDmFriendName)});
+ friendPresence();setInterval(()=>{if(!document.hidden)friendPresence()},30000);
+
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#actionModal").hidden)closeActionModal()});
 
  
