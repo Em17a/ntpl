@@ -169,12 +169,24 @@ body.watch-mode .voice-panel,body.watch-mode #chatForm,body.watch-mode #typing,b
 body.watch-mode #watchStatus{color:#d2c4e6}
 #watchJoinBtn{margin-top:8px;width:100%}
 #watchStatus{margin:8px 0 0}
+
+/* Spectator directory cards */
+.watch-directory{margin:0 8vw 18px;padding:18px;border:1px solid #665078;border-radius:12px;background:#17151f}
+.watch-directory-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+.watch-directory-head h2{margin:0;font-size:19px}
+.watch-directory-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;color:#c3bfce;font-size:12px}
+.watch-room-card{display:grid;gap:8px;padding:14px;border:1px solid #494553;border-radius:9px;background:#211f2b}
+.watch-room-card strong{color:#fff;font-size:14px}
+.watch-room-card p{margin:0;color:#d0ccda;line-height:1.6}
+.watch-room-card small{color:#c3bfce}
+.watch-room-card button{justify-self:start;min-height:36px;padding:8px 13px}
+@media(max-width:760px){.watch-directory{margin:0 7vw 14px;padding:13px}.watch-directory-head{align-items:flex-start}.watch-directory-head h2{font-size:16px}.watch-directory-list{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <header class="topbar">
   <a class="logo" href="/"><span class="logo-icon">N</span> NIGHTPLAY</a>
-  <nav><button type="button" data-open-modal="match">开始匹配</button><button type="button" data-open-modal="join">加入房间</button></nav>
+  <nav><button type="button" data-open-modal="match">开始匹配</button><button type="button" data-open-modal="join">加入房间</button><button type="button" id="watchDirectoryBtn">观战大厅</button></nav>
   <span class="status"><i></i> 双人空间</span>
 </header>
 <main>
@@ -192,6 +204,10 @@ body.watch-mode #watchStatus{color:#d2c4e6}
       <button class="quick-action quick-match" type="button" data-open-modal="match"><span class="quick-icon">♡</span><span><strong>开始匹配</strong><small>按性别、角色和语音偏好寻找搭档</small></span></button>
       <button class="quick-action" type="button" data-open-modal="join"><span class="quick-icon">↗</span><span><strong>邀请 / 加入</strong><small>使用房间码快速进入</small></span></button>
       <button class="quick-action" type="button" data-open-modal="solo"><span class="quick-icon">◉</span><span><strong>单人练习</strong><small>无需等待搭档</small></span></button><button class="quick-action" type="button" data-open-modal="history"><span class="quick-icon">▤</span><span><strong>对局历史</strong><small>查看最近的双人记录</small></span></button>
+    </section>
+    <section id="watchDirectory" class="watch-directory" hidden aria-labelledby="watchDirectoryTitle">
+      <div class="watch-directory-head"><div><p class="eyebrow">LIVE ROOMS</p><h2 id="watchDirectoryTitle">可观战房间</h2><p class="chat-note">仅显示双方玩家都主动允许旁观、且仍在线的房间。</p></div><button id="watchRefreshBtn" type="button" class="ghost">刷新列表</button></div>
+      <div id="watchDirectoryList" class="watch-directory-list" aria-live="polite">点击“观战大厅”加载房间。</div>
     </section>
     <section class="announcement" aria-labelledby="announcementTitle"><p class="eyebrow">PLATFORM NOTICE · 18+</p><h2 id="announcementTitle">平台公告与免责声明</h2><p>Nightplay 仅供年满 18 周岁的成年人自愿使用。平台不保证其他用户身份、陈述或行为的真实性。请勿分享真实姓名、住址、财务资料等敏感信息。任何互动均需双方明确自愿，任何一方都可以随时暂停、结束或离开。用户应遵守所在地法律法规，并对自己的言论与行为负责。</p></section>
     <div id="actionModal" class="modal" hidden>
@@ -495,8 +511,9 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   const out=o=>{if(ws&&ws.readyState===1){ws.send(JSON.stringify(o));return true}return false};
   function sendJoin(){joining=true;out({type:"join",room,nickname:els.nick.value.trim(),token:localStorage.getItem(seatKey(room)),guestId,lastId,role:matchedRole||els.roomRole.value})}
   function sendWatchJoin(){out({type:"watch_join",room,nickname:els.nick.value.trim(),guestId})}
-  function joinAsWatcher(){
-   const nick=els.nick.value.trim(),code=els.code.value.trim().toUpperCase();
+  function joinAsWatcher(codeValue){
+   const nick=els.nick.value.trim(),code=String(codeValue||els.code.value).trim().toUpperCase();
+   els.code.value=code;
    if(!nick){toast("请先填写昵称");els.nick.focus();return}
    if(!/^[A-Z0-9]{4,12}$/.test(code)){toast("请先填写有效的房间代码");els.code.focus();return}
    closeVoice(false);room=code;me=null;myRole=null;watching=true;want=true;lastId=0;seen=new Set();
@@ -731,7 +748,26 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   function randomCode(){const a="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";const r=crypto.getRandomValues(new Uint8Array(6));r.forEach(x=>s+=a[x%a.length]);els.code.value=s;peek()}
   let peekTimer;function peek(){clearTimeout(peekTimer);const c=els.code.value.trim().toUpperCase();if(!/^[A-Z0-9]{4,12}$/.test(c)){els.peek.textContent="";return}
    peekTimer=setTimeout(()=>fetch("/api/rooms/"+c).then(r=>r.ok?r.json():null).then(d=>{if(!d)return;els.peek.textContent=d.taken===0?"房间 "+c+" 空闲，加入后即创建。":d.full?"房间 "+c+" 已满（2/2）。如果你之前在这个房间，可直接重新加入。":"房间 "+c+" 有 1 位参与者在等你。"}).catch(()=>{}),350)}
+  async function loadWatchDirectory(){
+   const section=$("#watchDirectory"),list=$("#watchDirectoryList");section.hidden=false;list.textContent="正在查找开放观战的房间…";
+   try{
+    const response=await fetch("/api/watchable",{cache:"no-store"});if(!response.ok)throw new Error("请求失败");
+    const data=await response.json(),rooms=Array.isArray(data.rooms)?data.rooms:[];
+    list.replaceChildren();
+    if(!rooms.length){list.textContent="目前没有双方都允许观战的在线房间。";return}
+    rooms.forEach(item=>{
+     const card=document.createElement("article");card.className="watch-room-card";
+     const title=document.createElement("strong");title.textContent="房间 "+item.room;
+     const players=document.createElement("p");players.textContent=(item.players||[]).map(p=>p.nickname+" · "+(p.role==="controller"?"控制方":"受控方")).join(" / ");
+     const count=document.createElement("small");count.textContent="旁观人数 "+(Number(item.watchers)||0)+" / 12";
+     const button=document.createElement("button");button.type="button";button.className="primary";button.textContent="进入旁观";button.addEventListener("click",()=>joinAsWatcher(item.room));
+     card.append(title,players,count,button);list.appendChild(card);
+    });
+   }catch(error){list.textContent="暂时无法加载观战列表，请稍后刷新。"}
+  }
   // 绑定事件
+  $("#watchDirectoryBtn").onclick=loadWatchDirectory;
+  $("#watchRefreshBtn").onclick=loadWatchDirectory;
   $("#joinForm").onsubmit=e=>{e.preventDefault();join()};
   els.matchStart.onclick=startMatching;
   els.matchCancel.onclick=cancelMatching;
