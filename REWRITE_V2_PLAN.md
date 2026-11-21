@@ -15,14 +15,14 @@ The rewrite is not complete unless each applicable item has a replacement and a 
 
 - [ ] Main landing page and existing navigation / responsive mobile layout
 - [ ] Guest identity, age confirmation, nickname and profile preferences
-- [ ] Random matchmaking: gender preference, role preference, voice preference, shared challenge limits
+- [ ] Random matchmaking: gender preference, role preference and voice preference. The current Nightplay UI/schema has no separate shared-round-limit preference; do not invent one solely because the reference project has it.
 - [ ] Dedicated matchmaking waiting screen and elapsed-seconds timer
 - [ ] Cancel matchmaking: immediate UI exit, server-side cancellation, safe handling of join/poll/cancel races
 - [ ] Matched room handoff: both clients receive the same valid room and distinct roles
 - [ ] Private room creation, custom room name, room code join
 - [ ] Public room publishing, public room list and spectator/watch flow
 - [ ] Two-person room membership, reconnect/recovery, heartbeat, expiry (5–120 minutes where configured)
-- [ ] Room chat and existing moderation/report safeguards
+- [ ] Room chat, text contact blocking, and local-only voice contact protection with privacy safeguards
 - [ ] WebRTC voice signaling, explicit microphone permission and current relay behavior
 - [ ] Challenge / metronome state, pause/resume/end, controller/receiver permissions
 - [ ] S/M quick phrases displayed in the challenge UI, not unintentionally emitted to public chat
@@ -43,11 +43,12 @@ The rewrite is not complete unless each applicable item has a replacement and a 
 
 1. **Client UI** — page shell, matchmaking screen/timer, room view, social/public-room panels.
 2. **Client services** — typed API client, matchmaking lifecycle, room sync, WebRTC signaling, chat/social actions.
-3. **Worker API** — validation/auth/identity and stable HTTP contracts; no duplicate business logic.
-4. **Matchmaking coordinator** — server-authoritative queue, compatibility rules, cancellation tombstones, lease/heartbeat, atomic room allocation and idempotent handoff.
-5. **Room runtime** — Durable Object owns live room membership, chat, challenge state, signaling and room lifecycle.
-6. **Persistence** — D1 repository layer and explicit migrations; preserve existing schema/data compatibility.
-7. **Regression suite** — feature-level tests, API contract tests, matchmaking race tests, and build/type checks.
+3. **Worker API** — `src/index.ts` is a small static/API router; feature APIs are split into focused modules.
+4. **Matchmaking coordinator** — `src/matchmaking-api.ts`, `src/matchmaking-service.ts`, and `src/matchmaking-core.ts` own the HTTP contract, authoritative queue, compatibility, cancellation tombstones, leases and atomic room allocation.
+5. **Room runtime** — `src/nightplay-room.ts` owns live membership, chat, challenge state, WebRTC signaling and room lifecycle.
+6. **Supporting APIs** — social, public-room/directory, RTC configuration and contact protection are separate modules.
+7. **Persistence** — D1 repository operations and explicit migrations; preserve existing schema/data compatibility.
+8. **Regression suite** — feature-level tests, API contract tests, matchmaking race tests, privacy guards and build/type checks.
 
 ## Acceptance gates before merge/deploy
 
@@ -59,3 +60,13 @@ The rewrite is not complete unless each applicable item has a replacement and a 
 - `npm run check` passes on the rewrite branch.
 - Cloudflare deployment dry-run succeeds without changing production resources.
 - Only after the user reviews the test result should the rewrite be merged and deployed.
+
+
+## Current rewrite status (not final acceptance)
+
+- The frontend shell, stylesheet and browser application are separate files.
+- The Worker router and Durable Object room runtime are separate modules; the Durable Object export name and Cloudflare bindings remain unchanged.
+- Matchmaking has one HTTP contract; the duplicate WebSocket matchmaking path was removed from both client and server.
+- Social, room-directory, RTC configuration and contact-protection logic have dedicated modules.
+- Automated CI currently covers 44 tests and runs TypeScript checks plus Wrangler dry-run. The final head must be checked again after the last edit.
+- Real two-device matching, microphone/model behavior, spectator flow and all end-to-end UI interactions still require browser testing before merge/deploy.
