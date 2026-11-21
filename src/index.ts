@@ -220,13 +220,13 @@ export class NightplayRoom extends DurableObject<Env> {
     if(!m)return this.send(ws,{type:'error',code:'not_joined',message:'请先加入房间。'});
     if(msg.type==='metronome_emergency_stop'){
       if(!(await this.touch(m)))return this.seatLost(ws);
-      const previous=await this.metro(m.room)??{bpm:80,intensity:3,running:false};const state={...previous,running:false,stopped:true,nickname:m.nickname};await this.setMetro(m.room,state);this.broadcast(m.room,{type:'metronome_state',...state},ws);this.send(ws,{type:'metronome_state',...state});return;
+      const previous=await this.metro(m.room)??{bpm:80,intensity:3,running:false,started:false};const state={...previous,running:false,started:true,stopped:true,nickname:m.nickname};await this.setMetro(m.room,state);this.broadcast(m.room,{type:'metronome_state',...state},ws);this.send(ws,{type:'metronome_state',...state});return;
     }
     if(msg.type==='metronome_state'){
       if(m.role!=='controller')return this.send(ws,{type:'error',code:'role_forbidden',message:'只有控制方可以调整节拍参数和挑战进度。受控方可使用紧急停止。'});
       if(this.rateLimited(ws,m))return this.send(ws,{type:'error',code:'rate_limited',message:'操作太快了，请稍等片刻。'});
       if(!(await this.touch(m)))return this.seatLost(ws);
-      const state={bpm:Math.max(40,Math.min(220,Math.round(Number(msg.bpm)||80))),intensity:Math.max(1,Math.min(5,Math.round(Number(msg.intensity)||3))),running:msg.stopped?false:Boolean(msg.running),stopped:Boolean(msg.stopped),nickname:m.nickname};await this.setMetro(m.room,state);this.broadcast(m.room,{type:'metronome_state',...state},ws);return;
+      const previous=await this.metro(m.room);const started=Boolean(msg.started||msg.running||msg.stopped||previous?.started);const state={bpm:Math.max(40,Math.min(220,Math.round(Number(msg.bpm)||80))),intensity:Math.max(1,Math.min(5,Math.round(Number(msg.intensity)||3))),running:msg.stopped?false:Boolean(msg.running),started,stopped:Boolean(msg.stopped),nickname:m.nickname};await this.setMetro(m.room,state);this.broadcast(m.room,{type:'metronome_state',...state},ws);return;
     }
     if(msg.type==='chat'){
       const text=String(msg.text??'').trim().slice(0,500);if(!text)return;
