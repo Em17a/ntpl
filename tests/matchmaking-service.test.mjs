@@ -302,4 +302,5 @@ test('expired matched room is not returned as a usable matchmaking result', asyn
       VALUES(?,?, 'other','any','any','any',?,'matched',?,?,?)`).run(id, nickname, role, room, 1_000, 1_000);
   }
   assert.deepEqual(await findOrCreateMatch(db, a, 5_000), { status: 'missing' });
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=?').get(room).count, 0);
 });
