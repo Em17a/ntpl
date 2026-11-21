@@ -1,4 +1,4 @@
-import { NightplayRoom } from './nightplay-room.js';
+import type { NightplayRoom } from './nightplay-room.js';
 import type { RoomEnv } from './nightplay-room.js';
 
 export { NightplayRoom } from './nightplay-room.js';
