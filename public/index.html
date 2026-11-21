@@ -272,6 +272,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   document.body.classList.add("modal-open");
  }
  function closeActionModal(){
+  if(soloActive)soloStop("练习已暂停");
   const modal=$("#actionModal");if(modal)modal.hidden=true;
   document.body.classList.remove("modal-open");
  }
@@ -295,7 +296,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
  }
  let soloCue="准备开始",soloAccent=false,soloTempo=75;
  function soloSetTempo(value,label){
-  soloTempo=value;$("#soloBpm").textContent=String(value);$("#soloCue").textContent=label;
+  soloCue=label;soloTempo=value;$("#soloBpm").textContent=String(value);$("#soloCue").textContent=label;
   if(soloBeatTimer){clearInterval(soloBeatTimer);soloBeatTimer=setInterval(soloTick,60000/soloTempo)}
  }
  function soloTick(){if(!soloActive)return;soloAccent=!soloAccent;soloTone()}
@@ -584,7 +585,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
     reset(m.message||"本轮互动已结束，已自动退出房间");
    }else if(m.type==="joined"){
     joining=false;const fresh=!m.resumed||!me||me.id!==m.you.id;
-    if(fresh){closeVoice(false);els.log.innerHTML="";seen=new Set();lastId=0;stopMetroTimer();clearMetroClocks();metroRunning=false;metroHasStarted=false;metroStopped=false;metroEndsAt=0;metroRemainingMs=0;metroBeat=0;$("#beatNumber").textContent="—"}
+    if(fresh){closeVoice(false);els.log.innerHTML="";seen=new Set();lastId=0;stopMetroTimer();clearMetroClocks();metroRunning=false;metroHasStarted=false;metroStopped=false;metroEndsAt=0;metroRemainingMs=0;metroBeat=0;$("#beatNumber").textContent="—";renderQuickPhrases()}
     me=m.you;myRole=m.you.role||"controller";matchedRole=null;renderQuickPhrases();room=m.room;iceConfigCache=null;localStorage.setItem(seatKey(room),m.token);localStorage.setItem("np_nick",me.nickname);
     els.label.textContent=room;showRoom(true);setState("on","已连接");setVoiceState("","语音未开启 · 双方需分别授权");
     const u=new URL(location.href);u.searchParams.set("room",room);u.hash="room";history.replaceState(null,"",u);
