@@ -52,11 +52,11 @@ test('fixed opposite roles are preserved', () => {
   });
 });
 
-test('voice preference is a ranking preference, not a hard rejection', () => {
+test('voice preference must be mutually compatible, then ranks exact agreements first', () => {
   const self = entry({ voice_preference: 'both' });
   const exact = entry({ client_id: 'exact', voice_preference: 'both', created_at: 10 });
   const soft = entry({ client_id: 'soft', voice_preference: 'off', created_at: 1 });
-  assert.equal(isMatchCompatible(self, soft), true);
+  assert.equal(isMatchCompatible(self, soft), false);
   assert.equal(chooseMatchPartner(self, [soft, exact])?.client_id, 'exact');
 });
 
