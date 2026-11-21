@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { findOrCreateMatch, pollMatchmaking, cancelMatchmaking } from '../src/matchmaking-service.ts';
+import { isMatchCompatible, chooseMatchPartner, assignMatchRoles } from '../src/matchmaking-core.ts';
 
 function createD1() {
   const sqlite = new DatabaseSync(':memory:');
@@ -215,4 +216,21 @@ test('cancel never deletes an already matched room or queue result', async t => 
   assert.deepEqual(result, { status: 'matched', room, role: 'controller' });
   assert.equal(db.raw.prepare("SELECT COUNT(*) AS count FROM matchmaking_queue WHERE status='matched' AND room_code=?").get(room).count, 2);
   assert.equal(db.raw.prepare("SELECT COUNT(*) AS count FROM room_members WHERE room_code=? AND left_at IS NULL").get(room).count, 2);
+});
+
+
+test('compatibility enforces both users gender, role and voice preferences', () => {
+  const base = { client_id: 'a', gender: 'male', preference: 'female', role_preference: 'controller', voice_preference: 'both', created_at: 1 };
+  assert.equal(isMatchCompatible(base, { ...base, client_id: 'b', gender: 'female', preference: 'male', role_preference: 'receiver', voice_preference: 'both' }), true);
+  assert.equal(isMatchCompatible(base, { ...base, client_id: 'c', gender: 'female', preference: 'male', role_preference: 'receiver', voice_preference: 'off' }), false);
+  assert.equal(isMatchCompatible(base, { ...base, client_id: 'd', gender: 'female', preference: 'female', role_preference: 'receiver', voice_preference: 'both' }), false);
+  assert.equal(isMatchCompatible(base, { ...base, client_id: 'e', gender: 'female', preference: 'male', role_preference: 'controller', voice_preference: 'both' }), false);
+});
+
+test('partner selection prefers a mutually compatible voice match and assigns opposite roles', () => {
+  const self = { client_id: 'a', gender: 'male', preference: 'female', role_preference: 'any', voice_preference: 'self', created_at: 1 };
+  const peer = { client_id: 'b', gender: 'female', preference: 'male', role_preference: 'receiver', voice_preference: 'peer', created_at: 2 };
+  const incompatibleVoice = { ...peer, client_id: 'c', voice_preference: 'self', created_at: 1 };
+  assert.equal(chooseMatchPartner(self, [incompatibleVoice, peer]).client_id, 'b');
+  assert.deepEqual(assignMatchRoles(self, peer), { selfRole: 'controller', partnerRole: 'receiver' });
 });
