@@ -15,7 +15,7 @@ type Meta = {
   memberId: string; room: string; nickname: string; role: Role;
   bucket: number; bucketAt: number; lastTypingAt: number; watcher?: boolean;
 };
-type Attachment = { meta?: Meta; matchmakingClientId?: string };
+type Attachment = { meta?: Meta };
 type ClientMessage = Record<string, any> & { type: string };
 
 const MAX_SEATS = 2, ONLINE_WINDOW_S = 45, SEAT_TTL_S = 300, ROOM_RETENTION_DAYS = 7, HISTORY_LIMIT = 60;
