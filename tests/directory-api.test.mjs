@@ -56,7 +56,9 @@ test('online heartbeat creates and counts active visitor leases', async () => {
   try {
     const id = '33333333-3333-4333-8333-333333333333';
     const response = await handleDirectoryApi(request('/api/online/heartbeat', 'POST', { visitorId: id }), db, storage, async () => [], async () => 0);
-    assert.deepEqual(await response.json(), { online: 1, updatedAt: (await response.clone().json()).updatedAt });
+    const data = await response.json();
+    assert.equal(data.online, 1);
+    assert.ok(data.updatedAt > 0);
   } finally {
     db.close();
   }
