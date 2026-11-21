@@ -4,7 +4,8 @@ export type MatchStatus =
   | { status: 'waiting' }
   | { status: 'missing' }
   | { status: 'matched'; room: string; role: 'controller' | 'receiver' }
-  | { status: 'repair_failed' };
+  | { status: 'repair_failed' }
+  | { status: 'cancelled' };
 
 const validRoomCode = /^[A-HJ-NP-Z2-9]{8}$/;
 const roomAlphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -149,4 +150,49 @@ export async function findOrCreateMatch(
 
   await scheduleNextAlarm?.();
   return { status: 'matched', room, role: selfRole };
+}
+
+
+/** Refreshes a queued player's lease and actively attempts pairing on every poll.
+ * Polling is not a passive status read: it is also the matchmaking heartbeat/worker.
+ */
+export async function pollMatchmaking(
+  db: D1Database,
+  clientId: string,
+  timestamp: number,
+): Promise<MatchStatus> {
+  await db.prepare("UPDATE matchmaking_queue SET last_seen_at=? WHERE client_id=? AND status='waiting'")
+    .bind(timestamp, clientId).run();
+  const row = await db.prepare('SELECT status FROM matchmaking_queue WHERE client_id=?')
+    .bind(clientId).first<any>();
+  if (!row) return { status: 'missing' };
+  return findOrCreateMatch(db, clientId, timestamp);
+}
+
+/** Cancellation wins only while the queue row is still waiting.
+ * Re-read after the conditional delete so a concurrent successful match is never
+ * reported as cancelled and its room is never orphaned.
+ */
+export async function cancelMatchmaking(
+  db: D1Database,
+  clientId: string,
+  timestamp: number,
+): Promise<MatchStatus> {
+  const before = await db.prepare('SELECT status FROM matchmaking_queue WHERE client_id=?')
+    .bind(clientId).first<any>();
+  if (!before) return { status: 'cancelled' };
+  if (before.status === 'matched') return findOrCreateMatch(db, clientId, timestamp);
+
+  await db.prepare("DELETE FROM matchmaking_queue WHERE client_id=? AND status='waiting'")
+    .bind(clientId).run();
+
+  const after = await db.prepare('SELECT status FROM matchmaking_queue WHERE client_id=?')
+    .bind(clientId).first<any>();
+  if (after?.status === 'matched') return findOrCreateMatch(db, clientId, timestamp);
+  if (after?.status === 'waiting') {
+    // A concurrent join may have refreshed/reinserted this same client id.
+    await db.prepare("DELETE FROM matchmaking_queue WHERE client_id=? AND status='waiting'")
+      .bind(clientId).run();
+  }
+  return { status: 'cancelled' };
 }
