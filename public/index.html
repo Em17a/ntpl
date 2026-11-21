@@ -164,7 +164,7 @@ body.room-active .topbar nav{display:none}
     <section class="quick-actions" aria-label="快速进入功能">
       <button class="quick-action" type="button" data-open-modal="match"><span class="quick-icon">♡</span><span><strong>偏好匹配</strong><small>按偏好寻找搭档</small></span></button>
       <button class="quick-action" type="button" data-open-modal="join"><span class="quick-icon">↗</span><span><strong>邀请 / 加入</strong><small>使用房间码快速进入</small></span></button>
-      <button class="quick-action" type="button" data-open-modal="solo"><span class="quick-icon">◉</span><span><strong>单人练习</strong><small>无需等待搭档</small></span></button>
+      <button class="quick-action" type="button" data-open-modal="solo"><span class="quick-icon">◉</span><span><strong>单人练习</strong><small>无需等待搭档</small></span></button><button class="quick-action" type="button" data-open-modal="history"><span class="quick-icon">▤</span><span><strong>对局历史</strong><small>查看最近的双人记录</small></span></button>
     </section>
     <section class="announcement" aria-labelledby="announcementTitle"><p class="eyebrow">PLATFORM NOTICE · 18+</p><h2 id="announcementTitle">平台公告与免责声明</h2><p>Nightplay 仅供年满 18 周岁的成年人自愿使用。平台不保证其他用户身份、陈述或行为的真实性。请勿分享真实姓名、住址、财务资料等敏感信息。任何互动均需双方明确自愿，任何一方都可以随时暂停、结束或离开。用户应遵守所在地法律法规，并对自己的言论与行为负责。</p></section>
     <div id="actionModal" class="modal" hidden>
@@ -172,7 +172,7 @@ body.room-active .topbar nav{display:none}
       <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal-head"><div><p class="eyebrow">NIGHTPLAY · PRIVATE ROOM</p><h2 id="modalTitle">开始你的双人体验</h2></div><button type="button" class="modal-close" aria-label="关闭" data-close-modal>×</button></div>
         <label class="field-label">你的昵称<input id="nickname" maxlength="24" placeholder="输入聊天昵称" autocomplete="nickname" required></label>
-        <div class="modal-tabs"><button type="button" class="modal-tab active" data-modal-tab="match">偏好匹配</button><button type="button" class="modal-tab" data-modal-tab="join">邀请 / 加入</button><button type="button" class="modal-tab" data-modal-tab="solo">单人练习</button></div>
+        <div class="modal-tabs"><button type="button" class="modal-tab active" data-modal-tab="match">偏好匹配</button><button type="button" class="modal-tab" data-modal-tab="join">邀请 / 加入</button><button type="button" class="modal-tab" data-modal-tab="solo">单人练习</button><button type="button" class="modal-tab" data-modal-tab="history">对局历史</button></div>
         <section id="matchPanel" class="modal-panel">
           <p class="muted">设置你的性别、希望匹配的对象和挑战角色。只有双方偏好互相符合时才会配对。</p>
           <div class="match-grid">
@@ -202,6 +202,11 @@ body.room-active .topbar nav{display:none}
           <div class="solo-readout"><strong id="soloCue">准备开始</strong><span><b id="soloBpm">75</b> BPM</span><span>剩余 <b id="soloCountdown">03:00</b></span></div>
           <div class="match-actions"><button id="soloStart" type="button" class="primary">开始练习</button><button id="soloStop" type="button" class="ghost" disabled>结束练习</button></div>
           <p id="soloStatus" class="chat-note" aria-live="polite">练习不会上传或保存记录。</p>
+        </section>
+        <section id="historyPanel" class="modal-panel" hidden>
+          <p class="muted">使用本设备的随机游客 ID 保存最近 30 条对局记录，无需注册。记录会在你主动离开房间或结束对局时生成。</p>
+          <div id="historyList" class="result" aria-live="polite">正在读取对局历史…</div>
+          <div class="match-actions"><button id="historyRefresh" type="button" class="ghost">刷新记录</button></div>
         </section>
       </section>
     </div>
@@ -256,18 +261,38 @@ body.room-active .topbar nav{display:none}
 <script>
 
 const $=s=>document.querySelector(s);
+const guestId=(()=>{const key="np_guest_id";let id=localStorage.getItem(key);if(!/^[0-9a-f-]{36}$/i.test(id||"")){id=crypto.randomUUID();localStorage.setItem(key,id)}return id})();
+async function loadGameHistory(){
+ const box=$("#historyList");if(!box)return;box.textContent="正在读取对局历史…";
+ try{
+  const response=await fetch("/api/history?guestId="+encodeURIComponent(guestId),{cache:"no-store"});
+  if(!response.ok)throw new Error("history request failed");
+  const data=await response.json(),items=Array.isArray(data.history)?data.history:[];
+  if(!items.length){box.textContent="还没有对局记录。完成一次双人对局并主动离开或结束后，记录会显示在这里。";return}
+  box.replaceChildren();
+  items.forEach(item=>{
+   const row=document.createElement("div");row.style.cssText="padding:9px 0;border-bottom:1px solid #ffffff18";
+   const date=document.createElement("strong");date.textContent=new Date(item.endedAt).toLocaleString("zh-CN");row.appendChild(date);
+   const detail=document.createElement("div");detail.style.cssText="color:#aaa6b4;font-size:11px;margin-top:4px";
+   const mins=Math.floor((Number(item.durationSeconds)||0)/60),secs=(Number(item.durationSeconds)||0)%60;
+   detail.textContent="房间 "+item.room+" · "+(item.role==="controller"?"控制方 S":"受控方 M")+" · "+item.nickname+" · "+mins+"分"+secs+"秒";
+   row.appendChild(detail);box.appendChild(row);
+  });
+ }catch(e){box.textContent="暂时无法读取记录，请稍后刷新。"}
+}
 const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2600)};
 
  // 首页弹窗：匹配与邀请共用昵称，避免重复表单。
  function setModalTab(tab){
-  const panels={match:$("#matchPanel"),join:$("#joinPanel"),solo:$("#soloPanel")};
+  const panels={match:$("#matchPanel"),join:$("#joinPanel"),solo:$("#soloPanel"),history:$("#historyPanel")};
   if(!panels[tab])tab="match";
   Object.entries(panels).forEach(([key,panel])=>panel.hidden=key!==tab);
   document.querySelectorAll("[data-modal-tab]").forEach(b=>b.classList.toggle("active",b.dataset.modalTab===tab));
-  $("#modalTitle").textContent=tab==="match"?"按偏好寻找搭档":tab==="join"?"邀请 / 加入双人房间":"单人节奏练习";
+  $("#modalTitle").textContent=tab==="match"?"按偏好寻找搭档":tab==="join"?"邀请 / 加入双人房间":tab==="solo"?"单人节奏练习":"我的对局历史";
+  if(tab==="history")loadGameHistory();
  }
  function openActionModal(tab){
-  setModalTab(tab==="match"||tab==="solo"?tab:"join");
+  setModalTab(["match","solo","history"].includes(tab)?tab:"join");
   $("#actionModal").hidden=false;
   document.body.classList.add("modal-open");
  }
@@ -279,6 +304,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
  document.querySelectorAll("[data-open-modal]").forEach(b=>b.addEventListener("click",()=>openActionModal(b.dataset.openModal)));
  document.querySelectorAll("[data-modal-tab]").forEach(b=>b.addEventListener("click",()=>setModalTab(b.dataset.modalTab)));
  document.querySelectorAll("[data-close-modal]").forEach(b=>b.addEventListener("click",closeActionModal));
+ $("#historyRefresh").addEventListener("click",loadGameHistory);
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#actionModal").hidden)closeActionModal()});
 
  
@@ -429,7 +455,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    ws.onerror=()=>{};
   }
   const out=o=>{if(ws&&ws.readyState===1){ws.send(JSON.stringify(o));return true}return false};
-  function sendJoin(){joining=true;out({type:"join",room,nickname:els.nick.value.trim(),token:localStorage.getItem(seatKey(room)),lastId,role:matchedRole||els.roomRole.value})}
+  function sendJoin(){joining=true;out({type:"join",room,nickname:els.nick.value.trim(),token:localStorage.getItem(seatKey(room)),guestId,lastId,role:matchedRole||els.roomRole.value})}
 
   function updateMicControls(){
    const active=!!(localStream&&localStream.getAudioTracks().some(t=>t.readyState==="live"));
