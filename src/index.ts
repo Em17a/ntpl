@@ -184,30 +184,30 @@ export class NightplayRoom extends DurableObject<Env> {
     return 0;
   }
   private async findOrCreateMatch(clientId:string) {
-    return this.queue(async()=>{
-      const db=this.env.DB,t=now();
-      await db.prepare("DELETE FROM matchmaking_queue WHERE status='waiting' AND last_seen_at<?").bind(t-45000).run();
-      await db.prepare('DELETE FROM matchmaking_queue WHERE created_at<?').bind(t-86400000).run();
-      const self=await db.prepare("SELECT * FROM matchmaking_queue WHERE client_id=? AND status='waiting'").bind(clientId).first<any>();
-      if(!self){const existing=await db.prepare('SELECT * FROM matchmaking_queue WHERE client_id=?').bind(clientId).first<any>();return existing?.status==='matched'?{status:'matched',room:existing.room_code,role:existing.matched_role}:{status:'missing'};}
-      const waiting=await db.prepare("SELECT * FROM matchmaking_queue WHERE status='waiting' AND client_id<>? ORDER BY created_at LIMIT 100").bind(clientId).all<any>();
-      const candidates=waiting.results.filter((x:any)=>this.compatible(self,x));
-      candidates.sort((a:any,b:any)=>this.voiceMatchScore(self,b)-this.voiceMatchScore(self,a)||Number(a.created_at)-Number(b.created_at));
-      const partner=candidates[0];if(!partner)return {status:'waiting'};
-      const room=crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase();
-      let selfRole:Role,partnerRole:Role;
-      if(self.role_preference==='any'&&partner.role_preference==='any'){selfRole='controller';partnerRole='receiver';}
-      else if(self.role_preference==='any'){partnerRole=partner.role_preference;selfRole=partnerRole==='controller'?'receiver':'controller';}
-      else if(partner.role_preference==='any'){selfRole=self.role_preference;partnerRole=selfRole==='controller'?'receiver':'controller';}
-      else{selfRole=self.role_preference;partnerRole=partner.role_preference;}
-      await db.batch([
-        db.prepare('INSERT INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)').bind(room,t,t,t+120*60000),
-        db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,selfRole,clientId),
-        db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,partnerRole,partner.client_id),
-      ]);
-      await this.scheduleNextAlarm();
-      return {status:'matched',room,role:selfRole};
-    });
+    // webSocketMessage already serializes every message through this.queue().
+    // Do not enqueue again here: awaiting a nested queue operation deadlocks.
+    const db=this.env.DB,t=now();
+    await db.prepare("DELETE FROM matchmaking_queue WHERE status='waiting' AND last_seen_at<?").bind(t-45000).run();
+    await db.prepare('DELETE FROM matchmaking_queue WHERE created_at<?').bind(t-86400000).run();
+    const self=await db.prepare("SELECT * FROM matchmaking_queue WHERE client_id=? AND status='waiting'").bind(clientId).first<any>();
+    if(!self){const existing=await db.prepare('SELECT * FROM matchmaking_queue WHERE client_id=?').bind(clientId).first<any>();return existing?.status==='matched'?{status:'matched',room:existing.room_code,role:existing.matched_role}:{status:'missing'};}
+    const waiting=await db.prepare("SELECT * FROM matchmaking_queue WHERE status='waiting' AND client_id<>? ORDER BY created_at LIMIT 100").bind(clientId).all<any>();
+    const candidates=waiting.results.filter((x:any)=>this.compatible(self,x));
+    candidates.sort((a:any,b:any)=>this.voiceMatchScore(self,b)-this.voiceMatchScore(self,a)||Number(a.created_at)-Number(b.created_at));
+    const partner=candidates[0];if(!partner)return {status:'waiting'};
+    const room=crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase();
+    let selfRole:Role,partnerRole:Role;
+    if(self.role_preference==='any'&&partner.role_preference==='any'){selfRole='controller';partnerRole='receiver';}
+    else if(self.role_preference==='any'){partnerRole=partner.role_preference;selfRole=partnerRole==='controller'?'receiver':'controller';}
+    else if(partner.role_preference==='any'){selfRole=self.role_preference;partnerRole=selfRole==='controller'?'receiver':'controller';}
+    else{selfRole=self.role_preference;partnerRole=partner.role_preference;}
+    await db.batch([
+      db.prepare('INSERT INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)').bind(room,t,t,t+120*60000),
+      db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,selfRole,clientId),
+      db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,partnerRole,partner.client_id),
+    ]);
+    await this.scheduleNextAlarm();
+    return {status:'matched',room,role:selfRole};
   }
   private async matchmakingJoin(ws:WebSocket,msg:ClientMessage) {
     const clientId=typeof msg.clientId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.clientId)?msg.clientId:'';
