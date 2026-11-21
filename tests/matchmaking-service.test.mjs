@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { findOrCreateMatch, pollMatchmaking, cancelMatchmaking } from '../src/matchmaking-service.ts';
+import { findOrCreateMatch, joinMatchmaking, pollMatchmaking, cancelMatchmaking } from '../src/matchmaking-service.ts';
 import { isMatchCompatible, chooseMatchPartner, assignMatchRoles } from '../src/matchmaking-core.ts';
 
 function createD1() {
@@ -302,4 +302,48 @@ test('expired matched room is not returned as a usable matchmaking result', asyn
       VALUES(?,?, 'other','any','any','any',?,'matched',?,?,?)`).run(id, nickname, role, room, 1_000, 1_000);
   }
   assert.deepEqual(await findOrCreateMatch(db, a, 5_000), { status: 'missing' });
+});
+
+
+test('the single join contract pairs compatible clients and is idempotent after matching', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const a = 'a1a1a1a1-1111-4111-8111-a1a1a1a1a1a1';
+  const b = 'b2b2b2b2-2222-4222-8222-b2b2b2b2b2b2';
+  const first = await joinMatchmaking(db, {
+    clientId: a, nickname: '甲', gender: 'male', preference: 'female',
+    rolePreference: 'controller', voicePreference: 'both',
+  }, 10_000);
+  assert.deepEqual(first, { status: 'waiting' });
+
+  const second = await joinMatchmaking(db, {
+    clientId: b, nickname: '乙', gender: 'female', preference: 'male',
+    rolePreference: 'receiver', voicePreference: 'both',
+  }, 11_000);
+  assert.equal(second.status, 'matched');
+  assert.match(second.room, /^[A-HJ-NP-Z2-9]{8}$/);
+  assert.equal(second.role, 'receiver');
+
+  const retry = await joinMatchmaking(db, {
+    clientId: b, nickname: '乙', gender: 'female', preference: 'male',
+    rolePreference: 'receiver', voicePreference: 'both',
+  }, 12_000);
+  assert.deepEqual(retry, second);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM rooms').get().count, 1);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=?').get(second.room).count, 2);
+});
+
+test('a delayed join cannot resurrect a cancellation tombstone', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const id = 'c3c3c3c3-3333-4333-8333-c3c3c3c3c3c3';
+  assert.deepEqual(await cancelMatchmaking(db, id, 20_000), { status: 'cancelled' });
+
+  const late = await joinMatchmaking(db, {
+    clientId: id, nickname: '迟到请求', gender: 'male', preference: 'any',
+    rolePreference: 'any', voicePreference: 'any',
+  }, 20_100);
+  assert.deepEqual(late, { status: 'missing' });
+  assert.equal(db.raw.prepare('SELECT status FROM matchmaking_queue WHERE client_id=?').get(id).status, 'cancelled');
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM rooms').get().count, 0);
 });
