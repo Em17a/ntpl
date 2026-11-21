@@ -7,7 +7,7 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
 :root{--bg:#09090d;--panel:#121219;--panel2:#191922;--line:#292934;--text:#f2f0f5;--muted:#9997a5;--accent:#d5a6ff;--accent2:#a77ce0;--green:#87d9b2;--red:#f08b9a}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:Manrope,system-ui,sans-serif}a{color:inherit;text-decoration:none}.topbar{height:76px;padding:0 7vw;border-bottom:1px solid #ffffff10;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#09090de8;backdrop-filter:blur(16px);z-index:5}.logo{font-weight:800;letter-spacing:.16em;font-size:13px;display:flex;align-items:center;gap:10px}.logo-icon{width:27px;height:27px;border:1px solid var(--accent);color:var(--accent);display:grid;place-items:center;border-radius:8px;font-size:14px}.topbar nav{display:flex;gap:32px;color:#c4c1cc;font-size:12px}.topbar nav a:hover,.mode-card a:hover{color:var(--accent)}.status,.eyebrow,.pill,.live-dot{font:10px 'DM Mono',monospace;letter-spacing:.14em}.status{color:var(--green)}.status i,.live-dot:before{display:inline-block;width:6px;height:6px;background:var(--green);border-radius:50%;margin-right:8px}.hero{min-height:540px;padding:100px 10vw 80px;display:grid;grid-template-columns:1.1fr .9fr;align-items:center;overflow:hidden;background:radial-gradient(ellipse at 75% 45%,#4d326329,transparent 42%)}.eyebrow{color:var(--accent);margin:0 0 15px}.hero h1{font-size:clamp(48px,6vw,82px);line-height:1.03;letter-spacing:-.06em;margin:0;font-weight:700}.hero h1 em{font-style:normal;color:var(--accent)}.lead{color:var(--muted);line-height:1.9;max-width:490px;font-size:14px;margin:25px 0 30px}.primary{border:0;background:var(--accent);color:#17111d;padding:13px 20px;border-radius:6px;font-weight:800;cursor:pointer;font-family:inherit}.primary:hover{background:#e4c6ff;transform:translateY(-1px)}.primary:disabled{opacity:.4;cursor:not-allowed;transform:none}.link-button{display:inline-flex;gap:32px;align-items:center;font-size:12px}.hero-art{height:340px;position:relative;display:grid;place-items:center}.orb{position:absolute;border-radius:50%;filter:blur(1px)}.orb-one{width:270px;height:270px;background:radial-gradient(circle at 35% 30%,#e2c0ff88,#8051b722 55%,transparent 72%);box-shadow:0 0 100px #a66ee833}.orb-two{width:180px;height:180px;border:1px solid #d5a6ff66;transform:rotate(35deg) skew(8deg);border-radius:42%}.art-card{position:relative;width:245px;height:155px;padding:24px;background:linear-gradient(135deg,#24202d,#111117);border:1px solid #ffffff26;border-radius:12px;box-shadow:0 30px 80px #0009;transform:rotate(-7deg);display:flex;flex-direction:column;justify-content:space-between}.art-card span,.art-card small{font:9px 'DM Mono';letter-spacing:.16em;color:var(--muted)}.art-card strong{font-size:32px;letter-spacing:-.05em}.art-line{height:2px;background:linear-gradient(90deg,var(--accent),transparent)}.section{padding:76px 10vw}.section-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:28px}.section h2,.safety h2{font-size:30px;letter-spacing:-.04em;margin:0}.muted{color:var(--muted);font-size:12px;line-height:1.7}.mode-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.mode-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:25px;min-height:245px;transition:.2s}.mode-card:hover{border-color:#8f6bb5;transform:translateY(-3px)}.mode-icon{font-size:25px;color:var(--accent);margin-bottom:20px}.mode-card h3{margin:0 0 10px;font-size:19px}.mode-card p:not(.eyebrow){color:var(--muted);font-size:12px;line-height:1.8;min-height:48px}.mode-card a{display:inline-block;margin-top:14px;font-size:11px;color:var(--accent)}.custom-section{background:#0d0d13}.pill{border:1px solid #51405f;color:var(--accent);border-radius:30px;padding:8px 12px}.studio{border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}.tabs{display:flex;border-bottom:1px solid var(--line);padding:0 22px;gap:25px}.tab{background:none;border:0;color:var(--muted);padding:18px 3px;cursor:pointer;font:11px 'DM Mono';border-bottom:2px solid transparent}.tab.active{color:var(--accent);border-color:var(--accent)}.panel{display:none;padding:28px}.panel.active{display:block}.panel-title{display:flex;justify-content:space-between;align-items:center}.panel-title h3{font-size:21px;margin:0 0 8px}.live-dot{color:var(--green)}.command-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:22px 0}.command{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:16px;text-align:left;color:var(--text);cursor:pointer;display:flex;flex-direction:column;gap:8px}.command:hover{border-color:var(--accent)}.command b{font-size:20px;color:var(--accent)}.command strong{font-size:12px}.command small{font-size:10px;color:var(--muted)}.command.danger b{color:var(--red)}.result{background:#0b0b10;border:1px solid var(--line);padding:15px;border-radius:7px;color:#c5c1ce;font-size:12px;line-height:1.8;white-space:pre-wrap;min-height:50px}.room-controls{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin:18px 0 12px}.room-controls input,input,textarea,select{background:#0b0b10;border:1px solid var(--line);border-radius:6px;color:var(--text);padding:12px;font:12px Manrope;outline:none;width:100%}input:focus,textarea:focus,select:focus{border-color:var(--accent)}.chat-log{height:190px;overflow:auto;background:#0b0b10;border:1px solid var(--line);border-radius:7px;padding:12px;margin-bottom:10px}.chat-note{font-size:11px;color:var(--muted)}.chat-line{font-size:12px;padding:7px 0;border-bottom:1px solid #ffffff0b;overflow-wrap:anywhere}.chat-line b{color:var(--accent);margin-right:8px}.chat-line.system{color:var(--muted);font-style:italic}.send-row{display:flex;gap:8px}.send-row input{flex:1}.text-button{background:none;border:0;color:var(--muted);font-size:11px;padding:12px 0;cursor:pointer}.field-label{display:block;color:var(--muted);font-size:11px;margin:18px 0 8px}.panel textarea{min-height:105px;resize:vertical;margin-bottom:14px}.panel select{max-width:340px}.story-result{margin-top:16px;min-height:90px}.safety{margin:25px 10vw 80px;padding:28px 34px;border:1px solid #473b51;background:linear-gradient(100deg,#1c1723,#121219);border-radius:10px;display:flex;gap:24px;align-items:center}.safety-icon{font-size:34px;color:var(--accent)}.safety h2{font-size:23px}.safety p:not(.eyebrow){color:var(--muted);font-size:12px;line-height:1.8;max-width:750px}footer{border-top:1px solid var(--line);padding:25px 7vw;display:flex;justify-content:space-between;color:var(--muted);font-size:10px;letter-spacing:.08em}.toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,20px);background:#eee0ff;color:#17111d;padding:12px 18px;border-radius:7px;font-size:12px;opacity:0;transition:.2s;pointer-events:none;z-index:10}.toast.show{opacity:1;transform:translate(-50%,0)}.gate{position:fixed;inset:0;background:#08080df5;z-index:20;display:grid;place-items:center;padding:20px}.gate.hidden{display:none}.gate-card{max-width:460px;width:100%;padding:38px;background:#14131b;border:1px solid #44364f;border-radius:13px;text-align:center;box-shadow:0 30px 100px #000}.brand-mark{font-size:35px;color:var(--accent);font-weight:800}.brand-mark span{color:#fff}.gate h1{font-size:27px}.gate h1 em{color:var(--accent);font-style:normal}.gate .muted{font-size:12px}.check{display:flex;align-items:center;gap:10px;text-align:left;color:#d1ced9;font-size:11px;margin:15px 0}.check input{width:auto;accent-color:var(--accent)}.gate .primary{width:100%;margin:15px 0}.gate small{display:block;color:#777482;font-size:10px;line-height:1.6}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:Manrope,system-ui,sans-serif}a{color:inherit;text-decoration:none}.topbar{height:76px;padding:0 7vw;border-bottom:1px solid #ffffff10;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#09090de8;backdrop-filter:blur(16px);z-index:5}.logo{font-weight:800;letter-spacing:.16em;font-size:13px;display:flex;align-items:center;gap:10px}.logo-icon{width:27px;height:27px;border:1px solid var(--accent);color:var(--accent);display:grid;place-items:center;border-radius:8px;font-size:14px}.topbar nav{display:flex;gap:32px;color:#c4c1cc;font-size:12px}.topbar nav a:hover,.mode-card a:hover{color:var(--accent)}.status,.eyebrow,.pill,.live-dot{font:10px 'DM Mono',monospace;letter-spacing:.14em}.status{color:var(--green)}.status i,.live-dot:before{display:inline-block;width:6px;height:6px;background:var(--green);border-radius:50%;margin-right:8px}.hero{min-height:540px;padding:100px 10vw 80px;display:grid;grid-template-columns:1.1fr .9fr;align-items:center;overflow:hidden;background:radial-gradient(ellipse at 75% 45%,#4d326329,transparent 42%)}.eyebrow{color:var(--accent);margin:0 0 15px}.hero h1{font-size:clamp(48px,6vw,82px);line-height:1.03;letter-spacing:-.06em;margin:0;font-weight:700}.hero h1 em{font-style:normal;color:var(--accent)}.lead{color:var(--muted);line-height:1.9;max-width:490px;font-size:14px;margin:25px 0 30px}.primary{border:0;background:var(--accent);color:#17111d;padding:13px 20px;border-radius:6px;font-weight:800;cursor:pointer;font-family:inherit}.primary:hover{background:#e4c6ff;transform:translateY(-1px)}.primary:disabled{opacity:.4;cursor:not-allowed;transform:none}.link-button{display:inline-flex;gap:32px;align-items:center;font-size:12px}.hero-art{height:340px;position:relative;display:grid;place-items:center}.orb{position:absolute;border-radius:50%;filter:blur(1px)}.orb-one{width:270px;height:270px;background:radial-gradient(circle at 35% 30%,#e2c0ff88,#8051b722 55%,transparent 72%);box-shadow:0 0 100px #a66ee833}.orb-two{width:180px;height:180px;border:1px solid #d5a6ff66;transform:rotate(35deg) skew(8deg);border-radius:42%}.art-card{position:relative;width:245px;height:155px;padding:24px;background:linear-gradient(135deg,#24202d,#111117);border:1px solid #ffffff26;border-radius:12px;box-shadow:0 30px 80px #0009;transform:rotate(-7deg);display:flex;flex-direction:column;justify-content:space-between}.art-card span,.art-card small{font:9px 'DM Mono';letter-spacing:.16em;color:var(--muted)}.art-card strong{font-size:32px;letter-spacing:-.05em}.art-line{height:2px;background:linear-gradient(90deg,var(--accent),transparent)}.section{padding:76px 10vw}.section-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:28px}.section h2,.safety h2{font-size:30px;letter-spacing:-.04em;margin:0}.muted{color:var(--muted);font-size:12px;line-height:1.7}.mode-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.mode-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:25px;min-height:245px;transition:.2s}.mode-card:hover{border-color:#8f6bb5;transform:translateY(-3px)}.mode-icon{font-size:25px;color:var(--accent);margin-bottom:20px}.mode-card h3{margin:0 0 10px;font-size:19px}.mode-card p:not(.eyebrow){color:var(--muted);font-size:12px;line-height:1.8;min-height:48px}.mode-card a{display:inline-block;margin-top:14px;font-size:11px;color:var(--accent)}.custom-section{background:#0d0d13}.pill{border:1px solid #51405f;color:var(--accent);border-radius:30px;padding:8px 12px}.studio{border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}.tabs{display:flex;border-bottom:1px solid var(--line);padding:0 22px;gap:25px}.tab{background:none;border:0;color:var(--muted);padding:18px 3px;cursor:pointer;font:11px 'DM Mono';border-bottom:2px solid transparent}.tab.active{color:var(--accent);border-color:var(--accent)}.panel{display:none;padding:28px}.panel.active{display:block}.panel-title{display:flex;justify-content:space-between;align-items:center}.panel-title h3{font-size:21px;margin:0 0 8px}.live-dot{color:var(--green)}.command-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:22px 0}.command{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:16px;text-align:left;color:var(--text);cursor:pointer;display:flex;flex-direction:column;gap:8px}.command:hover{border-color:var(--accent)}.command b{font-size:20px;color:var(--accent)}.command strong{font-size:12px}.command small{font-size:10px;color:var(--muted)}.command.danger b{color:var(--red)}.result{background:#0b0b10;border:1px solid var(--line);padding:15px;border-radius:7px;color:#c5c1ce;font-size:12px;line-height:1.8;white-space:pre-wrap;min-height:50px}.room-controls{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin:18px 0 12px}.room-controls input,input,textarea,select{background:#0b0b10;border:1px solid var(--line);border-radius:6px;color:var(--text);padding:12px;font:12px Manrope;outline:none;width:100%}input:focus,textarea:focus,select:focus{border-color:var(--accent)}.chat-log{height:190px;overflow:auto;background:#0b0b10;border:1px solid var(--line);border-radius:7px;padding:12px;margin-bottom:10px}.chat-note{font-size:11px;color:var(--muted)}.chat-line{font-size:12px;padding:7px 0;border-bottom:1px solid #ffffff0b;overflow-wrap:anywhere}.chat-line b{color:var(--accent);margin-right:8px}.chat-line.system{color:var(--muted);font-style:italic}.send-row{display:flex;gap:8px}.send-row input{flex:1}.text-button{background:none;border:0;color:var(--muted);font-size:11px;padding:12px 0;cursor:pointer}.field-label{display:block;color:var(--muted);font-size:11px;margin:18px 0 8px}.panel textarea{min-height:105px;resize:vertical;margin-bottom:14px}.panel select{max-width:340px}.story-result{margin-top:16px;min-height:90px}.announcement{margin:0 10vw 24px;padding:20px 24px;border:1px solid #51405f;background:#15121c;border-radius:10px}.announcement h2{font-size:18px;margin:0 0 8px}.announcement p{margin:0;color:var(--muted);font-size:12px;line-height:1.9}.safety{margin:25px 10vw 80px;padding:28px 34px;border:1px solid #473b51;background:linear-gradient(100deg,#1c1723,#121219);border-radius:10px;display:flex;gap:24px;align-items:center}.safety-icon{font-size:34px;color:var(--accent)}.safety h2{font-size:23px}.safety p:not(.eyebrow){color:var(--muted);font-size:12px;line-height:1.8;max-width:750px}footer{border-top:1px solid var(--line);padding:25px 7vw;display:flex;justify-content:space-between;color:var(--muted);font-size:10px;letter-spacing:.08em}.toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,20px);background:#eee0ff;color:#17111d;padding:12px 18px;border-radius:7px;font-size:12px;opacity:0;transition:.2s;pointer-events:none;z-index:10}.toast.show{opacity:1;transform:translate(-50%,0)}.gate{position:fixed;inset:0;background:#08080df5;z-index:20;display:grid;place-items:center;padding:20px}.gate.hidden{display:none}.gate-card{max-width:460px;width:100%;padding:38px;background:#14131b;border:1px solid #44364f;border-radius:13px;text-align:center;box-shadow:0 30px 100px #000}.brand-mark{font-size:35px;color:var(--accent);font-weight:800}.brand-mark span{color:#fff}.gate h1{font-size:27px}.gate h1 em{color:var(--accent);font-style:normal}.gate .muted{font-size:12px}.check{display:flex;align-items:center;gap:10px;text-align:left;color:#d1ced9;font-size:11px;margin:15px 0}.check input{width:auto;accent-color:var(--accent)}.gate .primary{width:100%;margin:15px 0}.gate small{display:block;color:#777482;font-size:10px;line-height:1.6}
 
 .match-card{padding:20px;margin:18px 0;background:linear-gradient(135deg,#1b1722,#121219);border:1px solid #51405f;border-radius:10px}.match-card h3{font-size:18px;margin:0}.match-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}.match-grid label{font-size:11px;color:var(--muted)}.match-grid select{display:block;margin-top:7px;max-width:none}.match-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:15px}.match-actions .primary,.match-actions .ghost{min-height:40px}.private-room-divider{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:10px;margin:22px 0}.private-room-divider:before,.private-room-divider:after{content:"";height:1px;background:var(--line);flex:1}
 .room-controls{grid-template-columns:minmax(0,1fr) auto}.room-controls .code-field{min-width:0}.role-picker{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:11px}.role-picker select{min-width:160px}
@@ -23,7 +23,7 @@
 
 
 .compact-hero{min-height:420px;padding-top:70px;padding-bottom:55px}.room-studio{padding:24px}.lobby-wrap{max-width:850px;margin:auto}.chat-panel{margin-top:24px}.metronome-card{margin-top:24px;padding:22px;background:linear-gradient(145deg,#1a1621,#101016);border:1px solid #51405f;border-radius:12px}.metronome-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.metronome-head h3,.chat-panel h3{font-size:21px;margin:0 0 8px}.beat-display{display:flex;justify-content:center;align-items:center;gap:28px;padding:24px 10px}.beat-pulse{width:116px;height:116px;border-radius:50%;display:grid;place-items:center;border:1px solid #b88be8;background:radial-gradient(circle,#b88be833,#b88be808 68%);box-shadow:0 0 28px #b88be822;transition:transform .08s,box-shadow .08s;transform:scale(1)}.beat-pulse.active{transform:scale(var(--pulse-scale,1.12));box-shadow:0 0 44px #b88be866}.beat-pulse span{font:500 30px 'DM Mono';color:var(--accent)}.beat-readout{display:flex;flex-direction:column;gap:8px}.beat-readout strong{font:700 36px 'DM Mono'}.beat-readout strong small{font-size:12px;color:var(--muted)}.beat-readout>span{font-size:12px;color:var(--muted)}.metro-controls{display:grid;grid-template-columns:1fr 1fr;gap:20px}.metro-control{padding:16px;background:#0d0d13;border:1px solid var(--line);border-radius:9px}.control-title{display:flex;justify-content:space-between;gap:10px;font-size:12px}.control-title label{color:var(--muted)}.control-title strong{color:var(--accent)}.metro-control input[type=range]{padding:0;margin:20px 0 8px;accent-color:var(--accent);cursor:pointer}.range-ends{display:flex;justify-content:space-between;color:var(--muted);font-size:10px}.metro-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}.metro-actions button{min-height:42px}.room-studio .room-controls{margin-top:14px}.room-studio .match-card{margin-top:0}.room-studio .chat-log{height:260px}.room-studio .voice-panel{margin-top:20px}.safety{margin-top:25px}
-@media(max-width:760px){.compact-hero{padding:58px 7vw 35px}.room-studio{padding:14px}.metronome-card{padding:16px}.metro-controls{grid-template-columns:1fr}.beat-display{gap:18px}.beat-pulse{width:92px;height:92px}.beat-readout strong{font-size:30px}.metronome-head{align-items:flex-start}.metro-actions button{flex:1}}
+.announcement{margin:0 7vw 18px;padding:17px}@media(max-width:760px){.compact-hero{padding:58px 7vw 35px}.room-studio{padding:14px}.metronome-card{padding:16px}.metro-controls{grid-template-columns:1fr}.beat-display{gap:18px}.beat-pulse{width:92px;height:92px}.beat-readout strong{font-size:30px}.metronome-head{align-items:flex-start}.metro-actions button{flex:1}}
 </style>
 </head>
 <body>
@@ -42,6 +42,7 @@
   </div>
   <div class="hero-art"><div class="orb orb-one"></div><div class="orb orb-two"></div><div class="art-card"><span>NIGHTPLAY CHALLENGE</span><strong>2 PLAYERS</strong><div class="art-line"></div><small>CHAT · RHYTHM · CONSENT</small></div></div>
 </section>
+<section class="announcement" aria-labelledby="announcementTitle"><p class="eyebrow">PLATFORM NOTICE · 18+</p><h2 id="announcementTitle">平台公告与免责声明</h2><p>Nightplay 仅供年满 18 周岁的成年人自愿使用。平台提供双人聊天、语音及互动工具，不对其他用户的身份、陈述或行为真实性作出保证。请勿分享真实姓名、住址、财务资料等敏感个人信息。参与任何互动前，请确认双方均明确自愿；任何一方都可以随时暂停、结束或离开。用户应遵守所在地法律法规，并对自己的言论、选择及互动行为负责。</p></section>
 <section id="room" class="section custom-section">
   <div class="section-head"><div><p class="eyebrow">PRIVATE ROOM · 2 SEATS</p><h2>双人私人房间</h2></div><span class="pill">聊天 + 节拍器挑战</span></div>
   <div class="studio room-studio">
@@ -73,7 +74,7 @@
         <div class="room-actions"><button type="button" id="copyLinkBtn" class="ghost">复制邀请链接</button><button type="button" id="disconnectBtn" class="ghost danger-text">离开房间</button></div>
       </div>
       <section class="voice-panel" aria-label="双人实时语音">
-        <div class="voice-copy"><div class="voice-heading"><strong>实时语音 · 双人自由通话</strong><span id="voiceStatus" class="voice-status" aria-live="polite">语音未开启 · 双方需分别授权</span></div><p class="chat-note">双方可自愿开启麦克风；不开启的一方不会发送声音。可随时静音或结束语音。</p><p class="chat-note" id="voicePrivacyNotice">语音防泄漏：仅在浏览器明确支持 processLocally 设备端中文语音识别时开启；本网站不录制语音、不保存完整转写；发送音频会短暂缓冲约1.6秒以便先检测。若设备端识别不可用，将阻止开启麦克风。</p></div>
+        <div class="voice-copy"><div class="voice-heading"><strong>实时语音 · 双人自由通话</strong><span id="voiceStatus" class="voice-status" aria-live="polite">语音未开启 · 双方需分别授权</span></div><p class="chat-note">双方可自愿开启麦克风；不开启的一方不会发送声音。可随时静音或结束语音。</p></div>
         <div class="voice-actions"><button type="button" id="voiceStartBtn" class="primary" disabled>🎙 开启麦克风</button><button type="button" id="voiceMuteBtn" class="ghost" disabled>静音</button><button type="button" id="voiceHangupBtn" class="ghost danger-text" disabled>结束语音</button><button type="button" id="voiceListenBtn" class="ghost" hidden>播放对方声音</button></div>
         <audio id="remoteAudio" autoplay playsinline></audio>
       </section>
@@ -90,7 +91,7 @@
       <section class="chat-panel"><div class="panel-title"><div><p class="eyebrow">LIVE CHAT</p><h3>双人聊天</h3></div><span id="connState" class="conn-state off">未连接</span></div>
         <div id="chatLog" class="chat-log" aria-live="polite"></div><div class="typing" id="typing"></div>
         <form id="chatForm" class="send-row"><input id="chatInput" maxlength="500" placeholder="输入消息…（Enter 发送）" autocomplete="off"><button class="primary" id="sendBtn">发送</button></form>
-        <p class="chat-note">请勿分享真实身份、住址或支付信息。任何一方都可以随时暂停或离开。发送内容会经过自动联系方式检测，命中后不会发送给对方。</p>
+        <p class="chat-note">请尊重对方意愿；任何一方都可以随时暂停或离开。</p>
       </section>
     </div>
   </div>
@@ -103,8 +104,6 @@
 
 const $=s=>document.querySelector(s);
 const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2600)};
-function normalizeContactText(value){return String(value||"").toLowerCase().normalize("NFKC").replace(/[\u200B-\u200D\uFEFF]/g,"").replace(/[\s·•,，。:：;；_\-—()（）[\]【】]/g,"").replace(/[零〇洞幺两]/g,c=>({零:"0",〇:"0",洞:"0",幺:"1",两:"2"}[c]||c)).replace(/[一二三四五六七八九]/g,c=>({一:"1",二:"2",三:"3",四:"4",五:"5",六:"6",七:"7",八:"8",九:"9"}[c]||c))}
-function containsContactInfo(value){const t=normalizeContactText(value);if(!t)return false;return /(?:\+?86)?1[3-9]\d{9}/.test(t)||/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(t)||/(?:https?\/{1,2}|www\.)|(?:t\.me|telegram\.me|wa\.me|instagram\.com|facebook\.com|line\.me|discord\.gg|discord\.com)/i.test(t)||/(?:微信|wechat|vx|wx|v信|w信|微x|薇信|威信|qq|扣扣|企鹅号|telegram|电报|飞机号|whatsapp|wats?app|line|instagram|ins号|discord|邮箱|电子邮件)(?:(?:号|id|账号|帐号)?(?:是|为)?|:|：)?[a-z0-9_@.-]{3,}/i.test(t)||(/\d{6,13}/.test(t)&&/(?:qq|扣扣|联系|加我|电话|手机|号码|号|vx|wx|微信|v信|w信)/i.test(t))||/(?:加我|私我|联系我)(?:v|vx|wx)[a-z0-9_-]{3,}/i.test(t)}
  // ===== 双人房间：WebSocket + WebRTC 双人语音 =====
  const Room=(()=>{
   const els={lobby:$("#lobby"),view:$("#roomView"),state:$("#connState"),log:$("#chatLog"),members:$("#members"),seat:$("#seatLabel"),label:$("#roomLabel"),typing:$("#typing"),input:$("#chatInput"),nick:$("#nickname"),code:$("#roomCode"),connect:$("#connectBtn"),peek:$("#roomPeek"),voiceStatus:$("#voiceStatus"),voiceStart:$("#voiceStartBtn"),voiceMute:$("#voiceMuteBtn"),voiceHangup:$("#voiceHangupBtn"),voiceListen:$("#voiceListenBtn"),remoteAudio:$("#remoteAudio"),matchGender:$("#matchGender"),matchPreference:$("#matchPreference"),matchRole:$("#matchRole"),roomRole:$("#roomRole"),roleStatus:$("#roleStatus"),metroEmergency:$("#metroEmergency"),matchStart:$("#matchStartBtn"),matchCancel:$("#matchCancelBtn"),matchStatus:$("#matchStatus"),bpm:$("#bpmRange"),intensity:$("#intensityRange"),metroStart:$("#metroStart"),metroPause:$("#metroPause"),metroStop:$("#metroStop"),metroStatus:$("#metroStatus")};
@@ -112,9 +111,6 @@ function containsContactInfo(value){const t=normalizeContactText(value);if(!t)re
   // WebRTC 状态：麦克风只会在用户主动点击后申请，不会自动开启。
   let pc=null,pcPromise=null,localStream=null,remoteStream=null,pendingCandidates=[];
   let makingOffer=false,ignoreOffer=false,settingRemoteAnswerPending=false,voiceGeneration=0,iceConfigCache=null;
-  let voiceRecognition=null,voiceGuardBlocked=false,voiceRestartTimer=null,voiceGuardGeneration=0,contactMutedUntil=0;
-  let voiceAudioContext=null,voiceGate=null,voiceDestination=null;
-  let lastLocalChat="",lastLocalChatAt=0;
   const seatKey=r=>"np_seat_"+r;
   // 节拍器由双方浏览器本地发声，房间服务端只同步参数和运行状态。
   let metroTimer=null,metroBeat=0,metroRunning=false,metroHasStarted=false,metroStopped=false,audioCtx=null,metroSyncGuard=false,roomHasPartner=false;
@@ -178,8 +174,8 @@ function containsContactInfo(value){const t=normalizeContactText(value);if(!t)re
    const enabled=active&&localStream.getAudioTracks().some(t=>t.enabled);
    els.voiceStart.disabled=!me||active;
    els.voiceStart.textContent=active?"麦克风已开启":"🎙 开启麦克风";
-   els.voiceMute.disabled=!active||voiceGuardBlocked;
-   els.voiceMute.textContent=voiceGuardBlocked?"语音已拦截":enabled?"静音":"取消静音";
+   els.voiceMute.disabled=!active;
+   els.voiceMute.textContent=enabled?"静音":"取消静音";
    els.voiceHangup.disabled=!pc&&!localStream;
   }
   async function getIceServers(){
@@ -237,76 +233,8 @@ function containsContactInfo(value){const t=normalizeContactText(value);if(!t)re
    })();
    try{return await pcPromise}finally{pcPromise=null}
   }
-  function stopVoiceRecognition(){
-   clearTimeout(voiceRestartTimer);voiceRestartTimer=null;voiceGuardGeneration++;
-   const rec=voiceRecognition;voiceRecognition=null;
-   if(rec){rec.onend=null;rec.onresult=null;rec.onerror=null;try{rec.stop()}catch{}}
-  }
-  async function startLocalVoiceRecognition(){
-   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-   if(!SR)throw new Error("当前浏览器不支持语音识别，出于隐私保护，本版本不会改用云端识别；请使用支持设备端语音识别的浏览器。");
-   const rec=new SR();
-   if(!("processLocally" in rec))throw new Error("当前浏览器不支持设备端语音识别，已阻止开启语音，避免将语音发送到云端识别。");
-   rec.processLocally=true;rec.lang="zh-CN";rec.continuous=true;rec.interimResults=true;rec.maxAlternatives=1;
-   if(typeof SR.available==="function"){
-    let availability;
-    try{availability=await SR.available({langs:["zh-CN"],processLocally:true})}catch{availability="unavailable"}
-    if(availability==="downloadable"&&typeof SR.install==="function"){
-     const installed=await SR.install({langs:["zh-CN"]});if(!installed)throw new Error("设备端中文语音模型安装失败，暂不能开启受保护语音。");
-    }else if(availability!=="available"&&availability!=="downloading")throw new Error("当前浏览器或设备尚无可用的中文本地语音模型。为保护隐私，Nightplay不会把语音发送到云端识别。");
-   }
-   const generation=++voiceGuardGeneration;voiceGuardBlocked=false;voiceRecognition=rec;
-   let voiceTextBuffer="",voiceTextAt=0;
-   rec.onresult=e=>{
-    if(generation!==voiceGuardGeneration||voiceGuardBlocked)return;
-    let transcript="";
-    for(let i=e.resultIndex;i<e.results.length;i++)transcript+=e.results[i][0]?.transcript||"";
-    const now=Date.now();voiceTextBuffer=now-voiceTextAt<=8000?voiceTextBuffer+transcript:transcript;voiceTextAt=now;
-    if(transcript&&containsContactInfo(voiceTextBuffer)){
-     voiceGuardBlocked=true;
-     muteGuardedVoice();
-     stopVoiceRecognition();updateMicControls();setVoiceState("error","检测到疑似联系方式 · 麦克风已自动静音，请结束语音后再重新开启");
-     note("语音防泄漏已拦截疑似联系方式。本地识别结果不会作为聊天记录保存。");
-     out({type:"contact_voice_violation"});
-    }
-   };
-   rec.onerror=e=>{
-    if(generation!==voiceGuardGeneration||voiceGuardBlocked)return;
-    if(e.error==="no-speech"||e.error==="aborted")return;
-    voiceGuardBlocked=true;muteGuardedVoice();
-    updateMicControls();setVoiceState("error","设备端语音识别中断，麦克风已自动静音；请结束后重试");
-   };
-   rec.onend=()=>{
-    if(generation!==voiceGuardGeneration||voiceGuardBlocked||!localStream)return;
-    voiceRestartTimer=setTimeout(()=>{try{rec.start()}catch{voiceGuardBlocked=true;muteGuardedVoice();updateMicControls();setVoiceState("error","设备端语音识别无法继续，麦克风已静音")}},500);
-   };
-   await new Promise((resolve,reject)=>{
-    const timeout=setTimeout(()=>reject(new Error("设备端语音识别启动超时，麦克风未开启。")),6000);
-    rec.onstart=()=>{clearTimeout(timeout);resolve()};
-    const previousError=rec.onerror;
-    rec.onerror=e=>{previousError(e);if(e.error!=="no-speech"&&e.error!=="aborted"){clearTimeout(timeout);reject(new Error("设备端语音识别启动失败，麦克风未开启。"))}};
-    try{rec.start()}catch{clearTimeout(timeout);reject(new Error("无法启动设备端语音识别，麦克风未开启。"))}
-   });
-   voiceRecognition=rec;
-  }
-  async function createGuardedOutboundStream(stream){
-   const AudioContextCtor=window.AudioContext||window.webkitAudioContext;
-   if(!AudioContextCtor)throw new Error("当前浏览器不支持安全语音缓冲，已阻止直接发送麦克风音频。");
-   voiceAudioContext=new AudioContextCtor();await voiceAudioContext.resume();
-   const source=voiceAudioContext.createMediaStreamSource(stream);
-   const delay=voiceAudioContext.createDelay(3);delay.delayTime.value=1.6;
-   voiceGate=voiceAudioContext.createGain();voiceGate.gain.value=1;
-   voiceDestination=voiceAudioContext.createMediaStreamDestination();
-   source.connect(delay);delay.connect(voiceGate);voiceGate.connect(voiceDestination);
-   return voiceDestination.stream;
-  }
-  function muteGuardedVoice(){
-   if(voiceGate&&voiceAudioContext){try{voiceGate.gain.cancelScheduledValues(voiceAudioContext.currentTime);voiceGate.gain.setValueAtTime(0,voiceAudioContext.currentTime)}catch{}}
-   if(localStream)localStream.getAudioTracks().forEach(track=>track.enabled=false);
-  }
   async function startMic(){
    if(!me){toast("请先加入房间");return}
-   if(contactMutedUntil>Date.now()){toast("联系方式违规限制尚未解除，暂时不能开启语音");return}
    if(!ws||ws.readyState!==1){toast("房间连接暂时中断，请等待重新连接");return}
    if(localStream){toast("麦克风已经开启");return}
    if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){toast("麦克风需要 HTTPS 安全连接，并使用支持的浏览器");setVoiceState("error","当前页面无法访问麦克风 · 请使用 HTTPS");return}
@@ -318,18 +246,14 @@ function containsContactInfo(value){const t=normalizeContactText(value);if(!t)re
     stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
     if(generation!==voiceGeneration||!me){stream.getTracks().forEach(t=>t.stop());return}
     localStream=stream;
-    await startLocalVoiceRecognition();
-    if(generation!==voiceGeneration||!me){stopVoiceRecognition();stream.getTracks().forEach(t=>t.stop());localStream=null;return}
-    const outboundStream=await createGuardedOutboundStream(stream);
     const connection=await ensurePeerConnection();
     if(generation!==voiceGeneration||!me){stream.getTracks().forEach(t=>t.stop());return}
-    outboundStream.getAudioTracks().forEach(track=>connection.addTrack(track,outboundStream));
+    stream.getAudioTracks().forEach(track=>connection.addTrack(track,stream));
     updateMicControls();
     setVoiceState("wait","麦克风已开启 · 等待对方加入语音…");
     note("你已开启麦克风。对方也需要主动开启麦克风，才能进行双向语音。");
    }catch(e){
-    stopVoiceRecognition();if(stream)stream.getTracks().forEach(t=>t.stop());if(localStream===stream)localStream=null;
-    if(voiceAudioContext){voiceAudioContext.close().catch(()=>{});voiceAudioContext=null}voiceGate=null;voiceDestination=null;
+    if(stream)stream.getTracks().forEach(t=>t.stop());if(localStream===stream)localStream=null;
     if(generation!==voiceGeneration)return;
     console.error("麦克风启动失败",e);els.voiceStart.disabled=!me;
     const name=e?.name||"";
@@ -341,11 +265,10 @@ function containsContactInfo(value){const t=normalizeContactText(value);if(!t)re
   }
   function closeVoice(notify=false,statusText="语音未开启 · 双方需分别授权"){
    if(notify)out({type:"voice_signal",kind:"hangup"});
-   voiceGeneration++;stopVoiceRecognition();voiceGuardBlocked=false;
+   voiceGeneration++;
    const old=pc;pc=null;pcPromise=null;pendingCandidates=[];makingOffer=false;ignoreOffer=false;settingRemoteAnswerPending=false;
    if(old){old.ontrack=null;old.onicecandidate=null;old.onnegotiationneeded=null;try{old.close()}catch{}}
    if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null}
-   if(voiceAudioContext){voiceAudioContext.close().catch(()=>{});voiceAudioContext=null}voiceGate=null;voiceDestination=null;
    if(remoteStream){remoteStream.getTracks().forEach(t=>t.stop());remoteStream=null}
    els.remoteAudio.pause();els.remoteAudio.srcObject=null;els.voiceListen.hidden=true;
    updateMicControls();setVoiceState("",statusText);
@@ -409,13 +332,7 @@ function containsContactInfo(value){const t=normalizeContactText(value);if(!t)re
     clearInterval(hb);hb=setInterval(()=>out({type:"ping",lastId}),20000);
     els.input.focus({preventScroll:true});
    }else if(m.type==="message"){render(m.message)}
-   else if(m.type==="contact_blocked"){
-    toast(m.message||"检测到联系方式，已拦截");
-    if(m.source==="voice"||m.mutedUntil>Date.now()){
-     voiceGuardBlocked=true;muteGuardedVoice();
-     updateMicControls();setVoiceState("error",m.message||"语音已暂时静音");
-    }
-   }
+   
    else if(m.type==="presence"){renderMembers(m.members,m.seats)}
    else if(m.type==="metronome_state"){applyMetroRemote(m);note((m.nickname||"对方")+(m.stopped?"结束了节拍器挑战":m.running?"开始/调整了节拍器挑战":"暂停了节拍器挑战"))}
    else if(m.type==="pong"){(m.missed||[]).forEach(render);if(m.members)renderMembers(m.members,m.seats)}
@@ -472,7 +389,7 @@ function containsContactInfo(value){const t=normalizeContactText(value);if(!t)re
   els.code.oninput=peek;
   $("#disconnectBtn").onclick=leave;
   $("#copyLinkBtn").onclick=()=>{const u=new URL(location.origin+location.pathname);u.searchParams.set("room",room);u.hash="room";const t=u.toString();(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("邀请链接已复制"),()=>{prompt("复制邀请链接：",t)})};
-  $("#chatForm").onsubmit=e=>{e.preventDefault();const v=els.input.value.trim();if(!v)return;if(!me){toast("尚未连接");return}if(contactMutedUntil>Date.now()){toast("联系方式违规限制尚未解除，暂时不能发送消息");return}const now=Date.now(),combined=now-lastLocalChatAt<=12000?lastLocalChat+v:v;if(containsContactInfo(v)||containsContactInfo(combined)){toast("检测到疑似站外联系方式，消息已拦截");lastLocalChat="";lastLocalChatAt=0;return}if(out({type:"chat",text:v})){lastLocalChat=v.slice(-120);lastLocalChatAt=now;els.input.value=""}else toast("连接中断，正在重连…")};
+  $("#chatForm").onsubmit=e=>{e.preventDefault();const v=els.input.value.trim();if(!v)return;if(!me){toast("尚未连接");return}if(out({type:"chat",text:v}))els.input.value="";else toast("连接中断，正在重连…")};
   els.input.oninput=()=>{if(me&&els.input.value)out({type:"typing"})};
   const syncMetroSettings=()=>{if(me&&myRole==="controller")out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:metroRunning,started:metroHasStarted,stopped:metroStopped});};
   els.bpm.oninput=()=>{if(myRole!=="controller")return;updateMetroLabels();restartMetroInterval()};
