@@ -766,7 +766,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    if(ws&&(ws.readyState===0||ws.readyState===1))return;
    setState("wait",retry?"重连中…":"连接中…");
    ws=new WebSocket(socketUrl());
-   ws.onopen=()=>{retry=0;if(matching&&matchClientId){out({type:"matchmaking_join",clientId:matchClientId,nickname:els.nick.value.trim(),gender:els.matchGender.value,preference:els.matchPreference.value,rolePreference:els.matchRole.value,voicePreference:els.matchVoicePreference.value,guestId})}else if(watching&&room)sendWatchJoin();else if(want&&room)sendJoin()};
+   ws.onopen=()=>{retry=0;if(matching&&matchClientId){out({type:"matchmaking_join",clientId:matchClientId,nickname:els.nick.value.trim(),gender:els.matchGender.value,preference:els.matchPreference.value,rolePreference:els.matchRole.value,voicePreference:els.matchVoicePreference.value,guestId})}else if(matchClientId&&room&&want)sendJoin(matchClientId);else if(watching&&room)sendWatchJoin();else if(want&&room)sendJoin()};
    ws.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return}handle(m)};
    ws.onclose=()=>{clearInterval(hb);hb=null;closeVoice(false,"语音已断开，请重新开启");els.voiceStart.disabled=true;if(!want){setState("off","未连接");return}
     setState("wait","重连中…");const delay=Math.min(15000,1000*2**retry)+Math.random()*500;retry++;clearTimeout(retryTimer);retryTimer=setTimeout(open,delay)};
