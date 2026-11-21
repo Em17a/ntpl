@@ -211,7 +211,14 @@ export class NightplayRoom extends DurableObject<Env> {
       db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,selfRole,clientId),
       db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,partnerRole,partner.client_id),
     ]);
-    // Each matched client enters from its own matchmaking request or heartbeat.
+    // Join both connected participants immediately. Matchmaking requests are serialized,
+    // so both sockets have already saved their matchmaking client IDs before this runs.
+    const matchedRows=await db.prepare("SELECT client_id,matched_role FROM matchmaking_queue WHERE status='matched' AND room_code=?").bind(room).all<any>();
+    for(const peer of this.sockets()){
+      const peerId=this.attachment(peer).matchmakingClientId;
+      const peerRow=matchedRows.results.find((x:any)=>x.client_id===peerId);
+      if(peerRow)await this.enterMatchedRoom(peer,room,peerRow.matched_role as Role);
+    }
     await this.scheduleNextAlarm();
     return {status:'matched',room,role:selfRole};
   }
