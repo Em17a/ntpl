@@ -119,7 +119,6 @@ export async function findOrCreateMatch(
   db: D1Database,
   clientId: string,
   timestamp: number,
-  scheduleNextAlarm?: () => Promise<void>,
 ): Promise<MatchStatus> {
   await db.prepare("DELETE FROM matchmaking_queue WHERE status='waiting' AND last_seen_at<?")
     .bind(timestamp - 45_000).run();
@@ -197,7 +196,6 @@ export async function findOrCreateMatch(
     return { status: 'waiting' };
   }
 
-  await scheduleNextAlarm?.();
   return { status: 'matched', room, role: selfRole };
 }
 
