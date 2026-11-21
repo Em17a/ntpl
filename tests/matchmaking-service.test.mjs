@@ -234,3 +234,21 @@ test('partner selection prefers a mutually compatible voice match and assigns op
   assert.equal(chooseMatchPartner(self, [incompatibleVoice, peer]).client_id, 'b');
   assert.deepEqual(assignMatchRoles(self, peer), { selfRole: 'controller', partnerRole: 'receiver' });
 });
+
+
+test('simultaneous polls cannot create two rooms for the same pair', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const a = 'abab1212-abab-4121-8121-abab12121212';
+  const b = 'cdcd3434-cdcd-4343-8343-cdcd34343434';
+  queue(db, a, { gender: 'male', preference: 'female', role: 'controller' });
+  queue(db, b, { gender: 'female', preference: 'male', role: 'receiver', createdAt: 2_000 });
+  const results = await Promise.all([
+    pollMatchmaking(db, a, 3_000),
+    pollMatchmaking(db, b, 3_000),
+  ]);
+  assert.ok(results.every(result => result.status === 'matched'));
+  assert.equal(results[0].room, results[1].room);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM rooms').get().count, 1);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=?').get(results[0].room).count, 2);
+});
