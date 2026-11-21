@@ -189,7 +189,7 @@ export class NightplayRoom extends DurableObject<Env> {
   private async findOrCreateMatch(clientId:string) {
     // Alarm scheduling is best-effort and deliberately detached from the match transaction.
     return findOrCreateMatchInDb(this.env.DB,clientId,now(),()=>{
-      void this.scheduleNextAlarm().catch(()=>{});
+      this.ctx.waitUntil(this.scheduleNextAlarm().catch(()=>{}));
       return Promise.resolve();
     });
   }
@@ -491,7 +491,7 @@ export class NightplayRoom extends DurableObject<Env> {
 
   async fetch(request:Request):Promise<Response> {
     // Room-expiry alarm setup must never block matchmaking, polling, or cancellation.
-    void this.ensureAlarmScheduled().catch(()=>{ this.alarmInitialized=false; });
+    this.ctx.waitUntil(this.ensureAlarmScheduled().catch(()=>{ this.alarmInitialized=false; }));
     const url=new URL(request.url);
     if(url.pathname==='/ws'&&request.headers.get('Upgrade')?.toLowerCase()==='websocket'){
       const pair=new WebSocketPair(),client=pair[0],server=pair[1];this.ctx.acceptWebSocket(server);this.save(server,{});
