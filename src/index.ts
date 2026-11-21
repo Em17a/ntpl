@@ -228,7 +228,7 @@ export class NightplayRoom extends DurableObject<Env> {
       const id=uuid();await this.env.DB.prepare('INSERT INTO room_members(id,room_code,nickname,role,joined_at,last_seen_at,guest_id) VALUES(?,?,?,?,?,?,?)').bind(id,room,nickname,assignedRole,t,t,guestId).run();
       member={id,room_code:room,nickname,role:assignedRole,joined_at:t,last_seen_at:t};
     }
-    if(guestId) await this.ensureFriendProfile(guestId,nickname);
+    if(guestId){try{await this.ensureFriendProfile(guestId,nickname)}catch(e){console.error('friend profile init failed',e)}}
     await this.env.DB.prepare('UPDATE rooms SET last_active_at=? WHERE code=?').bind(t,room).run();
     const a=this.attachment(ws);a.meta={memberId:member.id,room,nickname:member.nickname,role:member.role,bucket:8,bucketAt:t,lastTypingAt:0};this.save(ws,a);
     const lastId=Number(msg.lastId)||0;
