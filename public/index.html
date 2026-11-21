@@ -467,7 +467,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   if(tab==="public")loadPublicRoomDirectory();
  }
  function openActionModal(tab){
-  setModalTab(["match","history","friends"].includes(tab)?tab:"join");
+  setModalTab(["match","history","friends","public"].includes(tab)?tab:"join");
   $("#actionModal").hidden=false;
   document.body.classList.add("modal-open");
  }
@@ -933,10 +933,10 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    else if(m.type==="voice_notice"){setVoiceState("wait",m.message||"等待另一位参与者上线");toast(m.message||"另一位参与者当前不在线")}
    else if(m.type==="left"){reset("已离开房间")}
    else if(m.type==="error"){
-    if(["room_full","seat_lost","bad_room","bad_nickname"].includes(m.code)){
+    if(["room_full","seat_lost","bad_room","bad_nickname","publish_room_exists","bad_room_name"].includes(m.code)){
      if(m.code==="seat_lost"&&room)localStorage.removeItem(seatKey(room));
      if(m.code==="room_full"&&room)localStorage.removeItem(seatKey(room));
-     reset();
+     pendingPublish=false;pendingPublishName="";reset();
     }
     if(String(m.code||"").startsWith("watch_"))els.watchConsent.disabled=false;
     toast(m.message||"出错了");
