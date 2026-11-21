@@ -33,5 +33,7 @@ test('voice protection requires local Chinese recognition and an outbound audio 
   assert.match(source, /contact_voice_violation/);
   assert.match(source, /fetch\("\/api\/matchmaking"/);
   assert.doesNotMatch(source, /matchmaking_join|matchmaking_cancelled|match_waiting|match_found/);
+  assert.match(source, /action===\"cancel\"\?8000:12000/);
+  assert.match(source, /matchCancelling=true;clearInterval\(matchPoll\)/);
   assert.match(html, /不上传录音、不保存完整转写/);
 });
