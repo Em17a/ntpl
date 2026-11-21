@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { findOrCreateMatch as findOrCreateMatchInDb } from './matchmaking-service.js';
+import { findOrCreateMatch as findOrCreateMatchInDb, pollMatchmaking, cancelMatchmaking } from './matchmaking-service.js';
 
 interface Env {
   DB: D1Database;
@@ -453,31 +453,21 @@ export class NightplayRoom extends DurableObject<Env> {
       // Poll and cancel are independent operations. They must not wait behind a
       // slow join/match request in a promise chain.
       if(action==='cancel'){
-        const existing=await this.env.DB.prepare('SELECT status FROM matchmaking_queue WHERE client_id=?')
-          .bind(clientId).first<any>();
-        if(existing?.status==='matched'){
-          const result=await this.findOrCreateMatch(clientId);
-          if(result.status==='matched')return json({state:'matched',room:result.room,role:result.role});
-          if(result.status==='repair_failed')return json({state:'repair_failed',message:'匹配房间正在恢复，请稍后重试。'},503);
-        }
-        await this.env.DB.prepare("DELETE FROM matchmaking_queue WHERE client_id=? AND status='waiting'")
-          .bind(clientId).run();
+        const result=await cancelMatchmaking(this.env.DB,clientId,now());
+        if(result.status==='matched')return json({state:'matched',room:result.room,role:result.role});
+        if(result.status==='repair_failed')return json({state:'repair_failed',message:'匹配房间正在恢复，请稍后重试。'},503);
         return json({state:'cancelled'});
       }
 
       if(action==='poll'){
-        await this.env.DB.prepare("UPDATE matchmaking_queue SET last_seen_at=? WHERE client_id=? AND status='waiting'")
-          .bind(now(),clientId).run();
-        const row=await this.env.DB.prepare('SELECT status,room_code,matched_role FROM matchmaking_queue WHERE client_id=?')
-          .bind(clientId).first<any>();
-        if(!row)return json({state:'missing',message:'匹配请求已失效，请重新开始。'},404);
-        if(row.status==='matched'){
-          const result=await this.findOrCreateMatch(clientId);
-          if(result.status==='matched')return json({state:'matched',room:result.room,role:result.role});
-          if(result.status==='repair_failed')return json({state:'repair_failed',message:'匹配房间正在恢复，请稍后重试。'},503);
-          return json({state:'missing',message:'匹配请求已失效，请重新开始。'},404);
-        }
-        return json({state:'waiting'});
+        // Crucial: each poll actively runs the pairing algorithm. A passive
+        // SELECT here leaves every player waiting forever unless a second join
+        // happens to trigger matching.
+        const result=await pollMatchmaking(this.env.DB,clientId,now());
+        if(result.status==='matched')return json({state:'matched',room:result.room,role:result.role});
+        if(result.status==='waiting')return json({state:'waiting'});
+        if(result.status==='repair_failed')return json({state:'repair_failed',message:'匹配房间正在恢复，请稍后重试。'},503);
+        return json({state:'missing',message:'匹配请求已失效，请重新开始。'},404);
       }
 
       const timestamp=now();
