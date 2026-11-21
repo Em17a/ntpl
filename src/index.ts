@@ -211,12 +211,25 @@ export class NightplayRoom extends DurableObject<Env> {
       db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,selfRole,clientId),
       db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,partnerRole,partner.client_id),
     ]);
-    // Notify both connected clients immediately; do not rely on the next heartbeat
-    // to discover that the other participant has already been matched.
+    // Join both live sockets on the server instead of relying on mobile browsers
+    // to receive match_found and send a follow-up join message.
+    const joined=new Set<string>();
+    for (const peer of this.sockets()) {
+      const attachment=this.attachment(peer);
+      const peerId=attachment.matchmakingClientId;
+      if(peerId===clientId){
+        await this.join(peer,{type:'join',room,nickname:self.nickname,role:selfRole,token:uuid(),guestId:attachment.matchmakingGuestId||null,lastId:0});
+        joined.add(clientId);
+      } else if(peerId===partner.client_id){
+        await this.join(peer,{type:'join',room,nickname:partner.nickname,role:partnerRole,token:uuid(),guestId:attachment.matchmakingGuestId||null,lastId:0});
+        joined.add(partner.client_id);
+      }
+    }
+    // Keep the client-side recovery path for a participant whose socket vanished.
     for (const peer of this.sockets()) {
       const peerId=this.attachment(peer).matchmakingClientId;
-      if(peerId===clientId)this.send(peer,{type:'match_found',room,role:selfRole});
-      else if(peerId===partner.client_id)this.send(peer,{type:'match_found',room,role:partnerRole});
+      if(peerId===clientId&&!joined.has(clientId))this.send(peer,{type:'match_found',room,role:selfRole});
+      else if(peerId===partner.client_id&&!joined.has(partner.client_id))this.send(peer,{type:'match_found',room,role:partnerRole});
     }
     await this.scheduleNextAlarm();
     return {status:'matched',room,role:selfRole};
@@ -231,7 +244,7 @@ export class NightplayRoom extends DurableObject<Env> {
     const t=now();
     await this.env.DB.prepare("INSERT OR IGNORE INTO matchmaking_queue(client_id,nickname,gender,preference,role_preference,voice_preference,status,created_at,last_seen_at) VALUES(?,?,?,?,?,?,'waiting',?,?)").bind(clientId,nickname,gender,preference,rolePreference,voicePreference,t,t).run();
     await this.env.DB.prepare('UPDATE matchmaking_queue SET last_seen_at=? WHERE client_id=?').bind(t,clientId).run();
-    const a=this.attachment(ws);a.matchmakingClientId=clientId;this.save(ws,a);
+    const a=this.attachment(ws);a.matchmakingClientId=clientId;a.matchmakingGuestId=typeof msg.guestId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.guestId)?msg.guestId:null;this.save(ws,a);
     const result=await this.findOrCreateMatch(clientId);
     if(result.status==='matched')this.send(ws,{type:'match_found',room:result.room,role:result.role});
     else this.send(ws,{type:'match_waiting',message:'正在寻找符合双方偏好的参与者…'});
