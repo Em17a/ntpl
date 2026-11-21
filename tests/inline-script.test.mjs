@@ -19,3 +19,17 @@ test('the HTML shell references the separated stylesheet and application', async
   assert.doesNotMatch(html, /<style\b/i);
   assert.doesNotMatch(html, /<script\b(?![^>]*\bsrc\s*=)[^>]*>[\s\S]*?<\/script>/i);
 });
+
+
+test('voice protection requires local Chinese recognition and an outbound audio delay', async () => {
+  const source = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
+  assert.match(source, /Speech\.available\(options\)/);
+  assert.match(source, /Speech\.install\(options\)/);
+  assert.match(source, /recognition\.processLocally=true/);
+  assert.doesNotMatch(source, /processLocally\s*=\s*false/);
+  assert.match(source, /createDelay\(2\)/);
+  assert.match(source, /voiceDelay\.delayTime\.value=1\.6/);
+  assert.match(source, /contact_voice_violation/);
+  assert.match(html, /不上传录音、不保存完整转写/);
+});
