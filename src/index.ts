@@ -89,7 +89,8 @@ export class NightplayRoom extends DurableObject<Env> {
     const next=open?[...new Set([...current,m.memberId])]:current.filter(id=>id!==m.memberId);
     await this.ctx.storage.put(key,next);
     const allowed=active.results.every((x:any)=>next.includes(x.id));
-    this.broadcast(m.room,{type:'watch_state',allowed,consented:next.filter(id=>active.results.some((x:any)=>x.id===id)).length});
+    const consented=next.filter(id=>active.results.some((x:any)=>x.id===id)).length;
+    for(const peer of this.sockets()){const peerMeta=this.meta(peer);if(peerMeta?.room===m.room&&!peerMeta.watcher)this.send(peer,{type:'watch_state',allowed,consented,optedIn:next.includes(peerMeta.memberId)});}
     if(!allowed) await this.closeWatchers(m.room);
   }
   private async watchJoin(ws: WebSocket, msg: ClientMessage) {
@@ -209,7 +210,10 @@ export class NightplayRoom extends DurableObject<Env> {
     await this.env.DB.prepare('UPDATE rooms SET last_active_at=? WHERE code=?').bind(t,room).run();
     const a=this.attachment(ws);a.meta={memberId:member.id,room,nickname:member.nickname,role:member.role,bucket:8,bucketAt:t,lastTypingAt:0};this.save(ws,a);
     const lastId=Number(msg.lastId)||0;
-    this.send(ws,{type:'joined',room,token:member.id,you:{id:member.id,nickname:member.nickname,role:member.role},resumed:!isNew,history:await this.history(room,isNew?0:lastId),members:await this.presence(room),seats:MAX_SEATS});
+    const activeIds=(await this.env.DB.prepare('SELECT id FROM room_members WHERE room_code=? AND left_at IS NULL').bind(room).all<any>()).results.map((x:any)=>x.id);
+    const watchConsents=await this.ctx.storage.get<string[]>('watch-consent:'+room)??[];
+    const watchAllowed=activeIds.length===2&&activeIds.every((id:string)=>watchConsents.includes(id));
+    this.send(ws,{type:'joined',room,token:member.id,you:{id:member.id,nickname:member.nickname,role:member.role},resumed:!isNew,history:await this.history(room,isNew?0:lastId),members:await this.presence(room),seats:MAX_SEATS,watchAllowed,watchConsent:watchConsents.includes(member.id),watchers:await this.watcherCount(room)});
     if(isNew)await this.addMessage(room,'system',`${member.nickname} 加入了房间`);
     await this.pushPresence(room);
     const metro=await this.metro(room);if(metro)this.send(ws,{type:'metronome_state',...metro});
