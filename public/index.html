@@ -411,7 +411,7 @@ body.watch-mode #watchStatus{color:#d2c4e6}
             <div class="metro-control"><div class="control-title"><label for="bpmRange">节奏速度</label><strong><span id="bpmLabel">80</span> BPM</strong></div><input id="bpmRange" type="range" min="40" max="220" step="1" value="80"><div class="range-ends"><span>慢 40</span><span>快 220</span></div></div>
             <div class="metro-control"><div class="control-title"><label for="intensityRange">节拍力度</label><strong><span id="intensityLabel">3</span> / 5</strong></div><input id="intensityRange" type="range" min="1" max="5" step="1" value="3"><div class="range-ends"><span>轻柔</span><span>强烈</span></div></div>
           </div>
-          <div class="metro-actions"><button id="metroStart" class="primary" type="button">▶ 开始挑战</button><button id="metroPause" class="ghost" type="button" disabled>Ⅱ 暂停</button><button id="metroStop" class="ghost danger-text" type="button" disabled>■ 结束挑战</button><button id="metroEmergency" class="ghost danger-text" type="button" disabled>紧急停止</button></div>
+          <div class="metro-actions"><button id="metroAudioEnable" class="ghost" type="button">开启节拍声音</button><button id="metroStart" class="primary" type="button">▶ 开始挑战</button><button id="metroPause" class="ghost" type="button" disabled>Ⅱ 暂停</button><button id="metroStop" class="ghost danger-text" type="button" disabled>■ 结束挑战</button><button id="metroEmergency" class="ghost danger-text" type="button" disabled>紧急停止</button></div>
           <p id="roleStatus" class="chat-note" aria-live="polite">进入房间后显示你的挑战角色。</p>
 
           <p class="chat-note">力度只影响节拍提示音量与视觉脉冲。请双方先确认规则；任何一方不适或不愿继续时立即暂停。</p>
@@ -426,6 +426,7 @@ body.watch-mode #watchStatus{color:#d2c4e6}
           </div>
           <p id="metroEndReason" class="chat-note">本轮挑战已结束，结果已记录。</p>
           <button type="button" id="metroRestartBtn" class="primary">再来一轮</button>
+          <button type="button" id="metroHomeBtn" class="ghost">回到主页</button>
         </div>
       </div>
     </section>
@@ -654,9 +655,9 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   const metroIntensity=()=>Number(els.intensity.value);
   function updateMetroLabels(){const bpm=Number(els.bpm.value),level=metroIntensity();$("#bpmValue").textContent=bpm;$("#bpmLabel").textContent=bpm;$("#metroSummaryBpm").textContent=bpm;$("#intensityLabel").textContent=level;$("#intensityText").textContent="力度 "+level+" / 5";$("#beatPulse").style.setProperty("--pulse-scale",String(1+level*.035));}
   function stopMetroTimer(){if(metroTimer){clearInterval(metroTimer);metroTimer=null}}
-  function tick(){if(!metroRunning)return;metroBeat=(metroBeat%4)+1;const level=metroIntensity(),accent=metroBeat===1;const pulse=$("#beatPulse");pulse.classList.remove("active");void pulse.offsetWidth;pulse.classList.add("active");$("#beatNumber").textContent=String(metroBeat);setTimeout(()=>pulse.classList.remove("active"),110);
-   try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume();const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type="sine";osc.frequency.value=accent?1050:760;gain.gain.setValueAtTime(Math.min(.32,.035+level*.045),audioCtx.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.075);osc.connect(gain);gain.connect(audioCtx.destination);osc.start();osc.stop(audioCtx.currentTime+.08)}catch(e){console.warn("节拍提示音不可用",e)}
-  }
+  function playMetroTone(accent,level){try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended"){audioCtx.resume().then(()=>{if(metroRunning)playMetroTone(accent,level)}).catch(e=>console.warn("节拍声音未获授权",e));return}const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type="sine";osc.frequency.value=accent?1050:760;gain.gain.setValueAtTime(Math.min(.38,.055+level*.055),audioCtx.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.11);osc.connect(gain);gain.connect(audioCtx.destination);osc.start();osc.stop(audioCtx.currentTime+.12)}catch(e){console.warn("节拍提示音不可用",e)}}
+  async function enableMetroAudio(testTone=true){try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state!=="running")await audioCtx.resume();$("#metroAudioEnable").textContent="节拍声音已启用";$("#metroAudioEnable").classList.add("primary");if(testTone){const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.frequency.value=880;gain.gain.setValueAtTime(.12,audioCtx.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.16);osc.connect(gain);gain.connect(audioCtx.destination);osc.start();osc.stop(audioCtx.currentTime+.17)}return true}catch(e){$("#metroAudioEnable").textContent="声音未启用 · 点击重试";toast("浏览器未允许播放节拍声音，请检查媒体音量和浏览器声音权限");return false}}
+  function tick(){if(!metroRunning)return;metroBeat=(metroBeat%4)+1;const level=metroIntensity(),accent=metroBeat===1;const pulse=$("#beatPulse");pulse.classList.remove("active");void pulse.offsetWidth;pulse.classList.add("active");$("#beatNumber").textContent=String(metroBeat);setTimeout(()=>pulse.classList.remove("active"),180);playMetroTone(accent,level)}
   function renderMetroState(){updateMetroLabels();updateMetroCountdown();$("#metroHoldCountLive").textContent=String(metroHoldCount);$("#metroLivePanel").hidden=metroStopped;$("#metroEndScreen").hidden=!metroStopped;els.metroStatus.textContent=metroRunning?"挑战进行中":metroStopped?"挑战已结束":metroHasStarted?"已暂停":roomHasPartner?"准备就绪":"等待另一位参与者加入";const controller=myRole==="controller";els.bpm.disabled=!controller;els.intensity.disabled=!controller;els.metroMode.disabled=!controller;els.metroDifficulty.disabled=!controller;els.metroDuration.disabled=!controller;[els.metroSlow,els.metroNormal,els.metroFast,els.metroHold,els.metroResume].forEach(b=>b.disabled=!controller||!roomHasPartner);els.metroStart.disabled=!controller||metroRunning;$("#metroRestartBtn").disabled=!controller;els.metroPause.disabled=!controller||!metroRunning;els.metroStop.disabled=!controller||!metroHasStarted||metroStopped;els.metroEmergency.disabled=!me;els.roleStatus.textContent=!myRole?"进入房间后显示你的挑战角色。":controller?"你的角色：控制方（S）· 可调整节奏与挑战时长。":"你的角色：受控方（M）· 跟随节拍，可随时紧急停止或在聊天中表达感受。";}
   function clearMetroClocks(){if(metroChallengeTimer)clearInterval(metroChallengeTimer);if(metroRandomTimer)clearInterval(metroRandomTimer);metroChallengeTimer=metroRandomTimer=null}
   function metroPayload(running=metroRunning,stopped=metroStopped){return {type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running,started:metroHasStarted,stopped,mode:metroModeValue,difficulty:metroDifficultyValue,durationMinutes:metroDurationMinutes,endsAt:metroEndsAt,remainingMs:metroRemainingMs,holdCount:metroHoldCount,elapsedMs:metroElapsedMs}}
@@ -1005,7 +1006,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    room=code;want=true;els.connect.disabled=true;setTimeout(()=>els.connect.disabled=false,1500);
    if(ws&&ws.readyState===1)sendJoin();else open();
   }
-  function leave(){if(watching){out({type:"watch_leave"});reset("已退出观战");return}if(metroRunning)stopMetro(true);closeVoice(true,"语音已结束");if(!out({type:"leave"})){if(room)localStorage.removeItem(seatKey(room));reset("已离开房间")}else if(room)localStorage.removeItem(seatKey(room))}
+  function leave(){if(watching){want=false;out({type:"watch_leave"});reset("已退出观战");return}if(!me){reset("已回到主页");return}want=false;clearTimeout(retryTimer);if(metroRunning)stopMetro(true);closeVoice(true,"语音已结束");const sent=out({type:"leave"});if(room)localStorage.removeItem(seatKey(room));if(!sent){reset("已离开房间");return}setState("wait","正在离开房间…");retryTimer=setTimeout(()=>{if(me)reset("已离开房间")},1200)}
   function generateRoomCode(){const a="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";const r=crypto.getRandomValues(new Uint8Array(6));r.forEach(x=>s+=a[x%a.length]);return s}
   function randomCode(){els.code.value=generateRoomCode();peek()}
   function publishPublicRoom(){
@@ -1090,11 +1091,14 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   els.metroMode.onchange=()=>{metroModeValue=els.metroMode.value;syncMetroSettings();if(metroRunning)startMetroClocks()};
   els.metroDifficulty.onchange=()=>{metroDifficultyValue=els.metroDifficulty.value;syncMetroSettings();if(metroRunning)startMetroClocks()};
   els.metroDuration.onchange=()=>{metroDurationMinutes=Number(els.metroDuration.value)||5;if(!metroHasStarted)metroRemainingMs=metroDurationMinutes*60000;updateMetroCountdown();syncMetroSettings()};
-  els.metroStart.onclick=()=>{if(!me){toast("请先进入双人房间");return}if(myRole!=="controller"){toast("只有控制方可以开始挑战");return}startMetro(true)};
+  els.metroStart.onclick=()=>{if(!me){toast("请先进入双人房间");return}if(myRole!=="controller"){toast("只有控制方可以开始挑战");return}enableMetroAudio(false);startMetro(true)};
   els.metroPause.onclick=()=>{if(myRole==="controller")pauseMetro(true)};
   els.metroStop.onclick=()=>{if(myRole==="controller")stopMetro(true)};
   els.metroEmergency.onclick=()=>{if(!me)return;if(metroRunning&&metroEndsAt)metroRemainingMs=Math.max(0,metroEndsAt-Date.now());metroElapsedMs=Math.max(metroElapsedMs,metroDurationMinutes*60000-metroRemainingMs);metroStopped=true;metroRunning=false;metroEndsAt=0;stopMetroTimer();clearMetroClocks();stopMetro(false);out({type:"metronome_emergency_stop"});};
   $("#metroRestartBtn").onclick=()=>{metroStopped=false;metroHasStarted=false;metroRunning=false;metroHoldCount=0;metroElapsedMs=0;metroRemainingMs=(Number(els.metroDuration.value)||5)*60000;metroEndsAt=0;$("#metroLivePanel").hidden=false;$("#metroEndScreen").hidden=true;$("#beatNumber").textContent="—";renderMetroState()};
+  $("#metroHomeBtn").onclick=leave;
+  $("#metroAudioEnable").onclick=()=>enableMetroAudio(true);
+  $("#disconnectBtn").onclick=leave;
   updateMetroLabels();renderMetroState();
   els.voiceStart.onclick=startMic;
   els.voiceMute.onclick=()=>{if(!localStream)return;const tracks=localStream.getAudioTracks();const next=tracks.some(t=>t.enabled);tracks.forEach(t=>t.enabled=!next);updateMicControls();setVoiceState("on",next?"麦克风已静音":"麦克风已开启")};
