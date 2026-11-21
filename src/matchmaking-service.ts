@@ -1,4 +1,4 @@
-import { assignMatchRoles, chooseMatchPartner } from './matchmaking-core.js';
+import { assignMatchRoles, chooseMatchPartner } from './matchmaking-core.ts';
 
 export type MatchStatus =
   | { status: 'waiting' }
