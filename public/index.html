@@ -1045,7 +1045,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
     }
    }catch(error){
     if(!matching||matchClientId!==clientId)return;
-    if([400,403,409].includes(error.status)){returnToMatchSettings(error.message);toast(error.message)}
+    if([400,403,404,409].includes(error.status)){returnToMatchSettings(error.message);toast(error.message)}
     else{$("#matchingStatus").textContent="匹配服务暂时连接不稳定，正在自动重试…";els.matchStatus.textContent="匹配服务暂时连接不稳定，正在自动重试…"}
    }finally{matchRequestBusy=false}
   }

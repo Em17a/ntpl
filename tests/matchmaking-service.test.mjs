@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { findOrCreateMatch } from '../src/matchmaking-service.ts';
+import { findOrCreateMatch, pollMatchmaking, cancelMatchmaking } from '../src/matchmaking-service.ts';
+import { isMatchCompatible, chooseMatchPartner, assignMatchRoles } from '../src/matchmaking-core.ts';
 
 function createD1() {
   const sqlite = new DatabaseSync(':memory:');
@@ -115,7 +116,7 @@ test('a previously matched room with missing seats is repaired from its queue re
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=? AND left_at IS NULL').get(room).count, 2);
 });
 
-test('legacy UUID-derived room codes containing 0 or 1 are remapped to valid codes', async t => {
+test('legacy UUID-derived room codes containing 0 or 1 remain valid for the room join protocol', async t => {
   const db = createD1();
   t.after(() => db.close());
   const a = '11111111-1111-4111-8111-111111111111';
@@ -130,9 +131,9 @@ test('legacy UUID-derived room codes containing 0 or 1 are remapped to valid cod
 
   const repaired = await findOrCreateMatch(db, a, 5_000);
   assert.equal(repaired.status, 'matched');
-  assert.notEqual(repaired.room, oldRoom);
-  assert.match(repaired.room, /^[A-HJ-NP-Z2-9]{8}$/);
-  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM rooms WHERE code=?').get(oldRoom).count, 0);
+  assert.equal(repaired.room, oldRoom);
+  assert.match(repaired.room, /^[A-Z0-9]{8}$/);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM rooms WHERE code=?').get(oldRoom).count, 1);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=? AND left_at IS NULL').get(repaired.room).count, 2);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM matchmaking_queue WHERE status=\'matched\' AND room_code=?').get(repaired.room).count, 2);
 });
@@ -171,4 +172,118 @@ test('incompatible candidates remain waiting and do not create a phantom room', 
   assert.deepEqual(await findOrCreateMatch(db, a, 3_000), { status: 'waiting' });
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM rooms').get().count, 0);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members').get().count, 0);
+});
+
+
+test('poll actively pairs a waiting player with an already queued compatible player', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const a = '12121212-1212-4212-8212-121212121212';
+  const b = '34343434-3434-4434-8434-343434343434';
+  queue(db, a, { gender: 'male', preference: 'female', role: 'controller', lastSeenAt: 1_000 });
+  queue(db, b, { gender: 'female', preference: 'male', role: 'receiver', createdAt: 1_500, lastSeenAt: 1_500 });
+
+  const result = await pollMatchmaking(db, a, 3_000);
+  assert.equal(result.status, 'matched');
+  assert.equal(result.role, 'controller');
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS count FROM room_members WHERE room_code=? AND left_at IS NULL")
+    .get(result.room).count, 2);
+  assert.equal(db.raw.prepare('SELECT last_seen_at FROM matchmaking_queue WHERE client_id=?').get(a).last_seen_at, 3_000);
+});
+
+test('cancel removes a waiting player and returns immediately as cancelled', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const a = '56565656-5656-4656-8656-565656565656';
+  queue(db, a);
+  assert.deepEqual(await cancelMatchmaking(db, a, 2_000), { status: 'cancelled' });
+  assert.equal(db.raw.prepare('SELECT status FROM matchmaking_queue WHERE client_id=?').get(a).status, 'cancelled');
+});
+
+test('cancel never deletes an already matched room or queue result', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const a = '78787878-7878-4878-8878-787878787878';
+  const b = '90909090-9090-4090-8090-909090909090';
+  const room = 'AB234569';
+  db.raw.prepare('INSERT INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)').run(room, 1_000, 1_000, 7_201_000);
+  for (const [id, nickname, role] of [[a, '甲', 'controller'], [b, '乙', 'receiver']]) {
+    db.raw.prepare(`INSERT INTO matchmaking_queue
+      (client_id,nickname,gender,preference,role_preference,voice_preference,matched_role,status,room_code,created_at,last_seen_at)
+      VALUES(?,?, 'other','any','any','any',?,'matched',?,?,?)`).run(id, nickname, role, room, 1_000, 1_000);
+  }
+  const result = await cancelMatchmaking(db, a, 5_000);
+  assert.deepEqual(result, { status: 'matched', room, role: 'controller' });
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS count FROM matchmaking_queue WHERE status='matched' AND room_code=?").get(room).count, 2);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS count FROM room_members WHERE room_code=? AND left_at IS NULL").get(room).count, 2);
+});
+
+
+test('compatibility enforces gender and role while voice preference only affects ranking', () => {
+  const base = { client_id: 'a', gender: 'male', preference: 'female', role_preference: 'controller', voice_preference: 'both', created_at: 1 };
+  assert.equal(isMatchCompatible(base, { ...base, client_id: 'b', gender: 'female', preference: 'male', role_preference: 'receiver', voice_preference: 'both' }), true);
+  assert.equal(isMatchCompatible(base, { ...base, client_id: 'c', gender: 'female', preference: 'male', role_preference: 'receiver', voice_preference: 'off' }), true);
+  assert.equal(isMatchCompatible(base, { ...base, client_id: 'd', gender: 'female', preference: 'female', role_preference: 'receiver', voice_preference: 'both' }), false);
+  assert.equal(isMatchCompatible(base, { ...base, client_id: 'e', gender: 'female', preference: 'male', role_preference: 'controller', voice_preference: 'both' }), false);
+});
+
+test('partner selection prefers a mutually compatible voice match and assigns opposite roles', () => {
+  const self = { client_id: 'a', gender: 'male', preference: 'female', role_preference: 'any', voice_preference: 'self', created_at: 1 };
+  const peer = { client_id: 'b', gender: 'female', preference: 'male', role_preference: 'receiver', voice_preference: 'peer', created_at: 2 };
+  const incompatibleVoice = { ...peer, client_id: 'c', voice_preference: 'self', created_at: 1 };
+  assert.equal(chooseMatchPartner(self, [incompatibleVoice, peer]).client_id, 'b');
+  assert.deepEqual(assignMatchRoles(self, peer), { selfRole: 'controller', partnerRole: 'receiver' });
+});
+
+
+test('simultaneous polls cannot create two rooms for the same pair', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const a = 'abab1212-abab-4121-8121-abab12121212';
+  const b = 'cdcd3434-cdcd-4343-8343-cdcd34343434';
+  queue(db, a, { gender: 'male', preference: 'female', role: 'controller' });
+  queue(db, b, { gender: 'female', preference: 'male', role: 'receiver', createdAt: 2_000 });
+  const results = await Promise.all([
+    pollMatchmaking(db, a, 3_000),
+    pollMatchmaking(db, b, 3_000),
+  ]);
+  assert.ok(results.every(result => result.status === 'matched'));
+  assert.equal(results[0].room, results[1].room);
+  const room = results[0].room;
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM rooms').get().count, 1);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=?').get(room).count, 2);
+});
+
+
+test('cancellation tombstone prevents an in-flight initial join from recreating the queue', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const a = 'abababab-1212-4121-8121-ababab121212';
+  assert.deepEqual(await cancelMatchmaking(db, a, 2_000), { status: 'cancelled' });
+  db.raw.prepare(`INSERT OR IGNORE INTO matchmaking_queue
+    (client_id,nickname,gender,preference,role_preference,voice_preference,status,created_at,last_seen_at)
+    VALUES(?, 'late join', 'male', 'any', 'any', 'any', 'waiting', 2_100, 2_100)`).run(a);
+  assert.equal(db.raw.prepare('SELECT status FROM matchmaking_queue WHERE client_id=?').get(a).status, 'cancelled');
+  assert.deepEqual(await pollMatchmaking(db, a, 2_500), { status: 'missing' });
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM rooms').get().count, 0);
+});
+
+
+test('matched seats whose leases expired are reactivated for reconnect', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const a = 'abab1212-1111-4111-8111-abab12121212';
+  const b = 'cdcd3434-2222-4222-8222-cdcd34343434';
+  const room = 'AB234570';
+  db.raw.prepare('INSERT INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)').run(room, 1_000, 1_000, 7_201_000);
+  for (const [id, nickname, role] of [[a, '甲', 'controller'], [b, '乙', 'receiver']]) {
+    db.raw.prepare(`INSERT INTO matchmaking_queue
+      (client_id,nickname,gender,preference,role_preference,voice_preference,matched_role,status,room_code,created_at,last_seen_at)
+      VALUES(?,?, 'other','any','any','any',?,'matched',?,?,?)`).run(id, nickname, role, room, 1_000, 1_000);
+    db.raw.prepare('INSERT INTO room_members(id,room_code,nickname,role,joined_at,last_seen_at,left_at) VALUES(?,?,?,?,?,?,?)')
+      .run(id, room, nickname, role, 1_000, 1_000, 4_000);
+  }
+  const result = await findOrCreateMatch(db, a, 5_000);
+  assert.deepEqual(result, { status: 'matched', room, role: 'controller' });
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=? AND left_at IS NULL').get(room).count, 2);
 });

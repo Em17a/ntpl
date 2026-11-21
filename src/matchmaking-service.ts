@@ -4,9 +4,10 @@ export type MatchStatus =
   | { status: 'waiting' }
   | { status: 'missing' }
   | { status: 'matched'; room: string; role: 'controller' | 'receiver' }
-  | { status: 'repair_failed' };
+  | { status: 'repair_failed' }
+  | { status: 'cancelled' };
 
-const validRoomCode = /^[A-HJ-NP-Z2-9]{8}$/;
+const validRoomCode = /^[A-Z0-9]{8}$/;
 const roomAlphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 function newRoomCode(): string {
@@ -67,7 +68,7 @@ async function ensureMatchedSeats(db: D1Database, room: string, timestamp: numbe
   const missing = rows.results.filter((row: any) => !existingRoles.includes(row.matched_role));
   if (missing.length) {
     await db.batch(missing.map((row: any) => db.prepare(
-      'INSERT OR IGNORE INTO room_members(id,room_code,nickname,role,joined_at,last_seen_at) VALUES(?,?,?,?,?,?)'
+      'INSERT INTO room_members(id,room_code,nickname,role,joined_at,last_seen_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET nickname=excluded.nickname,role=excluded.role,last_seen_at=excluded.last_seen_at,left_at=NULL WHERE room_members.room_code=excluded.room_code'
     ).bind(String(row.client_id), room, String(row.nickname), row.matched_role, Number(row.created_at) || timestamp, timestamp)));
   }
 
@@ -144,9 +145,69 @@ export async function findOrCreateMatch(
       db.prepare('DELETE FROM room_members WHERE room_code=?').bind(room),
       db.prepare('DELETE FROM rooms WHERE code=?').bind(room),
     ]);
+
+    // Another poll may have won the D1 transaction while this request was
+    // preparing its candidate pair. Return that committed result immediately.
+    const winner = await db.prepare("SELECT room_code,matched_role FROM matchmaking_queue WHERE client_id=? AND status='matched'")
+      .bind(clientId).first<any>();
+    if (winner?.room_code && ['controller', 'receiver'].includes(winner.matched_role)) {
+      const winnerRoom = await repairLegacyRoomCode(db, String(winner.room_code), timestamp);
+      if (!winnerRoom) return { status: 'repair_failed' };
+      return await ensureMatchedSeats(db, winnerRoom, timestamp)
+        ? { status: 'matched', room: winnerRoom, role: winner.matched_role }
+        : { status: 'repair_failed' };
+    }
     return { status: 'waiting' };
   }
 
   await scheduleNextAlarm?.();
   return { status: 'matched', room, role: selfRole };
+}
+
+
+/** Refreshes a queued player's lease and actively attempts pairing on every poll.
+ * Polling is not a passive status read: it is also the matchmaking heartbeat/worker.
+ */
+export async function pollMatchmaking(
+  db: D1Database,
+  clientId: string,
+  timestamp: number,
+): Promise<MatchStatus> {
+  await db.prepare("UPDATE matchmaking_queue SET last_seen_at=? WHERE client_id=? AND status='waiting'")
+    .bind(timestamp, clientId).run();
+  const row = await db.prepare('SELECT status FROM matchmaking_queue WHERE client_id=?')
+    .bind(clientId).first<any>();
+  if (!row) return { status: 'missing' };
+  return findOrCreateMatch(db, clientId, timestamp);
+}
+
+/** Cancellation wins only while the queue row is still waiting.
+ * Re-read after the conditional update so a concurrent successful match is never
+ * reported as cancelled and its room is never orphaned.
+ */
+export async function cancelMatchmaking(
+  db: D1Database,
+  clientId: string,
+  timestamp: number,
+): Promise<MatchStatus> {
+  // Keep a short-lived cancellation tombstone. This closes the race where the
+  // user taps Cancel while the first Join request is still in flight: a late
+  // INSERT OR IGNORE can no longer recreate a waiting queue entry.
+  await db.prepare(`INSERT OR IGNORE INTO matchmaking_queue
+    (client_id,nickname,gender,preference,role_preference,voice_preference,status,created_at,last_seen_at)
+    VALUES(?,'','other','any','any','any','cancelled',?,?)`)
+    .bind(clientId, timestamp, timestamp).run();
+
+  const before = await db.prepare('SELECT status FROM matchmaking_queue WHERE client_id=?')
+    .bind(clientId).first<any>();
+  if (before?.status === 'matched') return findOrCreateMatch(db, clientId, timestamp);
+  if (before?.status === 'waiting') {
+    await db.prepare("UPDATE matchmaking_queue SET status='cancelled',last_seen_at=? WHERE client_id=? AND status='waiting'")
+      .bind(timestamp, clientId).run();
+  }
+
+  const after = await db.prepare('SELECT status FROM matchmaking_queue WHERE client_id=?')
+    .bind(clientId).first<any>();
+  if (after?.status === 'matched') return findOrCreateMatch(db, clientId, timestamp);
+  return { status: 'cancelled' };
 }
