@@ -68,7 +68,7 @@ async function ensureMatchedSeats(db: D1Database, room: string, timestamp: numbe
   const missing = rows.results.filter((row: any) => !existingRoles.includes(row.matched_role));
   if (missing.length) {
     await db.batch(missing.map((row: any) => db.prepare(
-      'INSERT OR IGNORE INTO room_members(id,room_code,nickname,role,joined_at,last_seen_at) VALUES(?,?,?,?,?,?)'
+      'INSERT INTO room_members(id,room_code,nickname,role,joined_at,last_seen_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET nickname=excluded.nickname,role=excluded.role,last_seen_at=excluded.last_seen_at,left_at=NULL WHERE room_members.room_code=excluded.room_code'
     ).bind(String(row.client_id), room, String(row.nickname), row.matched_role, Number(row.created_at) || timestamp, timestamp)));
   }
 
@@ -170,7 +170,7 @@ export async function pollMatchmaking(
 }
 
 /** Cancellation wins only while the queue row is still waiting.
- * Re-read after the conditional delete so a concurrent successful match is never
+ * Re-read after the conditional update so a concurrent successful match is never
  * reported as cancelled and its room is never orphaned.
  */
 export async function cancelMatchmaking(
