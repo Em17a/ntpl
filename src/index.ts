@@ -211,11 +211,15 @@ export class NightplayRoom extends DurableObject<Env> {
   private async join(ws:WebSocket,msg:ClientMessage) {
     const room=String(msg.room??'').trim().toUpperCase(),nickname=String(msg.nickname??'').trim().replace(/\s+/g,' ').slice(0,24);
     const token=typeof msg.token==='string'&&/^[0-9a-f-]{36}$/i.test(msg.token)?msg.token:null,requestedRole=String(msg.role??'any'),guestId=typeof msg.guestId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.guestId)?msg.guestId:null;
+    const publishRequested=msg.publish===true,roomName=String(msg.roomName??'').trim().replace(/\s+/g,' ').slice(0,20);
+    if(publishRequested&&!roomName)return this.send(ws,{type:'error',code:'bad_room_name',message:'请填写 1–20 个字的房间名称。'});
     if(!ROLE_PREFS.has(requestedRole))return this.send(ws,{type:'error',code:'bad_role',message:'请选择有效的挑战角色。'});
     if(!CODE_RE.test(room))return this.send(ws,{type:'error',code:'bad_room',message:'房间代码需为 4–12 位字母或数字。'});
     if(!nickname)return this.send(ws,{type:'error',code:'bad_nickname',message:'请先填写昵称。'});
     const t=now();
-    await this.env.DB.prepare('INSERT OR IGNORE INTO rooms(code,created_at,last_active_at) VALUES(?,?,?)').bind(room,t,t).run();
+    const roomInsert=await this.env.DB.prepare('INSERT OR IGNORE INTO rooms(code,created_at,last_active_at) VALUES(?,?,?)').bind(room,t,t).run();
+    const roomCreated=Number(roomInsert.meta.changes)>0;
+    if(publishRequested&&!roomCreated)return this.send(ws,{type:'error',code:'publish_room_exists',message:'房间代码已被占用，请重新生成后发布。'});
     await this.env.DB.prepare('UPDATE room_members SET left_at=? WHERE room_code=? AND left_at IS NULL AND last_seen_at<?').bind(t,room,t-SEAT_TTL_S*1000).run();
     let member:any=null,isNew=true;
     if(token){member=await this.env.DB.prepare('SELECT * FROM room_members WHERE id=? AND room_code=? AND left_at IS NULL').bind(token,room).first<any>();if(member){await this.env.DB.prepare('UPDATE room_members SET last_seen_at=?,nickname=?,guest_id=COALESCE(?,guest_id) WHERE id=?').bind(t,nickname,guestId,token).run();member.nickname=nickname;member.last_seen_at=t;isNew=false;}}
@@ -229,13 +233,16 @@ export class NightplayRoom extends DurableObject<Env> {
       member={id,room_code:room,nickname,role:assignedRole,joined_at:t,last_seen_at:t};
     }
     if(guestId){try{await this.ensureFriendProfile(guestId,nickname)}catch(e){console.error('friend profile init failed',e)}}
+    if(publishRequested)await this.env.DB.prepare('UPDATE rooms SET room_name=?,is_public=1,owner_member_id=? WHERE code=?').bind(roomName,member.id,room).run();
     await this.env.DB.prepare('UPDATE rooms SET last_active_at=? WHERE code=?').bind(t,room).run();
     const a=this.attachment(ws);a.meta={memberId:member.id,room,nickname:member.nickname,role:member.role,bucket:8,bucketAt:t,lastTypingAt:0};this.save(ws,a);
     const lastId=Number(msg.lastId)||0;
     const activeIds=(await this.env.DB.prepare('SELECT id FROM room_members WHERE room_code=? AND left_at IS NULL').bind(room).all<any>()).results.map((x:any)=>x.id);
+    if(activeIds.length>=MAX_SEATS)await this.env.DB.prepare('UPDATE rooms SET is_public=0 WHERE code=?').bind(room).run();
+    const roomInfo=await this.env.DB.prepare('SELECT room_name,is_public FROM rooms WHERE code=?').bind(room).first<any>();
     const watchConsents=await this.ctx.storage.get<string[]>('watch-consent:'+room)??[];
     const watchAllowed=activeIds.length===2&&activeIds.every((id:string)=>watchConsents.includes(id));
-    this.send(ws,{type:'joined',room,token:member.id,you:{id:member.id,nickname:member.nickname,role:member.role},resumed:!isNew,history:await this.history(room,isNew?0:lastId),members:await this.presence(room),seats:MAX_SEATS,watchAllowed,watchConsent:watchConsents.includes(member.id),watchers:await this.watcherCount(room)});
+    this.send(ws,{type:'joined',room,roomName:roomInfo?.room_name||'',isPublic:Boolean(roomInfo?.is_public),token:member.id,you:{id:member.id,nickname:member.nickname,role:member.role},resumed:!isNew,history:await this.history(room,isNew?0:lastId),members:await this.presence(room),seats:MAX_SEATS,watchAllowed,watchConsent:watchConsents.includes(member.id),watchers:await this.watcherCount(room)});
     if(isNew)await this.addMessage(room,'system',`${member.nickname} 加入了房间`);
     await this.pushPresence(room);
     const metro=await this.metro(room);if(metro)this.send(ws,{type:'metronome_state',...metro});
@@ -316,6 +323,7 @@ export class NightplayRoom extends DurableObject<Env> {
       const {room,memberId,nickname}=m;await this.saveGameHistory(room,memberId);const metro=await this.metro(room);if(metro?.running){const state={...metro,running:false,stopped:true,nickname};await this.setMetro(room,state);this.broadcast(room,{type:'metronome_state',...state},ws);}
       this.detach(ws);const r=await this.env.DB.prepare('UPDATE room_members SET left_at=? WHERE id=? AND left_at IS NULL').bind(now(),memberId).run();
       const consentKey='watch-consent:'+room,consents=await this.ctx.storage.get<string[]>(consentKey)??[];await this.ctx.storage.put(consentKey,consents.filter(id=>id!==memberId));
+      await this.env.DB.prepare('UPDATE rooms SET is_public=0 WHERE code=? AND owner_member_id=?').bind(room,memberId).run();
       await this.closeWatchers(room);this.send(ws,{type:'left'});if(r.meta.changes)await this.addMessage(room,'system',`${nickname} 离开了房间`);return this.pushPresence(room);
     }
   }
@@ -324,6 +332,11 @@ export class NightplayRoom extends DurableObject<Env> {
     if(url.pathname==='/ws'&&request.headers.get('Upgrade')?.toLowerCase()==='websocket'){
       const pair=new WebSocketPair(),client=pair[0],server=pair[1];this.ctx.acceptWebSocket(server);this.save(server,{});
       return new Response(null,{status:101,webSocket:client});
+    }
+    if(request.method==='GET'&&url.pathname==='/api/public-rooms'){
+      const cutoff=now()-ONLINE_WINDOW_S*1000;
+      const result=await this.env.DB.prepare("SELECT r.code,r.room_name,r.created_at,m.nickname AS host_nickname,m.role AS host_role FROM rooms r JOIN room_members m ON m.id=r.owner_member_id AND m.room_code=r.code WHERE r.is_public=1 AND m.left_at IS NULL AND m.last_seen_at>? AND r.last_active_at>? AND (SELECT COUNT(*) FROM room_members p WHERE p.room_code=r.code AND p.left_at IS NULL AND p.last_seen_at>?)<2 ORDER BY r.created_at DESC LIMIT 50").bind(cutoff,now()-ROOM_RETENTION_DAYS*86400000,cutoff).all<any>();
+      return json({rooms:result.results.map((r:any)=>({room:r.code,name:r.room_name,hostNickname:r.host_nickname,hostRole:r.host_role,createdAt:r.created_at,seats:1}))});
     }
     const roomMatch=url.pathname.match(/^\/api\/rooms\/([A-Za-z0-9]{4,12})$/);
     if(request.method==='GET'&&roomMatch){const room=roomMatch[1].toUpperCase(),members=await this.presence(room);return json({room,seats:MAX_SEATS,taken:members.length,full:members.length>=MAX_SEATS});}
