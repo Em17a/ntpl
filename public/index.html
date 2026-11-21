@@ -250,7 +250,8 @@ body.watch-mode #watchStatus{color:#d2c4e6}
     <section class="quick-actions" aria-label="快速进入功能">
       <button class="quick-action quick-match" type="button" data-open-modal="match"><span class="quick-icon">♡</span><span><strong>开始匹配</strong><small>按性别、角色和语音偏好寻找搭档</small></span></button>
       <button class="quick-action" type="button" data-open-modal="join"><span class="quick-icon">↗</span><span><strong>邀请 / 加入</strong><small>使用房间码快速进入</small></span></button>
-<button class="quick-action" type="button" data-open-modal="history"><span class="quick-icon">▤</span><span><strong>对局历史</strong><small>查看最近的双人记录</small></span></button>\n      <button class="quick-action" type="button" data-open-modal="friends"><span class="quick-icon">♧</span><span><strong>好友</strong><small>添加好友、私信和邀请对局</small></span></button>
+<button class="quick-action" type="button" data-open-modal="history"><span class="quick-icon">▤</span><span><strong>对局历史</strong><small>查看最近的双人记录</small></span></button>
+      <button class="quick-action" type="button" data-open-modal="friends"><span class="quick-icon">♧</span><span><strong>好友</strong><small>添加好友、私信和邀请对局</small></span></button>
     </section>
     <section id="watchDirectory" class="watch-directory featured-watch-directory" aria-labelledby="watchDirectoryTitle">
       <div class="watch-directory-head"><div><p class="eyebrow">LIVE ROOMS · SPECTATOR</p><h2 id="watchDirectoryTitle">观战大厅</h2><p class="chat-note">浏览正在开放观战的双人房间。只有双方玩家都主动同意，房间才会出现在这里。</p></div><button id="watchRefreshBtn" type="button" class="primary">刷新房间</button></div>
@@ -283,7 +284,6 @@ body.watch-mode #watchStatus{color:#d2c4e6}
           <p id="roomPeek" class="chat-note"></p>
           <button id="watchJoinBtn" type="button" class="ghost">以观战身份加入（需双方允许）</button>
         </section>
-      </section>
         <section id="historyPanel" class="modal-panel" hidden>
           <p class="muted">使用本设备的随机游客 ID 保存最近 30 条对局记录，无需注册。记录会在你主动离开房间或结束对局时生成。</p>
           <div id="historyList" class="result" aria-live="polite">正在读取对局历史…</div>
@@ -529,6 +529,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
  });
  $("#dmInvite").addEventListener("click",()=>{if(activeDmFriendCode)inviteFriend(activeDmFriendCode,activeDmFriendName)});
  friendPresence();setInterval(()=>{if(!document.hidden)friendPresence()},30000);
+ setInterval(()=>{if(activeDmFriendCode&&!document.hidden)loadDm()},8000);
 
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#actionModal").hidden)closeActionModal()});
 
