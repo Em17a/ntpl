@@ -117,7 +117,7 @@ export class NightplayRoom extends DurableObject<Env> {
     return rows.results.map((r: any) => ({ id:r.id, kind:r.kind, nickname:r.nickname, memberId:r.member_id, body:r.body, createdAt:r.created_at }));
   }
   private async ensureFriendProfile(guestId:string,nickname:string) {
-    const clean=String(nickname||'访客').trim().replace(/\\s+/g,' ').slice(0,24)||'访客';
+    const clean=String(nickname||'访客').trim().replace(/\s+/g,' ').slice(0,24)||'访客';
     for(let attempt=0;attempt<5;attempt++){
       const existing=await this.env.DB.prepare('SELECT guest_id FROM guest_profiles WHERE guest_id=?').bind(guestId).first<any>();
       if(existing){
@@ -374,7 +374,7 @@ export class NightplayRoom extends DurableObject<Env> {
     }
     if(request.method==='PATCH'&&url.pathname==='/api/friends/profile'){
       let body:any;try{body=await request.json()}catch{return json({error:'bad_json'},400)}
-      const guestId=String(body?.guestId??''),visible=body?.onlineVisible===true?1:0,nickname=String(body?.nickname??'').trim().replace(/\\s+/g,' ').slice(0,24);
+      const guestId=String(body?.guestId??''),visible=body?.onlineVisible===true?1:0,nickname=String(body?.nickname??'').trim().replace(/\s+/g,' ').slice(0,24);
       if(!/^[0-9a-f-]{36}$/i.test(guestId))return json({error:'bad_guest_id'},400);
       const profile=await this.env.DB.prepare('SELECT guest_id FROM guest_profiles WHERE guest_id=?').bind(guestId).first<any>();
       if(!profile)return json({error:'profile_not_found'},404);
