@@ -172,6 +172,9 @@ body.watch-mode #watchStatus{color:#d2c4e6}
 
 /* Spectator directory cards */
 .watch-directory{margin:0 8vw 18px;padding:18px;border:1px solid #665078;border-radius:12px;background:#17151f}
+.solo-watch-directory{margin:22px 0 0;padding:16px;background:#100f16}
+.solo-watch-directory .watch-directory-head h2{font-size:17px}
+.solo-watch-directory .watch-directory-head .eyebrow{margin-bottom:6px}
 .watch-directory-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
 .watch-directory-head h2{margin:0;font-size:19px}
 .watch-directory-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;color:#c3bfce;font-size:12px}
@@ -211,10 +214,6 @@ body.watch-mode #watchStatus{color:#d2c4e6}
       <button class="quick-action" type="button" data-open-modal="join"><span class="quick-icon">↗</span><span><strong>邀请 / 加入</strong><small>使用房间码快速进入</small></span></button>
       <button class="quick-action" type="button" data-open-modal="solo"><span class="quick-icon">◉</span><span><strong>单人练习</strong><small>无需等待搭档</small></span></button><button class="quick-action" type="button" data-open-modal="history"><span class="quick-icon">▤</span><span><strong>对局历史</strong><small>查看最近的双人记录</small></span></button>
     </section>
-    <section id="watchDirectory" class="watch-directory" hidden aria-labelledby="watchDirectoryTitle">
-      <div class="watch-directory-head"><div><p class="eyebrow">LIVE ROOMS</p><h2 id="watchDirectoryTitle">可观战房间</h2><p class="chat-note">仅显示双方玩家都主动允许旁观、且仍在线的房间。</p></div><button id="watchRefreshBtn" type="button" class="ghost">刷新列表</button></div>
-      <div id="watchDirectoryList" class="watch-directory-list" aria-live="polite">点击“观战大厅”加载房间。</div>
-    </section>
     <section class="announcement" aria-labelledby="announcementTitle"><p class="eyebrow">PLATFORM NOTICE · 18+</p><h2 id="announcementTitle">平台公告与免责声明</h2><p>Nightplay 仅供年满 18 周岁的成年人自愿使用。平台不保证其他用户身份、陈述或行为的真实性。请勿分享真实姓名、住址、财务资料等敏感信息。任何互动均需双方明确自愿，任何一方都可以随时暂停、结束或离开。用户应遵守所在地法律法规，并对自己的言论与行为负责。</p></section>
     <div id="actionModal" class="modal" hidden>
       <div class="modal-backdrop" data-close-modal></div>
@@ -252,6 +251,10 @@ body.watch-mode #watchStatus{color:#d2c4e6}
           <div class="solo-readout"><strong id="soloCue">准备开始</strong><span><b id="soloBpm">75</b> BPM</span><span>剩余 <b id="soloCountdown">03:00</b></span></div>
           <div class="match-actions"><button id="soloStart" type="button" class="primary">开始练习</button><button id="soloStop" type="button" class="ghost" disabled>结束练习</button></div>
           <p id="soloStatus" class="chat-note" aria-live="polite">练习不会上传或保存记录。</p>
+          <section id="watchDirectory" class="watch-directory solo-watch-directory" hidden aria-labelledby="watchDirectoryTitle">
+            <div class="watch-directory-head"><div><p class="eyebrow">LIVE ROOMS</p><h2 id="watchDirectoryTitle">观战大厅</h2><p class="chat-note">仅显示双方玩家都主动允许旁观、且仍在线的房间。</p></div><button id="watchRefreshBtn" type="button" class="ghost">刷新列表</button></div>
+            <div id="watchDirectoryList" class="watch-directory-list" aria-live="polite">点击下方入口加载可观战房间。</div>
+          </section>
         </section>
         <section id="historyPanel" class="modal-panel" hidden>
           <p class="muted">使用本设备的随机游客 ID 保存最近 30 条对局记录，无需注册。记录会在你主动离开房间或结束对局时生成。</p>
@@ -786,7 +789,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    }catch(error){list.textContent="暂时无法加载观战列表，请稍后刷新。"}
   }
   // 绑定事件
-  $("#watchDirectoryBtn").onclick=loadWatchDirectory;
+  $("#watchDirectoryBtn").onclick=()=>{openActionModal("solo");loadWatchDirectory()};
   $("#watchRefreshBtn").onclick=loadWatchDirectory;
   $("#joinForm").onsubmit=e=>{e.preventDefault();join()};
   els.matchStart.onclick=startMatching;
