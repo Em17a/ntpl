@@ -10,6 +10,7 @@ function createD1() {
       code TEXT PRIMARY KEY, created_at INTEGER NOT NULL,
       last_active_at INTEGER NOT NULL, expires_at INTEGER NOT NULL
     );
+    CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, room_code TEXT NOT NULL, body TEXT NOT NULL DEFAULT '');
     CREATE TABLE room_members (
       id TEXT PRIMARY KEY, room_code TEXT NOT NULL, nickname TEXT NOT NULL,
       role TEXT NOT NULL, joined_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL,
@@ -85,7 +86,7 @@ test('matching creates both room seats atomically and repeated polls are idempot
   assert.ok(rows.every(row => row.status === 'matched' && row.room_code === found.room));
   assert.deepEqual(rows.map(row => row.matched_role).sort(), ['controller', 'receiver']);
 
-  const seats = db.raw.prepare('SELECT id,role FROM room_members WHERE room_code=? ORDER BY role').all(found.room);
+  const seats = db.raw.prepare('SELECT id,role FROM room_members WHERE room_code=? ORDER BY role').all(found.room).map(row => ({ id: row.id, role: row.role }));
   assert.deepEqual(seats, [
     { id: a, role: 'controller' },
     { id: b, role: 'receiver' },
@@ -112,6 +113,28 @@ test('a previously matched room with missing seats is repaired from its queue re
   const repaired = await findOrCreateMatch(db, a, 5_000);
   assert.deepEqual(repaired, { status: 'matched', room, role: 'controller' });
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=? AND left_at IS NULL').get(room).count, 2);
+});
+
+test('legacy UUID-derived room codes containing 0 or 1 are remapped to valid codes', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const a = '11111111-1111-4111-8111-111111111111';
+  const b = '22222222-2222-4222-8222-222222222222';
+  const oldRoom = 'EE065D14';
+  db.raw.prepare('INSERT INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)').run(oldRoom, 1_000, 1_000, 7_201_000);
+  for (const [id, nickname, role] of [[a, '甲', 'controller'], [b, '乙', 'receiver']]) {
+    db.raw.prepare(`INSERT INTO matchmaking_queue
+      (client_id,nickname,gender,preference,role_preference,voice_preference,matched_role,status,room_code,created_at,last_seen_at)
+      VALUES(?,?, 'other','any','any','any',?,'matched',?,?,?)`).run(id, nickname, role, oldRoom, 1_000, 1_000);
+  }
+
+  const repaired = await findOrCreateMatch(db, a, 5_000);
+  assert.equal(repaired.status, 'matched');
+  assert.notEqual(repaired.room, oldRoom);
+  assert.match(repaired.room, /^[A-HJ-NP-Z2-9]{8}$/);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM rooms WHERE code=?').get(oldRoom).count, 0);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=? AND left_at IS NULL').get(repaired.room).count, 2);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM matchmaking_queue WHERE status=\'matched\' AND room_code=?').get(repaired.room).count, 2);
 });
 
 test('incompatible candidates remain waiting and do not create a phantom room', async t => {
