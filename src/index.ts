@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { assignMatchRoles, chooseMatchPartner } from './matchmaking-core.js';
+import { findOrCreateMatch as findOrCreateMatchInDb } from './matchmaking-service.js';
 
 interface Env {
   DB: D1Database;
@@ -187,42 +187,7 @@ export class NightplayRoom extends DurableObject<Env> {
     catch(error) { this.alarmInitialized=false; throw error; }
   }
   private async findOrCreateMatch(clientId:string) {
-    const db=this.env.DB,t=now();
-    await db.prepare("DELETE FROM matchmaking_queue WHERE status='waiting' AND last_seen_at<?").bind(t-45000).run();
-    await db.prepare('DELETE FROM matchmaking_queue WHERE created_at<?').bind(t-86400000).run();
-
-    const self=await db.prepare("SELECT * FROM matchmaking_queue WHERE client_id=? AND status='waiting'").bind(clientId).first<any>();
-    if(!self){
-      const existing=await db.prepare('SELECT * FROM matchmaking_queue WHERE client_id=?').bind(clientId).first<any>();
-      if(existing?.status==='matched'&&existing.room_code&&['controller','receiver'].includes(existing.matched_role))
-        return {status:'matched' as const,room:String(existing.room_code),role:existing.matched_role as Role};
-      return {status:'missing' as const};
-    }
-
-    const waiting=await db.prepare("SELECT * FROM matchmaking_queue WHERE status='waiting' AND client_id<>? ORDER BY created_at LIMIT 100").bind(clientId).all<any>();
-    const partner=chooseMatchPartner(self,waiting.results);
-    if(!partner)return {status:'waiting' as const};
-
-    const {selfRole,partnerRole}=assignMatchRoles(self,partner);
-    const room=crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase();
-    const results=await db.batch([
-      db.prepare('INSERT INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)').bind(room,t,t,t+120*60000),
-      db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,selfRole,clientId),
-      db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,partnerRole,partner.client_id),
-    ]);
-
-    const matched=await db.prepare("SELECT client_id,matched_role FROM matchmaking_queue WHERE status='matched' AND room_code=?").bind(room).all<any>();
-    const updatesSucceeded=Number(results[1]?.meta?.changes)===1&&Number(results[2]?.meta?.changes)===1;
-    if(!updatesSucceeded||matched.results.length!==2){
-      await db.batch([
-        db.prepare("UPDATE matchmaking_queue SET status='waiting',room_code=NULL,matched_role=NULL WHERE status='matched' AND room_code=?").bind(room),
-        db.prepare('DELETE FROM rooms WHERE code=?').bind(room),
-      ]);
-      return {status:'waiting' as const};
-    }
-
-    await this.scheduleNextAlarm();
-    return {status:'matched' as const,room,role:selfRole};
+    return findOrCreateMatchInDb(this.env.DB,clientId,now(),()=>this.scheduleNextAlarm());
   }
 
   private async notifyMatchedParticipants(room:string) {
