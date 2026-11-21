@@ -221,7 +221,6 @@ body.room-active .topbar nav{display:none}
         <audio id="remoteAudio" autoplay playsinline></audio>
       </div>
       <div id="chatLog" class="chat-log" aria-live="polite"></div>
-      <div class="quick-phrase-wrap"><div class="quick-phrase-head"><strong id="quickPhraseRole">角色快捷语</strong><span>点击即可发送</span></div><div id="quickPhrases" class="quick-phrases" aria-label="角色聊天快捷语"></div></div>
       <div class="typing" id="typing"></div>
       <form id="chatForm" class="send-row"><input id="chatInput" maxlength="500" placeholder="输入消息…（Enter 发送）" autocomplete="off"><button class="primary" id="sendBtn">发送</button></form>
       <p class="chat-note">双方自愿参与；任何一方都可以随时静音、暂停或离开。</p>
@@ -244,6 +243,7 @@ body.room-active .topbar nav{display:none}
           </div>
           <div class="metro-actions"><button id="metroStart" class="primary" type="button">▶ 开始挑战</button><button id="metroPause" class="ghost" type="button" disabled>Ⅱ 暂停</button><button id="metroStop" class="ghost danger-text" type="button" disabled>■ 结束挑战</button><button id="metroEmergency" class="ghost danger-text" type="button" disabled>紧急停止</button></div>
           <p id="roleStatus" class="chat-note" aria-live="polite">进入房间后显示你的挑战角色。</p>
+          <div class="quick-phrase-wrap"><div class="quick-phrase-head"><strong id="quickPhraseRole">角色快捷语</strong><span>点击即可发送</span></div><div id="quickPhrases" class="quick-phrases" aria-label="角色聊天快捷语"></div></div>
           <p class="chat-note">力度只影响节拍提示音量与视觉脉冲。请双方先确认规则；任何一方不适或不愿继续时立即暂停。</p>
         </div>
       </details>
