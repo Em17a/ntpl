@@ -56,11 +56,17 @@ export default {
 
 export class NightplayRoom extends DurableObject<Env> {
   private chain: Promise<unknown> = Promise.resolve();
+  private matchmakingChain: Promise<unknown> = Promise.resolve();
   constructor(ctx: DurableObjectState, env: Env) { super(ctx, env); }
 
   private queue<T>(fn: () => Promise<T>): Promise<T> {
     const result = this.chain.then(fn, fn);
     this.chain = result.catch(() => undefined);
+    return result;
+  }
+  private queueMatchmaking<T>(fn: () => Promise<T>): Promise<T> {
+    const result = this.matchmakingChain.then(fn, fn);
+    this.matchmakingChain = result.catch(() => undefined);
     return result;
   }
   private sockets() { return this.ctx.getWebSockets(); }
@@ -209,7 +215,10 @@ export class NightplayRoom extends DurableObject<Env> {
     await this.scheduleNextAlarm();
     return {status:'matched',room,role:selfRole};
   }
-  private async matchmakingJoin(ws:WebSocket,msg:ClientMessage) {
+  private matchmakingJoin(ws:WebSocket,msg:ClientMessage) {
+    return this.queueMatchmaking(()=>this.matchmakingJoinNow(ws,msg));
+  }
+  private async matchmakingJoinNow(ws:WebSocket,msg:ClientMessage) {
     const clientId=typeof msg.clientId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.clientId)?msg.clientId:'';
     const nickname=String(msg.nickname??'').trim().replace(/\s+/g,' ').slice(0,24),gender=String(msg.gender??''),preference=String(msg.preference??''),rolePreference=String(msg.rolePreference??'any'),voicePreference=String(msg.voicePreference??'any');
     if(!clientId||!nickname||!MATCH_GENDERS.has(gender)||!MATCH_PREFS.has(preference)||!ROLE_PREFS.has(rolePreference)||!new Set(['any','off','both','self','peer']).has(voicePreference))return this.send(ws,{type:'error',code:'bad_matchmaking',message:'请检查昵称和匹配偏好设置。'});
@@ -221,7 +230,10 @@ export class NightplayRoom extends DurableObject<Env> {
     if(result.status==='matched')this.send(ws,{type:'match_found',room:result.room,role:result.role});
     else this.send(ws,{type:'match_waiting',message:'正在寻找符合双方偏好的参与者…'});
   }
-  private async pollMatchmaking(ws:WebSocket) {
+  private pollMatchmaking(ws:WebSocket) {
+    return this.queueMatchmaking(()=>this.pollMatchmakingNow(ws));
+  }
+  private async pollMatchmakingNow(ws:WebSocket) {
     const id=this.attachment(ws).matchmakingClientId;if(!id)return;
     const r=await this.env.DB.prepare('UPDATE matchmaking_queue SET last_seen_at=? WHERE client_id=?').bind(now(),id).run();
     if(!r.meta.changes){const a=this.attachment(ws);delete a.matchmakingClientId;this.save(ws,a);this.send(ws,{type:'match_expired',message:'匹配等待已超时，请重新开始匹配。'});return;}
@@ -526,11 +538,12 @@ export class NightplayRoom extends DurableObject<Env> {
     return json({error:'not_found'},404);
   }
   async webSocketMessage(ws:WebSocket,message:string|ArrayBuffer) {
-    await this.queue(async()=>{
-      let msg:ClientMessage;try{msg=JSON.parse(typeof message==='string'?message:new TextDecoder().decode(message))}catch{return this.send(ws,{type:'error',code:'bad_json',message:'无法解析的消息。'});}
-      if(!msg||typeof msg.type!=='string')return;
-      try{await this.handle(ws,msg);}catch(e){console.error('ws handler error',e);this.send(ws,{type:'error',code:'server_error',message:'服务器暂时出错，请稍后重试。'});}
-    });
+    let msg:ClientMessage;
+    try { msg=JSON.parse(typeof message==='string'?message:new TextDecoder().decode(message)); }
+    catch { return this.send(ws,{type:'error',code:'bad_json',message:'无法解析的消息。'}); }
+    if(!msg||typeof msg.type!=='string')return;
+    try { await this.handle(ws,msg); }
+    catch(e) { console.error('ws handler error',e);this.send(ws,{type:'error',code:'server_error',message:'服务器暂时出错，请稍后重试。'}); }
   }
   async webSocketClose(ws:WebSocket) {
     await this.queue(async()=>{
