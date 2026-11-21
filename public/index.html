@@ -37,8 +37,27 @@
 .quick-actions{padding-top:0}
 .quick-action{font:inherit;text-align:left;cursor:pointer;width:100%}
 .quick-action:hover{color:var(--text)}
-#lobby[hidden],#roomView[hidden],.modal[hidden],.modal-panel[hidden]{display:none!important}
+#lobby[hidden],#roomView[hidden],.modal[hidden],.modal-panel[hidden],#matchingScreen[hidden]{display:none!important}
 .modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:18px}
+#matchingScreen{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:22px;background:radial-gradient(ellipse at 50% 35%,#30213d 0,#111019 48%,#09090e 100%);color:#f5f1fa}
+.matching-card{width:min(520px,100%);padding:clamp(22px,6vw,38px);border:1px solid #604b70;border-radius:18px;background:#17141f;box-shadow:0 28px 100px #000b;text-align:center}
+.matching-eyebrow{margin:0 0 18px;color:#bca3d5;font:10px Manrope,sans-serif;letter-spacing:.2em}
+.matching-orbit{width:82px;height:82px;margin:0 auto 20px;border:1px solid #80649a;border-radius:50%;display:grid;place-items:center;color:#d5b7f4;font-size:34px;position:relative}
+.matching-orbit:before,.matching-orbit:after{content:"";position:absolute;inset:-8px;border:1px solid #a17ac044;border-radius:50%;animation:matchPulse 2.4s ease-out infinite}
+.matching-orbit:after{animation-delay:1.2s}
+@keyframes matchPulse{0%{transform:scale(.8);opacity:.7}100%{transform:scale(1.45);opacity:0}}
+.matching-card h2{margin:0;font-size:clamp(23px,6vw,30px)}
+.matching-subtitle{margin:9px 0 24px;color:#aaa3b5;font-size:12px}
+.matching-time-label{color:#aaa3b5;font-size:11px;letter-spacing:.08em}
+.matching-time{margin:5px 0 22px;font:500 clamp(42px,12vw,58px)/1.2 "DM Mono",monospace;letter-spacing:.04em;color:#e4c8ff;font-variant-numeric:tabular-nums}
+.matching-detail{padding:14px 16px;margin:0 0 20px;border:1px solid #ffffff18;border-radius:11px;background:#ffffff08;text-align:left}
+.matching-detail strong{display:block;margin-bottom:9px;font-size:12px;color:#e8d8f4}
+.matching-preferences{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;color:#bcb5c7;font-size:11px}
+.matching-preferences span{min-width:0;overflow-wrap:anywhere}
+.matching-status{min-height:20px;margin:0 0 18px;color:#b9a9c8;font-size:11px}
+.matching-cancel{width:100%;min-height:44px;border:1px solid #80505e;border-radius:9px;background:#38232c;color:#ffc3ce;font:600 12px Manrope,sans-serif;cursor:pointer}
+.matching-cancel:disabled{opacity:.65;cursor:wait}
+@media(max-width:420px){.matching-card{padding:24px 18px}.matching-preferences{grid-template-columns:1fr}}
 .modal-backdrop{position:absolute;inset:0;background:#050509df;backdrop-filter:blur(8px)}
 .modal-card{position:relative;width:min(560px,100%);max-height:min(88vh,760px);overflow:auto;padding:24px;background:#15131c;border:1px solid #51405f;border-radius:14px;box-shadow:0 28px 90px #000c}
 .modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:8px}
@@ -309,6 +328,22 @@ body.watch-mode #watchStatus{color:#d2c4e6}
       </section>
     </div>
   </div>
+  <section id="matchingScreen" hidden aria-live="polite" aria-label="匹配等待页面">
+    <div class="matching-card">
+      <p class="matching-eyebrow">NIGHTPLAY · MATCHMAKING</p>
+      <div class="matching-orbit" aria-hidden="true">♡</div>
+      <h2>正在寻找搭档</h2>
+      <p class="matching-subtitle">正在寻找符合你偏好的玩家，请稍候…</p>
+      <div class="matching-time-label">本次等待时间</div>
+      <div id="matchingElapsed" class="matching-time" role="timer">00:00</div>
+      <div class="matching-detail">
+        <strong>本次匹配条件</strong>
+        <div class="matching-preferences"><span id="matchingGender">性别：—</span><span id="matchingPreference">匹配对象：—</span><span id="matchingRole">角色：—</span><span id="matchingVoice">语音：—</span></div>
+      </div>
+      <p id="matchingStatus" class="matching-status">正在连接匹配服务…</p>
+      <button id="matchingCancelBtn" type="button" class="matching-cancel">取消匹配</button>
+    </div>
+  </section>
   <div id="roomView" hidden>
   <div class="room-shell">
     <div class="room-bar">
@@ -417,6 +452,23 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
  function closeActionModal(){
   const modal=$("#actionModal");if(modal)modal.hidden=true;
   document.body.classList.remove("modal-open");
+ }
+ function formatMatchElapsed(ms){const total=Math.max(0,Math.floor(ms/1000)),minutes=Math.floor(total/60),seconds=total%60;return String(minutes).padStart(2,"0")+":"+String(seconds).padStart(2,"0")}
+ function updateMatchElapsed(){const node=$("#matchingElapsed");if(node&&matchStartedAt)node.textContent=formatMatchElapsed(Date.now()-matchStartedAt)}
+ function stopMatchClock(){if(matchClock){clearInterval(matchClock);matchClock=null}matchStartedAt=0}
+ function showMatchingScreen(on){const screen=$("#matchingScreen");if(!screen)return;screen.hidden=!on;if(on){$("#actionModal").hidden=true;document.body.classList.remove("modal-open");updateMatchElapsed()}else if(!$("#roomView").hidden){document.body.classList.remove("modal-open")}}
+ function renderMatchingPreferences(){
+  const gender={male:"男性",female:"女性",other:"其他 / 不便透露"},preference={male:"男性",female:"女性",any:"不限"},role={controller:"控制方（S）",receiver:"受控方（M）",any:"不限（自动分配）"},voice={any:"不限",off:"双方不开麦",both:"双方都开麦",self:"我开麦，对方不开",peer:"对方开麦，我不开"};
+  $("#matchingGender").textContent="你的性别："+(gender[els.matchGender.value]||"—");
+  $("#matchingPreference").textContent="匹配对象："+(preference[els.matchPreference.value]||"—");
+  $("#matchingRole").textContent="角色："+(role[els.matchRole.value]||"—");
+  $("#matchingVoice").textContent="语音："+(voice[els.matchVoicePreference.value]||"—");
+ }
+ function returnToMatchSettings(message){
+  matching=false;stopMatchClock();clearInterval(matchPoll);matchPoll=null;
+  els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;
+  els.matchStatus.textContent=message||"已取消匹配";
+  $("#matchingStatus").textContent=message||"已取消匹配";showMatchingScreen(false);openActionModal("match");
  }
  document.querySelectorAll("[data-open-modal]").forEach(b=>b.addEventListener("click",()=>openActionModal(b.dataset.openModal)));
  document.querySelectorAll("[data-modal-tab]").forEach(b=>b.addEventListener("click",()=>setModalTab(b.dataset.modalTab)));
@@ -538,7 +590,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
  // ===== 双人房间：WebSocket + WebRTC 双人语音 =====
  const Room=(()=>{
   const els={lobby:$("#lobby"),view:$("#roomView"),state:$("#connState"),log:$("#chatLog"),members:$("#members"),seat:$("#seatLabel"),label:$("#roomLabel"),typing:$("#typing"),input:$("#chatInput"),nick:$("#nickname"),code:$("#roomCode"),connect:$("#connectBtn"),peek:$("#roomPeek"),voiceStatus:$("#voiceStatus"),voiceStart:$("#voiceStartBtn"),voiceMute:$("#voiceMuteBtn"),voiceHangup:$("#voiceHangupBtn"),voiceListen:$("#voiceListenBtn"),remoteAudio:$("#remoteAudio"),matchGender:$("#matchGender"),matchPreference:$("#matchPreference"),matchRole:$("#matchRole"),matchVoicePreference:$("#matchVoicePreference"),roomRole:$("#roomRole"),roleStatus:$("#roleStatus"),metroEmergency:$("#metroEmergency"),matchStart:$("#matchStartBtn"),matchCancel:$("#matchCancelBtn"),matchStatus:$("#matchStatus"),bpm:$("#bpmRange"),intensity:$("#intensityRange"),metroStart:$("#metroStart"),metroPause:$("#metroPause"),metroStop:$("#metroStop"),metroStatus:$("#metroStatus"),metroMode:$("#metroMode"),metroDifficulty:$("#metroDifficulty"),metroDuration:$("#metroDuration"),metroSlow:$("#metroSlow"),metroNormal:$("#metroNormal"),metroFast:$("#metroFast"),metroHold:$("#metroHold"),metroResume:$("#metroResume"),watchConsent:$("#watchConsentBtn"),watcherCount:$("#watcherCount"),watchStatus:$("#watchStatus")};
-  let ws=null,room=null,me=null,myRole=null,matchedRole=null,want=false,watching=false,watchConsent=false,watchAllowed=false,lastId=0,seen=new Set(),retry=0,retryTimer=null,hb=null,typingTimer=null,joining=false,matching=false,matchClientId=null,matchPoll=null;
+  let ws=null,room=null,me=null,myRole=null,matchedRole=null,want=false,watching=false,watchConsent=false,watchAllowed=false,lastId=0,seen=new Set(),retry=0,retryTimer=null,hb=null,typingTimer=null,joining=false,matching=false,matchClientId=null,matchPoll=null,matchStartedAt=0,matchClock=null;
   // WebRTC 状态：麦克风只会在用户主动点击后申请，不会自动开启。
   let pc=null,pcPromise=null,localStream=null,remoteStream=null,pendingCandidates=[];
   let makingOffer=false,ignoreOffer=false,settingRemoteAnswerPending=false,voiceGeneration=0,iceConfigCache=null;
@@ -806,15 +858,15 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   }
   function handle(m){
    if(m.type==="match_waiting"){
-    matching=true;els.matchStart.disabled=true;els.matchCancel.disabled=false;els.connect.disabled=true;els.matchStatus.textContent=m.message||"正在寻找匹配对象…";
+    matching=true;els.matchStart.disabled=true;els.matchCancel.disabled=false;els.connect.disabled=true;els.matchStatus.textContent=m.message||"正在寻找匹配对象…";$("#matchingStatus").textContent=m.message||"正在寻找符合条件的玩家…";$("#matchingCancelBtn").disabled=false;$("#matchingCancelBtn").textContent="取消匹配";
    }else if(m.type==="match_found"){
     if(!matching)return;
-    watching=false;document.body.classList.remove("watch-mode");matching=false;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;els.matchStatus.textContent="匹配成功，正在进入房间…";
+    watching=false;document.body.classList.remove("watch-mode");matching=false;stopMatchClock();showMatchingScreen(false);$("#matchingCancelBtn").disabled=false;$("#matchingCancelBtn").textContent="取消匹配";clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;els.matchStatus.textContent="匹配成功，正在进入房间…";
     els.code.value=m.room;room=m.room;matchedRole=m.role||"any";lastId=0;seen=new Set();want=true;sendJoin();
    }else if(m.type==="matchmaking_cancelled"){
-    matching=false;want=!!me;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;els.matchStatus.textContent="已取消匹配";
+    want=!!me;$("#matchingCancelBtn").disabled=false;$("#matchingCancelBtn").textContent="取消匹配";returnToMatchSettings("已取消匹配");
    }else if(m.type==="match_expired"){
-    matching=false;want=!!me;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;els.matchStatus.textContent=m.message||"匹配等待已超时，请重新开始匹配";toast(els.matchStatus.textContent);
+    want=!!me;$("#matchingCancelBtn").disabled=false;$("#matchingCancelBtn").textContent="取消匹配";returnToMatchSettings(m.message||"匹配等待已超时，请重新开始匹配");toast(els.matchStatus.textContent);
    }else if(m.type==="room_ended"){
     reset(m.message||"本轮互动已结束，已自动退出房间");
    }else if(m.type==="watch_joined"){
@@ -868,19 +920,20 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
     toast(m.message||"出错了");
    }
   }
-  function reset(msg){stopMetro(false);closeVoice(false);watching=false;watchConsent=false;watchAllowed=false;document.body.classList.remove("watch-mode");want=false;joining=false;matching=false;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;clearInterval(hb);hb=null;clearTimeout(retryTimer);me=null;myRole=null;matchedRole=null;showRoom(false);els.connect.disabled=false;if(ws){ws.onclose=null;try{ws.close()}catch{}ws=null}setState("off","未连接");if(msg)toast(msg);const u=new URL(location.href);u.searchParams.delete("room");history.replaceState(null,"",u)}
+  function reset(msg){stopMetro(false);closeVoice(false);watching=false;watchConsent=false;watchAllowed=false;document.body.classList.remove("watch-mode");showMatchingScreen(false);stopMatchClock();want=false;joining=false;matching=false;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;clearInterval(hb);hb=null;clearTimeout(retryTimer);me=null;myRole=null;matchedRole=null;showRoom(false);els.connect.disabled=false;if(ws){ws.onclose=null;try{ws.close()}catch{}ws=null}setState("off","未连接");if(msg)toast(msg);const u=new URL(location.href);u.searchParams.delete("room");history.replaceState(null,"",u)}
   function startMatching(){
    watching=false;document.body.classList.remove("watch-mode");
    const nick=els.nick.value.trim();
    if(!nick){toast("请先填写昵称");els.nick.focus();return}
    matchClientId=crypto.randomUUID();matching=true;want=true;els.matchStart.disabled=true;els.matchCancel.disabled=false;els.connect.disabled=true;els.matchStatus.textContent="正在寻找性别、角色和语音偏好都符合的参与者…";
+   stopMatchClock();matchStartedAt=Date.now();renderMatchingPreferences();$("#matchingStatus").textContent="正在连接匹配服务…";showMatchingScreen(true);updateMatchElapsed();matchClock=setInterval(updateMatchElapsed,1000);
    clearInterval(matchPoll);matchPoll=setInterval(()=>out({type:"ping",lastId:0}),2500);
    if(ws&&ws.readyState===1)out({type:"matchmaking_join",clientId:matchClientId,nickname:nick,gender:els.matchGender.value,preference:els.matchPreference.value,rolePreference:els.matchRole.value,voicePreference:els.matchVoicePreference.value});
    else open();
   }
   function cancelMatching(){
-   if(matchClientId&&out({type:"matchmaking_cancel",clientId:matchClientId})){els.matchCancel.disabled=true;els.matchStatus.textContent="正在取消匹配…";return}
-   matching=false;want=!!me;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;els.matchStatus.textContent="已取消匹配";
+   if(matchClientId&&out({type:"matchmaking_cancel",clientId:matchClientId})){els.matchCancel.disabled=true;$("#matchingCancelBtn").disabled=true;$("#matchingCancelBtn").textContent="正在取消匹配…";$("#matchingStatus").textContent="正在取消匹配…";els.matchStatus.textContent="正在取消匹配…";return}
+   matching=false;want=!!me;stopMatchClock();clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;$("#matchingCancelBtn").disabled=false;$("#matchingCancelBtn").textContent="取消匹配";els.matchStatus.textContent="已取消匹配";showMatchingScreen(false);openActionModal("match");
   }
   function join(){
    watching=false;document.body.classList.remove("watch-mode");
@@ -919,6 +972,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   $("#joinForm").onsubmit=e=>{e.preventDefault();join()};
   els.matchStart.onclick=startMatching;
   els.matchCancel.onclick=cancelMatching;
+  $("#matchingCancelBtn").onclick=cancelMatching;
   $("#randomCodeBtn").onclick=randomCode;
   $("#watchJoinBtn").onclick=joinAsWatcher;
   els.watchConsent.onclick=()=>{if(!me||!roomHasPartner)return;els.watchConsent.disabled=true;out({type:"watch_consent",open:!watchConsent})};
