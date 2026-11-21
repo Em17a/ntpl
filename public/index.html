@@ -317,6 +317,30 @@ body.watch-mode #watchStatus{color:#d2c4e6}
       <div class="room-actions"><span id="watcherCount" class="pill">旁观 0</span><button type="button" id="watchConsentBtn" class="ghost" disabled>允许观战</button><button type="button" id="copyLinkBtn" class="ghost">复制邀请链接</button><button type="button" id="disconnectBtn" class="ghost danger-text">离开房间</button></div>
       <p id="watchStatus" class="chat-note" aria-live="polite">双方都允许后，其他人才能旁观。</p>
     </div>
+    <section id="challenge" class="metronome-card" aria-label="寸止挑战">
+      <details id="metroDetails">
+        <summary class="metro-summary">
+          <span class="metro-summary-icon">◉</span>
+          <span class="metro-summary-copy"><strong>寸止挑战</strong><small>控制方调整节奏 · 受控方可随时紧急停止</small></span>
+          <span class="metro-summary-readout"><b id="metroSummaryBpm">80</b><small>BPM</small></span>
+          <span id="metroStatus" class="pill">尚未开始</span><span class="metro-chevron">⌄</span>
+        </summary>
+        <div class="metro-content">
+          <div class="quick-phrase-wrap"><div class="quick-phrase-head"><strong id="quickPhraseRole">角色快捷语</strong><span>点击即可发送</span></div><div id="quickPhrases" class="quick-phrases" aria-label="角色聊天快捷语"></div></div>
+          <div class="beat-display"><div id="beatPulse" class="beat-pulse"><span id="beatNumber">—</span></div><div class="beat-readout"><strong><span id="bpmValue">80</span> <small>BPM</small></strong><span id="intensityText">力度 3 / 5</span></div></div>
+          <div class="metro-extra-controls"><label>挑战模式<select id="metroMode"><option value="steady">固定节奏</option><option value="random">随机变速</option></select></label><label>挑战难度<select id="metroDifficulty"><option value="easy">轻松</option><option value="normal" selected>标准</option><option value="hard">进阶</option></select></label><label>挑战时长<select id="metroDuration"><option value="1">1 分钟</option><option value="3">3 分钟</option><option value="5" selected>5 分钟</option><option value="10">10 分钟</option><option value="15">15 分钟</option></select></label><span class="metro-countdown">剩余 <b id="metroCountdown">05:00</b></span></div>
+          <div class="metro-cues"><button type="button" id="metroSlow" class="ghost">慢拍 55</button><button type="button" id="metroNormal" class="ghost">均速 75</button><button type="button" id="metroFast" class="ghost">快拍 110</button><button type="button" id="metroHold" class="ghost danger-text">寸止</button><button type="button" id="metroResume" class="ghost">恢复节奏</button></div>
+          <div class="metro-controls">
+            <div class="metro-control"><div class="control-title"><label for="bpmRange">节奏速度</label><strong><span id="bpmLabel">80</span> BPM</strong></div><input id="bpmRange" type="range" min="40" max="220" step="1" value="80"><div class="range-ends"><span>慢 40</span><span>快 220</span></div></div>
+            <div class="metro-control"><div class="control-title"><label for="intensityRange">节拍力度</label><strong><span id="intensityLabel">3</span> / 5</strong></div><input id="intensityRange" type="range" min="1" max="5" step="1" value="3"><div class="range-ends"><span>轻柔</span><span>强烈</span></div></div>
+          </div>
+          <div class="metro-actions"><button id="metroStart" class="primary" type="button">▶ 开始挑战</button><button id="metroPause" class="ghost" type="button" disabled>Ⅱ 暂停</button><button id="metroStop" class="ghost danger-text" type="button" disabled>■ 结束挑战</button><button id="metroEmergency" class="ghost danger-text" type="button" disabled>紧急停止</button></div>
+          <p id="roleStatus" class="chat-note" aria-live="polite">进入房间后显示你的挑战角色。</p>
+
+          <p class="chat-note">力度只影响节拍提示音量与视觉脉冲。请双方先确认规则；任何一方不适或不愿继续时立即暂停。</p>
+        </div>
+      </details>
+    </section>
     <section class="chat-panel">
       <div class="panel-title"><div><p class="eyebrow">PRIVATE LIVE ROOM</p><h2>双人聊天</h2></div><span id="connState" class="conn-state off">未连接</span></div>
       <div class="voice-panel" aria-label="双人实时语音">
@@ -328,29 +352,6 @@ body.watch-mode #watchStatus{color:#d2c4e6}
       <div class="typing" id="typing"></div>
       <form id="chatForm" class="send-row"><input id="chatInput" maxlength="500" placeholder="输入消息…（Enter 发送）" autocomplete="off"><button class="primary" id="sendBtn">发送</button></form>
       <p class="chat-note">双方自愿参与；任何一方都可以随时静音、暂停或离开。</p>
-    </section>
-    <section id="challenge" class="metronome-card" aria-label="节拍器寸止挑战">
-      <details id="metroDetails">
-        <summary class="metro-summary">
-          <span class="metro-summary-icon">◉</span>
-          <span class="metro-summary-copy"><strong>节拍器挑战</strong><small>控制方调整节奏 · 受控方可随时紧急停止</small></span>
-          <span class="metro-summary-readout"><b id="metroSummaryBpm">80</b><small>BPM</small></span>
-          <span id="metroStatus" class="pill">尚未开始</span><span class="metro-chevron">⌄</span>
-        </summary>
-        <div class="metro-content">
-          <div class="beat-display"><div id="beatPulse" class="beat-pulse"><span id="beatNumber">—</span></div><div class="beat-readout"><strong><span id="bpmValue">80</span> <small>BPM</small></strong><span id="intensityText">力度 3 / 5</span></div></div>
-          <div class="metro-extra-controls"><label>挑战模式<select id="metroMode"><option value="steady">固定节奏</option><option value="random">随机变速</option></select></label><label>挑战难度<select id="metroDifficulty"><option value="easy">轻松</option><option value="normal" selected>标准</option><option value="hard">进阶</option></select></label><label>挑战时长<select id="metroDuration"><option value="1">1 分钟</option><option value="3">3 分钟</option><option value="5" selected>5 分钟</option><option value="10">10 分钟</option><option value="15">15 分钟</option></select></label><span class="metro-countdown">剩余 <b id="metroCountdown">05:00</b></span></div>
-          <div class="metro-cues"><button type="button" id="metroSlow" class="ghost">慢拍 55</button><button type="button" id="metroNormal" class="ghost">均速 75</button><button type="button" id="metroFast" class="ghost">快拍 110</button><button type="button" id="metroHold" class="ghost danger-text">停拍</button><button type="button" id="metroResume" class="ghost">恢复节奏</button></div>
-          <div class="metro-controls">
-            <div class="metro-control"><div class="control-title"><label for="bpmRange">节奏速度</label><strong><span id="bpmLabel">80</span> BPM</strong></div><input id="bpmRange" type="range" min="40" max="220" step="1" value="80"><div class="range-ends"><span>慢 40</span><span>快 220</span></div></div>
-            <div class="metro-control"><div class="control-title"><label for="intensityRange">节拍力度</label><strong><span id="intensityLabel">3</span> / 5</strong></div><input id="intensityRange" type="range" min="1" max="5" step="1" value="3"><div class="range-ends"><span>轻柔</span><span>强烈</span></div></div>
-          </div>
-          <div class="metro-actions"><button id="metroStart" class="primary" type="button">▶ 开始挑战</button><button id="metroPause" class="ghost" type="button" disabled>Ⅱ 暂停</button><button id="metroStop" class="ghost danger-text" type="button" disabled>■ 结束挑战</button><button id="metroEmergency" class="ghost danger-text" type="button" disabled>紧急停止</button></div>
-          <p id="roleStatus" class="chat-note" aria-live="polite">进入房间后显示你的挑战角色。</p>
-          <div class="quick-phrase-wrap"><div class="quick-phrase-head"><strong id="quickPhraseRole">角色快捷语</strong><span>点击即可发送</span></div><div id="quickPhrases" class="quick-phrases" aria-label="角色聊天快捷语"></div></div>
-          <p class="chat-note">力度只影响节拍提示音量与视觉脉冲。请双方先确认规则；任何一方不适或不愿继续时立即暂停。</p>
-        </div>
-      </details>
     </section>
   </div>
 </div>
@@ -838,7 +839,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    }else if(m.type==="message"){render(m.message)}
    
    else if(m.type==="presence"){renderMembers(m.members,m.seats)}
-   else if(m.type==="metronome_state"){applyMetroRemote(m);note((m.nickname||"对方")+(m.stopped?"结束了节拍器挑战":m.running?"开始/调整了节拍器挑战":"暂停了节拍器挑战"))}
+   else if(m.type==="metronome_state"){applyMetroRemote(m);note((m.nickname||"对方")+(m.stopped?"结束了寸止挑战":m.running?"开始/调整了寸止挑战":"暂停了寸止挑战"))}
    else if(m.type==="pong"){(m.missed||[]).forEach(render);if(m.members)renderMembers(m.members,m.seats)}
    else if(m.type==="typing"){els.typing.textContent=m.nickname+" 正在输入…";clearTimeout(typingTimer);typingTimer=setTimeout(()=>els.typing.textContent="",2500)}
    else if(m.type==="voice_signal"){handleVoiceSignal(m)}
