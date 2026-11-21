@@ -267,7 +267,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   $("#modalTitle").textContent=tab==="match"?"按偏好寻找搭档":tab==="join"?"邀请 / 加入双人房间":"单人节奏练习";
  }
  function openActionModal(tab){
-  setModalTab(tab==="match"?"match":"join");
+  setModalTab(tab==="match"||tab==="solo"?tab:"join");
   $("#actionModal").hidden=false;
   document.body.classList.add("modal-open");
  }
@@ -341,10 +341,38 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume();const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type="sine";osc.frequency.value=accent?1050:760;gain.gain.setValueAtTime(Math.min(.32,.035+level*.045),audioCtx.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.075);osc.connect(gain);gain.connect(audioCtx.destination);osc.start();osc.stop(audioCtx.currentTime+.08)}catch(e){console.warn("节拍提示音不可用",e)}
   }
   function renderMetroState(){updateMetroLabels();updateMetroCountdown();els.metroStatus.textContent=metroRunning?"挑战进行中":metroStopped?"挑战已结束":metroHasStarted?"已暂停":roomHasPartner?"准备就绪":"等待另一位参与者加入";const controller=myRole==="controller";els.bpm.disabled=!controller;els.intensity.disabled=!controller;els.metroMode.disabled=!controller;els.metroDuration.disabled=!controller;[els.metroSlow,els.metroNormal,els.metroFast,els.metroHold,els.metroResume].forEach(b=>b.disabled=!controller||!roomHasPartner);els.metroStart.disabled=!controller||metroRunning||!roomHasPartner;els.metroPause.disabled=!controller||!metroRunning;els.metroStop.disabled=!controller||!metroHasStarted||metroStopped;els.metroEmergency.disabled=!me;els.roleStatus.textContent=!myRole?"进入房间后显示你的挑战角色。":controller?"你的角色：控制方（S）· 可调整节奏与挑战时长。":"你的角色：受控方（M）· 跟随节拍，可随时紧急停止或在聊天中表达感受。";}
-  function startMetro(sync=true){if(metroRunning)return;if(!roomHasPartner){toast("请等待另一位参与者进入房间后再开始挑战");return}metroHasStarted=true;metroStopped=false;metroRunning=true;metroBeat=0;stopMetroTimer();tick();metroTimer=setInterval(tick,60000/Number(els.bpm.value));renderMetroState();if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:true,started:true});}
-  function pauseMetro(sync=true){if(!metroRunning){stopMetroTimer();renderMetroState();if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:false,started:metroHasStarted});return}metroHasStarted=true;metroStopped=false;metroRunning=false;stopMetroTimer();$("#beatNumber").textContent="Ⅱ";renderMetroState();if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:false,started:true});}
-  function stopMetro(sync=true){metroHasStarted=true;metroStopped=true;metroRunning=false;stopMetroTimer();metroBeat=0;$("#beatNumber").textContent="—";renderMetroState();els.metroStatus.textContent="挑战已结束";if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:false,stopped:true});}
-  function applyMetroRemote(m){metroSyncGuard=true;metroHasStarted=Boolean(m.started||m.running||m.stopped);metroStopped=Boolean(m.stopped);els.bpm.value=String(Math.max(40,Math.min(220,Number(m.bpm)||80)));els.intensity.value=String(Math.max(1,Math.min(5,Number(m.intensity)||3)));updateMetroLabels();if(m.stopped)stopMetro(false);else if(m.running)startMetro(false);else pauseMetro(false);renderMetroState();metroSyncGuard=false;}
+  function clearMetroClocks(){if(metroChallengeTimer)clearInterval(metroChallengeTimer);if(metroRandomTimer)clearInterval(metroRandomTimer);metroChallengeTimer=metroRandomTimer=null}
+  function metroPayload(running=metroRunning,stopped=metroStopped){return {type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running,started:metroHasStarted,stopped,mode:metroModeValue,durationMinutes:metroDurationMinutes,endsAt:metroEndsAt,remainingMs:metroRemainingMs}}
+  function updateMetroCountdown(){const left=metroRunning?Math.max(0,metroEndsAt-Date.now()):metroRemainingMs,sec=Math.ceil(left/1000);$("#metroCountdown").textContent=String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0")}
+  function startMetroClocks(){
+   clearMetroClocks();
+   metroChallengeTimer=setInterval(()=>{updateMetroCountdown();if(metroRunning&&metroEndsAt&&Date.now()>=metroEndsAt&&myRole==="controller")stopMetro(true)},500);
+   if(metroModeValue==="random"&&myRole==="controller")metroRandomTimer=setInterval(()=>{if(!metroRunning)return;const choices=[55,70,85,100,115,130];els.bpm.value=String(choices[Math.floor(Math.random()*choices.length)]);updateMetroLabels();restartMetroInterval();if(!metroSyncGuard)out(metroPayload())},12000);
+  }
+  function startMetro(sync=true){
+   if(metroRunning)return;if(!roomHasPartner){toast("请等待另一位参与者进入房间后再开始挑战");return}
+   if(!metroHasStarted||metroStopped||metroRemainingMs<=0)metroRemainingMs=(Number(els.metroDuration.value)||5)*60000;
+   metroModeValue=els.metroMode.value||metroModeValue;metroDurationMinutes=Number(els.metroDuration.value)||metroDurationMinutes;
+   metroHasStarted=true;metroStopped=false;metroRunning=true;metroEndsAt=Date.now()+metroRemainingMs;metroBeat=0;stopMetroTimer();tick();metroTimer=setInterval(tick,60000/Number(els.bpm.value));startMetroClocks();renderMetroState();
+   if(sync&&!metroSyncGuard)out(metroPayload());
+  }
+  function pauseMetro(sync=true){
+   if(metroRunning&&metroEndsAt)metroRemainingMs=Math.max(0,metroEndsAt-Date.now());
+   metroHasStarted=metroHasStarted||metroRunning;metroStopped=false;metroRunning=false;stopMetroTimer();clearMetroClocks();$("#beatNumber").textContent="Ⅱ";updateMetroCountdown();renderMetroState();
+   if(sync&&!metroSyncGuard)out(metroPayload(false,false));
+  }
+  function stopMetro(sync=true){
+   metroHasStarted=true;metroStopped=true;metroRunning=false;metroRemainingMs=0;metroEndsAt=0;stopMetroTimer();clearMetroClocks();metroBeat=0;$("#beatNumber").textContent="—";updateMetroCountdown();renderMetroState();els.metroStatus.textContent="挑战已结束";
+   if(sync&&!metroSyncGuard)out(metroPayload(false,true));
+  }
+  function applyMetroRemote(m){
+   metroSyncGuard=true;metroHasStarted=Boolean(m.started||m.running||m.stopped);metroStopped=Boolean(m.stopped);
+   metroModeValue=m.mode==="random"?"random":"steady";metroDurationMinutes=Math.max(1,Math.min(15,Number(m.durationMinutes)||5));els.metroMode.value=metroModeValue;els.metroDuration.value=String(metroDurationMinutes);
+   metroEndsAt=Math.max(0,Number(m.endsAt)||0);metroRemainingMs=Math.max(0,Math.min(900000,Number(m.remainingMs)||0));
+   els.bpm.value=String(Math.max(40,Math.min(220,Number(m.bpm)||80)));els.intensity.value=String(Math.max(1,Math.min(5,Number(m.intensity)||3)));updateMetroLabels();
+   if(m.stopped)stopMetro(false);else if(m.running){metroRunning=false;metroRemainingMs=metroEndsAt?Math.max(0,metroEndsAt-Date.now()):metroRemainingMs;startMetro(false)}else pauseMetro(false);
+   renderMetroState();metroSyncGuard=false;
+  }
   function restartMetroInterval(){if(!metroRunning)return;stopMetroTimer();metroTimer=setInterval(tick,60000/Number(els.bpm.value));}
   const setState=(cls,txt)=>{els.state.className="conn-state "+cls;els.state.textContent=txt};
   const setVoiceState=(cls,txt)=>{els.voiceStatus.className="voice-status"+(cls?" "+cls:"");els.voiceStatus.textContent=txt};
@@ -556,7 +584,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
     reset(m.message||"本轮互动已结束，已自动退出房间");
    }else if(m.type==="joined"){
     joining=false;const fresh=!m.resumed||!me||me.id!==m.you.id;
-    if(fresh){closeVoice(false);els.log.innerHTML="";seen=new Set();lastId=0;stopMetroTimer();metroRunning=false;metroHasStarted=false;metroStopped=false;metroBeat=0;$("#beatNumber").textContent="—"}
+    if(fresh){closeVoice(false);els.log.innerHTML="";seen=new Set();lastId=0;stopMetroTimer();clearMetroClocks();metroRunning=false;metroHasStarted=false;metroStopped=false;metroEndsAt=0;metroRemainingMs=0;metroBeat=0;$("#beatNumber").textContent="—"}
     me=m.you;myRole=m.you.role||"controller";matchedRole=null;renderQuickPhrases();room=m.room;iceConfigCache=null;localStorage.setItem(seatKey(room),m.token);localStorage.setItem("np_nick",me.nickname);
     els.label.textContent=room;showRoom(true);setState("on","已连接");setVoiceState("","语音未开启 · 双方需分别授权");
     const u=new URL(location.href);u.searchParams.set("room",room);u.hash="room";history.replaceState(null,"",u);
