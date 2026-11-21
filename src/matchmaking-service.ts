@@ -57,7 +57,8 @@ export async function findOrCreateMatch(
   if (!partner) return { status: 'waiting' };
 
   const { selfRole, partnerRole } = assignMatchRoles(self, partner);
-  const room = crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const room = Array.from(crypto.getRandomValues(new Uint8Array(8)), byte => alphabet[byte & 31]).join('');
   const results = await db.batch([
     db.prepare('INSERT INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)')
       .bind(room, timestamp, timestamp, timestamp + 120 * 60_000),
