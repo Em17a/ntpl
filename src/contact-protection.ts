@@ -9,8 +9,8 @@ export interface ContactModerationState {
 
 export function normalizeContactText(value: string): string {
   const raw = String(value ?? '').toLowerCase().normalize('NFKC')
-    .replace(/[\\u200B-\\u200D\\uFEFF]/g, '');
-  const compact = raw.replace(/[\\s·•,，。:：;；_\\-—()（）[\\]【】]/g, '');
+    .replace(/[\u200B-\u200D\uFEFF]/g, '');
+  const compact = raw.replace(/[\s·•,，。:：;；_\-—()（）[\]【】]/g, '');
   const digits: Record<string, string> = {
     零: '0', 〇: '0', 洞: '0', 幺: '1', 两: '2',
     一: '1', 二: '2', 三: '3', 四: '4', 五: '5',
@@ -22,11 +22,11 @@ export function normalizeContactText(value: string): string {
 export function containsContactInfo(value: string): boolean {
   const text = normalizeContactText(value);
   if (!text) return false;
-  const phone = /(?:\\+?86)?1[3-9]\\d{9}/.test(text);
-  const email = /[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}/i.test(text);
-  const socialUrl = /(?:https?\\/{1,2}|www\\.)|(?:t\\.me|telegram\\.me|wa\\.me|instagram\\.com|facebook\\.com|line\\.me|discord\\.gg|discord\\.com)/i.test(text);
+  const phone = /(?:\+?86)?1[3-9]\d{9}/.test(text);
+  const email = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(text);
+  const socialUrl = /(?:https?\/{1,2}|www\.)|(?:t\.me|telegram\.me|wa\.me|instagram\.com|facebook\.com|line\.me|discord\.gg|discord\.com)/i.test(text);
   const accountLike = /(?:微信|wechat|vx|wx|v信|w信|微x|薇信|威信|qq|扣扣|企鹅号|telegram|电报|飞机号|whatsapp|wats?app|line|instagram|ins号|discord|邮箱|电子邮件)(?:(?:号|id|账号|帐号)?(?:是|为)?|:|：)?[a-z0-9_@.-]{3,}/i.test(text);
-  const longNumber = /\\d{6,13}/.test(text) && /(?:qq|扣扣|联系|加我|电话|手机|号码|号|vx|wx|微信|v信|w信)/i.test(text);
+  const longNumber = /\d{6,13}/.test(text) && /(?:qq|扣扣|联系|加我|电话|手机|号码|号|vx|wx|微信|v信|w信)/i.test(text);
   const shorthand = /(?:加我|私我|联系我)(?:v|vx|wx)[a-z0-9_-]{3,}/i.test(text);
   return phone || email || socialUrl || accountLike || longNumber || shorthand;
 }
