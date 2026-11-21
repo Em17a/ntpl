@@ -391,7 +391,7 @@ body.watch-mode #watchStatus{color:#d2c4e6}
     <div class="room-bar">
       <div class="room-id"><small>ROOM</small><strong id="roomLabel">—</strong><span id="seatLabel" class="pill">0 / 2</span></div>
       <div id="members" class="members"></div>
-      <div class="room-actions"><span id="watcherCount" class="pill">旁观 0</span><button type="button" id="watchConsentBtn" class="ghost" disabled>允许观战</button><button type="button" id="copyLinkBtn" class="ghost">复制邀请链接</button><button type="button" id="disconnectBtn" class="ghost danger-text">离开房间</button></div>
+      <div class="room-actions"><span id="watcherCount" class="pill">旁观 0</span><button type="button" id="watchConsentBtn" class="ghost" disabled>允许观战</button><button type="button" id="copyLinkBtn" class="ghost">复制邀请链接</button><button type="button" id="disconnectBtn" class="ghost danger-text" onclick="window.location.replace(location.pathname)">离开房间</button></div>
       <p id="watchStatus" class="chat-note" aria-live="polite">双方都允许后，其他人才能旁观。</p>
     </div>
     <section id="challenge" class="metronome-card" aria-label="寸止挑战">
@@ -426,7 +426,7 @@ body.watch-mode #watchStatus{color:#d2c4e6}
           </div>
           <p id="metroEndReason" class="chat-note">本轮挑战已结束，结果已记录。</p>
           <button type="button" id="metroRestartBtn" class="primary">再来一轮</button>
-          <button type="button" id="metroHomeBtn" class="ghost">回到主页</button>
+          <button type="button" id="metroHomeBtn" class="ghost" onclick="window.location.replace(location.pathname)">回到主页</button>
         </div>
       </div>
     </section>
@@ -1076,7 +1076,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   $("#watchJoinBtn").onclick=joinAsWatcher;
   els.watchConsent.onclick=()=>{if(!me||!roomHasPartner)return;els.watchConsent.disabled=true;out({type:"watch_consent",open:!watchConsent})};
   els.code.oninput=peek;
-  $("#disconnectBtn").onclick=e=>{e.preventDefault();e.stopPropagation();leave();setTimeout(()=>{if(!$("#roomView").hidden)reset("已回到主页");if(new URLSearchParams(location.search).has("room"))location.replace(location.pathname+location.hash)},250)};
+  $("#disconnectBtn").onclick=e=>{e.preventDefault();e.stopPropagation();try{leave()}catch(err){console.error("离开房间清理失败",err)}finally{location.replace(location.pathname)}};
   $("#copyLinkBtn").onclick=()=>{const u=new URL(location.origin+location.pathname);u.searchParams.set("room",room);u.hash="room";const t=u.toString();(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("邀请链接已复制"),()=>{prompt("复制邀请链接：",t)})};
   $("#chatForm").onsubmit=e=>{e.preventDefault();sendChat(els.input.value)};
   els.input.oninput=()=>{if(me&&els.input.value)out({type:"typing"})};
@@ -1097,8 +1097,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   els.metroStop.onclick=()=>{if(myRole==="controller")stopMetro(true)};
   els.metroEmergency.onclick=()=>{if(!me)return;if(metroRunning&&metroEndsAt)metroRemainingMs=Math.max(0,metroEndsAt-Date.now());metroElapsedMs=Math.max(metroElapsedMs,metroDurationMinutes*60000-metroRemainingMs);metroStopped=true;metroRunning=false;metroEndsAt=0;stopMetroTimer();clearMetroClocks();stopMetro(false);out({type:"metronome_emergency_stop"});};
   $("#metroRestartBtn").onclick=()=>{metroStopped=false;metroHasStarted=false;metroRunning=false;metroHoldCount=0;metroElapsedMs=0;metroRemainingMs=(Number(els.metroDuration.value)||5)*60000;metroEndsAt=0;$("#metroLivePanel").hidden=false;$("#metroEndScreen").hidden=true;$("#beatNumber").textContent="—";renderMetroState()};
-  $("#metroHomeBtn").onclick=e=>{e.preventDefault();e.stopPropagation();leave();setTimeout(()=>{if(!$("#roomView").hidden)reset("已回到主页");if(new URLSearchParams(location.search).has("room"))location.replace(location.pathname+location.hash)},250)};
-  $("#disconnectBtn").onclick=e=>{e.preventDefault();e.stopPropagation();leave();setTimeout(()=>{if(!$("#roomView").hidden)reset("已回到主页");if(new URLSearchParams(location.search).has("room"))location.replace(location.pathname+location.hash)},250)};
+  $("#metroHomeBtn").onclick=e=>{e.preventDefault();e.stopPropagation();try{leave()}catch(err){console.error("离开房间清理失败",err)}finally{location.replace(location.pathname)}};
   updateMetroLabels();renderMetroState();
   els.voiceStart.onclick=startMic;
   els.voiceMute.onclick=()=>{if(!localStream)return;const tracks=localStream.getAudioTracks();const next=tracks.some(t=>t.enabled);tracks.forEach(t=>t.enabled=!next);updateMicControls();setVoiceState("on",next?"麦克风已静音":"麦克风已开启")};
