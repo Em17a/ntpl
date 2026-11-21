@@ -83,6 +83,13 @@ export class NightplayRoom extends DurableObject<Env> {
       : await this.env.DB.prepare('SELECT * FROM (SELECT * FROM messages WHERE room_code=? ORDER BY id DESC LIMIT ?) ORDER BY id').bind(room,HISTORY_LIMIT).all<any>();
     return rows.results.map((r: any) => ({ id:r.id, kind:r.kind, nickname:r.nickname, memberId:r.member_id, body:r.body, createdAt:r.created_at }));
   }
+  private async saveGameHistory(room: string, memberId: string, endedAt = now()) {
+    const member = await this.env.DB.prepare('SELECT guest_id,nickname,role,joined_at FROM room_members WHERE id=? AND room_code=?').bind(memberId,room).first<any>();
+    if (!member?.guest_id) return;
+    const startedAt = Number(member.joined_at) || endedAt;
+    await this.env.DB.prepare('INSERT OR IGNORE INTO game_history(guest_id,room_code,member_id,nickname,role,started_at,ended_at,duration_seconds) VALUES(?,?,?,?,?,?,?,?)')
+      .bind(member.guest_id,room,memberId,member.nickname,member.role,startedAt,endedAt,Math.max(0,Math.floor((endedAt-startedAt)/1000))).run();
+  }
   private async addMessage(room: string, kind: string, body: string, member?: {id:string;nickname:string}) {
     const stamp = now();
     const result = await this.env.DB.prepare('INSERT INTO messages(room_code,member_id,nickname,kind,body,created_at) VALUES(?,?,?,?,?,?)').bind(room,member?.id ?? null,member?.nickname ?? '',kind,body,stamp).run();
@@ -151,7 +158,7 @@ export class NightplayRoom extends DurableObject<Env> {
   }
   private async join(ws:WebSocket,msg:ClientMessage) {
     const room=String(msg.room??'').trim().toUpperCase(),nickname=String(msg.nickname??'').trim().replace(/\s+/g,' ').slice(0,24);
-    const token=typeof msg.token==='string'&&/^[0-9a-f-]{36}$/i.test(msg.token)?msg.token:null,requestedRole=String(msg.role??'any');
+    const token=typeof msg.token==='string'&&/^[0-9a-f-]{36}$/i.test(msg.token)?msg.token:null,requestedRole=String(msg.role??'any'),guestId=typeof msg.guestId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.guestId)?msg.guestId:null;
     if(!ROLE_PREFS.has(requestedRole))return this.send(ws,{type:'error',code:'bad_role',message:'请选择有效的挑战角色。'});
     if(!CODE_RE.test(room))return this.send(ws,{type:'error',code:'bad_room',message:'房间代码需为 4–12 位字母或数字。'});
     if(!nickname)return this.send(ws,{type:'error',code:'bad_nickname',message:'请先填写昵称。'});
@@ -159,14 +166,14 @@ export class NightplayRoom extends DurableObject<Env> {
     await this.env.DB.prepare('INSERT OR IGNORE INTO rooms(code,created_at,last_active_at) VALUES(?,?,?)').bind(room,t,t).run();
     await this.env.DB.prepare('UPDATE room_members SET left_at=? WHERE room_code=? AND left_at IS NULL AND last_seen_at<?').bind(t,room,t-SEAT_TTL_S*1000).run();
     let member:any=null,isNew=true;
-    if(token){member=await this.env.DB.prepare('SELECT * FROM room_members WHERE id=? AND room_code=? AND left_at IS NULL').bind(token,room).first<any>();if(member){await this.env.DB.prepare('UPDATE room_members SET last_seen_at=?,nickname=? WHERE id=?').bind(t,nickname,token).run();member.nickname=nickname;member.last_seen_at=t;isNew=false;}}
+    if(token){member=await this.env.DB.prepare('SELECT * FROM room_members WHERE id=? AND room_code=? AND left_at IS NULL').bind(token,room).first<any>();if(member){await this.env.DB.prepare('UPDATE room_members SET last_seen_at=?,nickname=?,guest_id=COALESCE(?,guest_id) WHERE id=?').bind(t,nickname,guestId,token).run();member.nickname=nickname;member.last_seen_at=t;isNew=false;}}
     if(!member){
       const active=await this.env.DB.prepare('SELECT * FROM room_members WHERE room_code=? AND left_at IS NULL ORDER BY joined_at').bind(room).all<any>();
       if(active.results.length>=MAX_SEATS)return this.send(ws,{type:'error',code:'room_full',message:'该房间已有两位参与者，请换一个房间代码。'});
       const first=active.results[0];let assignedRole:Role;
       if(!first)assignedRole=requestedRole==='receiver'?'receiver':'controller';
       else{const wanted:Role=requestedRole==='any'?(first.role==='controller'?'receiver':'controller'):requestedRole as Role;if(wanted===first.role)return this.send(ws,{type:'error',code:'role_conflict',message:`该房间已有${first.role==='controller'?'控制方':'受控方'}，请选择另一角色或让对方更改选择。`});assignedRole=wanted;}
-      const id=uuid();await this.env.DB.prepare('INSERT INTO room_members(id,room_code,nickname,role,joined_at,last_seen_at) VALUES(?,?,?,?,?,?)').bind(id,room,nickname,assignedRole,t,t).run();
+      const id=uuid();await this.env.DB.prepare('INSERT INTO room_members(id,room_code,nickname,role,joined_at,last_seen_at,guest_id) VALUES(?,?,?,?,?,?,?)').bind(id,room,nickname,assignedRole,t,t,guestId).run();
       member={id,room_code:room,nickname,role:assignedRole,joined_at:t,last_seen_at:t};
     }
     await this.env.DB.prepare('UPDATE rooms SET last_active_at=? WHERE code=?').bind(t,room).run();
@@ -219,7 +226,7 @@ export class NightplayRoom extends DurableObject<Env> {
       const make=actions[msg.action];if(!make)return;if(this.rateLimited(ws,m))return this.send(ws,{type:'error',code:'rate_limited',message:'操作太快了，请稍等片刻。'});if(!(await this.touch(m)))return this.seatLost(ws);
       await this.addMessage(m.room,'action',make(m.nickname),{id:m.memberId,nickname:m.nickname});
       if(msg.action==='stop'){
-        await this.ctx.storage.delete('metro:'+m.room);await this.env.DB.prepare('UPDATE room_members SET left_at=? WHERE room_code=? AND left_at IS NULL').bind(now(),m.room).run();
+        await this.ctx.storage.delete('metro:'+m.room);const ending=now();const active=await this.env.DB.prepare('SELECT id FROM room_members WHERE room_code=? AND left_at IS NULL').bind(m.room).all<any>();for(const member of active.results)await this.saveGameHistory(m.room,member.id,ending);await this.env.DB.prepare('UPDATE room_members SET left_at=? WHERE room_code=? AND left_at IS NULL').bind(ending,m.room).run();
         for(const peer of this.sockets())if(this.meta(peer)?.room===m.room){this.send(peer,{type:'room_ended',message:'本轮互动已结束，房间已自动关闭。'});this.detach(peer);}
       }return;
     }
@@ -240,7 +247,7 @@ export class NightplayRoom extends DurableObject<Env> {
       const a=this.attachment(ws),current=a.meta!;const t=now();if(t-current.lastTypingAt<1500)return;current.lastTypingAt=t;this.save(ws,a);return this.broadcast(m.room,{type:'typing',memberId:m.memberId,nickname:m.nickname},ws);
     }
     if(msg.type==='leave'){
-      const {room,memberId,nickname}=m;const metro=await this.metro(room);if(metro?.running){const state={...metro,running:false,stopped:true,nickname};await this.setMetro(room,state);this.broadcast(room,{type:'metronome_state',...state},ws);}
+      const {room,memberId,nickname}=m;await this.saveGameHistory(room,memberId);const metro=await this.metro(room);if(metro?.running){const state={...metro,running:false,stopped:true,nickname};await this.setMetro(room,state);this.broadcast(room,{type:'metronome_state',...state},ws);}
       this.detach(ws);const r=await this.env.DB.prepare('UPDATE room_members SET left_at=? WHERE id=? AND left_at IS NULL').bind(now(),memberId).run();this.send(ws,{type:'left'});if(r.meta.changes)await this.addMessage(room,'system',`${nickname} 离开了房间`);return this.pushPresence(room);
     }
   }
@@ -252,6 +259,12 @@ export class NightplayRoom extends DurableObject<Env> {
     }
     const roomMatch=url.pathname.match(/^\/api\/rooms\/([A-Za-z0-9]{4,12})$/);
     if(request.method==='GET'&&roomMatch){const room=roomMatch[1].toUpperCase(),members=await this.presence(room);return json({room,seats:MAX_SEATS,taken:members.length,full:members.length>=MAX_SEATS});}
+    if(request.method==='GET'&&url.pathname==='/api/history'){
+      const guestId=String(url.searchParams.get('guestId')??'');
+      if(!/^[0-9a-f-]{36}$/i.test(guestId))return json({error:'bad_guest_id'},400);
+      const rows=await this.env.DB.prepare('SELECT room_code,nickname,role,started_at,ended_at,duration_seconds FROM game_history WHERE guest_id=? ORDER BY ended_at DESC LIMIT 30').bind(guestId).all<any>();
+      return json({history:rows.results.map((r:any)=>({room:r.room_code,nickname:r.nickname,role:r.role,startedAt:r.started_at,endedAt:r.ended_at,durationSeconds:r.duration_seconds}))});
+    }
     if(request.method==='GET'&&url.pathname==='/api/rtc-config'){
       const room=String(url.searchParams.get('room')??'').trim().toUpperCase(),member=String(request.headers.get('authorization')??'').replace(/^Bearer\s+/i,'').trim();
       if(!CODE_RE.test(room)||!/^[0-9a-f-]{36}$/i.test(member))return json({error:'bad_request'},400);
