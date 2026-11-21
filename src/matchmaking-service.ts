@@ -6,6 +6,40 @@ export type MatchStatus =
   | { status: 'matched'; room: string; role: 'controller' | 'receiver' }
   | { status: 'repair_failed' };
 
+const validRoomCode = /^[A-HJ-NP-Z2-9]{8}$/;
+const roomAlphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function newRoomCode(): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(8)), byte => roomAlphabet[byte & 31]).join('');
+}
+
+async function repairLegacyRoomCode(db: D1Database, oldRoom: string, timestamp: number): Promise<string | null> {
+  if (validRoomCode.test(oldRoom)) return oldRoom;
+  const members = await db.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=?')
+    .bind(oldRoom).first<any>();
+  if (Number(members?.count) > 0) return null;
+
+  const previous = await db.prepare('SELECT created_at,last_active_at,expires_at FROM rooms WHERE code=?')
+    .bind(oldRoom).first<any>();
+  const room = newRoomCode();
+  const createdAt = Number(previous?.created_at) || timestamp;
+  const lastActiveAt = Number(previous?.last_active_at) || timestamp;
+  const expiresAt = Math.max(Number(previous?.expires_at) || 0, timestamp + 120 * 60_000);
+  const results = await db.batch([
+    db.prepare('INSERT INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)')
+      .bind(room, createdAt, lastActiveAt, expiresAt),
+    db.prepare("UPDATE matchmaking_queue SET room_code=? WHERE status='matched' AND room_code=?")
+      .bind(room, oldRoom),
+    db.prepare('UPDATE messages SET room_code=? WHERE room_code=?').bind(room, oldRoom),
+    db.prepare('DELETE FROM rooms WHERE code=?').bind(oldRoom),
+  ]);
+  if (Number(results[1]?.meta?.changes) !== 2) {
+    await db.prepare('DELETE FROM rooms WHERE code=?').bind(room).run();
+    return null;
+  }
+  return room;
+}
+
 async function ensureMatchedSeats(db: D1Database, room: string, timestamp: number): Promise<boolean> {
   const rows = await db.prepare(
     "SELECT client_id,nickname,matched_role,created_at FROM matchmaking_queue WHERE status='matched' AND room_code=? ORDER BY created_at,client_id"
@@ -42,7 +76,9 @@ export async function findOrCreateMatch(
       .bind(clientId).first<any>();
     if (existing?.status === 'matched' && existing.room_code &&
       ['controller', 'receiver'].includes(existing.matched_role)) {
-      const room = String(existing.room_code);
+      const originalRoom = String(existing.room_code);
+      const room = await repairLegacyRoomCode(db, originalRoom, timestamp);
+      if (!room) return { status: 'repair_failed' };
       return await ensureMatchedSeats(db, room, timestamp)
         ? { status: 'matched', room, role: existing.matched_role }
         : { status: 'repair_failed' };
@@ -57,8 +93,7 @@ export async function findOrCreateMatch(
   if (!partner) return { status: 'waiting' };
 
   const { selfRole, partnerRole } = assignMatchRoles(self, partner);
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const room = Array.from(crypto.getRandomValues(new Uint8Array(8)), byte => alphabet[byte & 31]).join('');
+  const room = newRoomCode();
   const results = await db.batch([
     db.prepare('INSERT INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)')
       .bind(room, timestamp, timestamp, timestamp + 120 * 60_000),
