@@ -15,7 +15,10 @@ export function isMatchCompatible(a: MatchCandidate, b: MatchCandidate): boolean
   const roleOk = a.role_preference === 'any'
     || b.role_preference === 'any'
     || a.role_preference !== b.role_preference;
-  return genderOk && roleOk;
+  // Match the reference project's voiceAgreement contract: "self" and "peer"
+  // must be reciprocal, while "any" can pair with every valid voice mode.
+  const voiceOk = voiceMatchScore(a, b) > 0;
+  return genderOk && roleOk && voiceOk;
 }
 
 export function voiceMatchScore(a: MatchCandidate, b: MatchCandidate): number {
