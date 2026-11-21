@@ -137,6 +137,29 @@ test('legacy UUID-derived room codes containing 0 or 1 are remapped to valid cod
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM matchmaking_queue WHERE status=\'matched\' AND room_code=?').get(repaired.room).count, 2);
 });
 
+test('repair recognizes already-created seats without adding duplicate members', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const a = 'abababab-abab-4bab-8bab-abababababab';
+  const b = 'cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd';
+  const room = 'AB234568';
+  db.raw.prepare('INSERT INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)').run(room, 1_000, 1_000, 7_201_000);
+  for (const [id, nickname, role, seat] of [
+    [a, '甲', 'controller', '10101010-1010-4010-8010-101010101010'],
+    [b, '乙', 'receiver', '20202020-2020-4020-8020-202020202020'],
+  ]) {
+    db.raw.prepare(`INSERT INTO matchmaking_queue
+      (client_id,nickname,gender,preference,role_preference,voice_preference,matched_role,status,room_code,created_at,last_seen_at)
+      VALUES(?,?, 'other','any','any','any',?,'matched',?,?,?)`).run(id, nickname, role, room, 1_000, 1_000);
+    db.raw.prepare('INSERT INTO room_members(id,room_code,nickname,role,joined_at,last_seen_at) VALUES(?,?,?,?,?,?)')
+      .run(seat, room, nickname, role, 1_000, 2_000);
+  }
+
+  const result = await findOrCreateMatch(db, a, 5_000);
+  assert.deepEqual(result, { status: 'matched', room, role: 'controller' });
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=? AND left_at IS NULL').get(room).count, 2);
+});
+
 test('incompatible candidates remain waiting and do not create a phantom room', async t => {
   const db = createD1();
   t.after(() => db.close());
