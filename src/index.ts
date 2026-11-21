@@ -270,7 +270,7 @@ export class NightplayRoom extends DurableObject<Env> {
       const first=active.results[0];let assignedRole:Role;
       if(!first)assignedRole=requestedRole==='receiver'?'receiver':'controller';
       else{const wanted:Role=requestedRole==='any'?(first.role==='controller'?'receiver':'controller'):requestedRole as Role;if(wanted===first.role)return this.send(ws,{type:'error',code:'role_conflict',message:`该房间已有${first.role==='controller'?'控制方':'受控方'}，请选择另一角色或让对方更改选择。`});assignedRole=wanted;}
-      const id=uuid();await this.env.DB.prepare('INSERT INTO room_members(id,room_code,nickname,role,joined_at,last_seen_at,guest_id) VALUES(?,?,?,?,?,?,?)').bind(id,room,nickname,assignedRole,t,t,guestId).run();
+      let id=token??uuid();if(token){const prior=await this.env.DB.prepare('SELECT id FROM room_members WHERE id=? AND room_code=?').bind(token,room).first<any>();if(prior)id=uuid();}await this.env.DB.prepare('INSERT INTO room_members(id,room_code,nickname,role,joined_at,last_seen_at,guest_id) VALUES(?,?,?,?,?,?,?)').bind(id,room,nickname,assignedRole,t,t,guestId).run();
       member={id,room_code:room,nickname,role:assignedRole,joined_at:t,last_seen_at:t};
     }
     if(guestId){try{await this.ensureFriendProfile(guestId,nickname)}catch(e){console.error('friend profile init failed',e)}}
