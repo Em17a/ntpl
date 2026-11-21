@@ -163,6 +163,12 @@ input::placeholder,textarea::placeholder{color:#aaa6b6;opacity:1}
 .chat-line .meta,.range-ends,.control-title label,.beat-readout>span{color:#c0bccb}
 .announcement{background:#1a1722;border-color:#665078}
 @media(max-width:760px){.quick-action.quick-match{grid-column:span 3;min-height:62px;flex-direction:row;justify-content:flex-start;text-align:left;padding:10px 16px}.quick-action.quick-match .quick-icon{width:28px;font-size:23px}}
+
+/* Read-only spectator mode */
+body.watch-mode .voice-panel,body.watch-mode #chatForm,body.watch-mode #typing,body.watch-mode .quick-phrase-wrap,body.watch-mode .metro-actions,body.watch-mode .metro-cues,body.watch-mode .metro-controls,body.watch-mode .metro-extra-controls,body.watch-mode #copyLinkBtn,body.watch-mode #watchConsentBtn{display:none!important}
+body.watch-mode #watchStatus{color:#d2c4e6}
+#watchJoinBtn{margin-top:8px;width:100%}
+#watchStatus{margin:8px 0 0}
 </style>
 </head>
 <body>
@@ -212,6 +218,7 @@ input::placeholder,textarea::placeholder{color:#aaa6b6;opacity:1}
             <button id="connectBtn" class="primary" type="submit">加入 / 创建房间</button>
           </form>
           <p id="roomPeek" class="chat-note"></p>
+          <button id="watchJoinBtn" type="button" class="ghost">以观战身份加入（需双方允许）</button>
         </section>
       </section>
         <section id="soloPanel" class="modal-panel" hidden>
@@ -237,7 +244,8 @@ input::placeholder,textarea::placeholder{color:#aaa6b6;opacity:1}
     <div class="room-bar">
       <div class="room-id"><small>ROOM</small><strong id="roomLabel">—</strong><span id="seatLabel" class="pill">0 / 2</span></div>
       <div id="members" class="members"></div>
-      <div class="room-actions"><button type="button" id="copyLinkBtn" class="ghost">复制邀请链接</button><button type="button" id="disconnectBtn" class="ghost danger-text">离开房间</button></div>
+      <div class="room-actions"><span id="watcherCount" class="pill">旁观 0</span><button type="button" id="watchConsentBtn" class="ghost" disabled>允许观战</button><button type="button" id="copyLinkBtn" class="ghost">复制邀请链接</button><button type="button" id="disconnectBtn" class="ghost danger-text">离开房间</button></div>
+      <p id="watchStatus" class="chat-note" aria-live="polite">双方都允许后，其他人才能旁观。</p>
     </div>
     <section class="chat-panel">
       <div class="panel-title"><div><p class="eyebrow">PRIVATE LIVE ROOM</p><h2>双人聊天</h2></div><span id="connState" class="conn-state off">未连接</span></div>
@@ -374,8 +382,8 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
 
  // ===== 双人房间：WebSocket + WebRTC 双人语音 =====
  const Room=(()=>{
-  const els={lobby:$("#lobby"),view:$("#roomView"),state:$("#connState"),log:$("#chatLog"),members:$("#members"),seat:$("#seatLabel"),label:$("#roomLabel"),typing:$("#typing"),input:$("#chatInput"),nick:$("#nickname"),code:$("#roomCode"),connect:$("#connectBtn"),peek:$("#roomPeek"),voiceStatus:$("#voiceStatus"),voiceStart:$("#voiceStartBtn"),voiceMute:$("#voiceMuteBtn"),voiceHangup:$("#voiceHangupBtn"),voiceListen:$("#voiceListenBtn"),remoteAudio:$("#remoteAudio"),matchGender:$("#matchGender"),matchPreference:$("#matchPreference"),matchRole:$("#matchRole"),matchVoicePreference:$("#matchVoicePreference"),roomRole:$("#roomRole"),roleStatus:$("#roleStatus"),metroEmergency:$("#metroEmergency"),matchStart:$("#matchStartBtn"),matchCancel:$("#matchCancelBtn"),matchStatus:$("#matchStatus"),bpm:$("#bpmRange"),intensity:$("#intensityRange"),metroStart:$("#metroStart"),metroPause:$("#metroPause"),metroStop:$("#metroStop"),metroStatus:$("#metroStatus"),metroMode:$("#metroMode"),metroDifficulty:$("#metroDifficulty"),metroDuration:$("#metroDuration"),metroSlow:$("#metroSlow"),metroNormal:$("#metroNormal"),metroFast:$("#metroFast"),metroHold:$("#metroHold"),metroResume:$("#metroResume")};
-  let ws=null,room=null,me=null,myRole=null,matchedRole=null,want=false,lastId=0,seen=new Set(),retry=0,retryTimer=null,hb=null,typingTimer=null,joining=false,matching=false,matchClientId=null,matchPoll=null;
+  const els={lobby:$("#lobby"),view:$("#roomView"),state:$("#connState"),log:$("#chatLog"),members:$("#members"),seat:$("#seatLabel"),label:$("#roomLabel"),typing:$("#typing"),input:$("#chatInput"),nick:$("#nickname"),code:$("#roomCode"),connect:$("#connectBtn"),peek:$("#roomPeek"),voiceStatus:$("#voiceStatus"),voiceStart:$("#voiceStartBtn"),voiceMute:$("#voiceMuteBtn"),voiceHangup:$("#voiceHangupBtn"),voiceListen:$("#voiceListenBtn"),remoteAudio:$("#remoteAudio"),matchGender:$("#matchGender"),matchPreference:$("#matchPreference"),matchRole:$("#matchRole"),matchVoicePreference:$("#matchVoicePreference"),roomRole:$("#roomRole"),roleStatus:$("#roleStatus"),metroEmergency:$("#metroEmergency"),matchStart:$("#matchStartBtn"),matchCancel:$("#matchCancelBtn"),matchStatus:$("#matchStatus"),bpm:$("#bpmRange"),intensity:$("#intensityRange"),metroStart:$("#metroStart"),metroPause:$("#metroPause"),metroStop:$("#metroStop"),metroStatus:$("#metroStatus"),metroMode:$("#metroMode"),metroDifficulty:$("#metroDifficulty"),metroDuration:$("#metroDuration"),metroSlow:$("#metroSlow"),metroNormal:$("#metroNormal"),metroFast:$("#metroFast"),metroHold:$("#metroHold"),metroResume:$("#metroResume"),watchConsent:$("#watchConsentBtn"),watcherCount:$("#watcherCount"),watchStatus:$("#watchStatus")};
+  let ws=null,room=null,me=null,myRole=null,matchedRole=null,want=false,watching=false,watchConsent=false,watchAllowed=false,lastId=0,seen=new Set(),retry=0,retryTimer=null,hb=null,typingTimer=null,joining=false,matching=false,matchClientId=null,matchPoll=null;
   // WebRTC 状态：麦克风只会在用户主动点击后申请，不会自动开启。
   let pc=null,pcPromise=null,localStream=null,remoteStream=null,pendingCandidates=[];
   let makingOffer=false,ignoreOffer=false,settingRemoteAnswerPending=false,voiceGeneration=0,iceConfigCache=null;
@@ -443,7 +451,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   }
   function note(t){const d=document.createElement("div");d.className="chat-line system";d.textContent=t;els.log.appendChild(d);els.log.scrollTop=els.log.scrollHeight}
   function renderMembers(list,seats){
-   roomHasPartner=list.filter(p=>p.online).length>=2;
+   roomHasPartner=list.filter(p=>p.online).length>=2;renderWatchUI();
    els.members.innerHTML="";
    list.forEach(p=>{const s=document.createElement("span");s.className="member"+(p.online?" online":"")+(me&&p.id===me.id?" me":"");const i=document.createElement("i");const roleText=p.role==="controller"?"控制方":"受控方";s.append(i,document.createTextNode(p.nickname+" · "+roleText+(me&&p.id===me.id?"（你）":"")+(p.online?"":" · 离线")));els.members.appendChild(s)});
    for(let k=list.length;k<seats;k++){const s=document.createElement("span");s.className="member empty";s.textContent="等待另一位参与者…";els.members.appendChild(s)}
@@ -463,13 +471,19 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    const text=String(value||"").trim().slice(0,500);if(!text)return;if(!me){toast("尚未连接");return}
    if(out({type:"chat",text})){els.input.value="";els.input.focus({preventScroll:true})}else toast("连接中断，正在重连…");
   }
-  function showRoom(on){els.lobby.hidden=on;els.view.hidden=!on;document.body.classList.toggle("room-active",on);if(on)closeActionModal();els.voiceStart.disabled=!on||!me}
+  function renderWatchUI(){
+   if(!els.watchConsent)return;
+   els.watchConsent.hidden=watching;els.watchConsent.disabled=!me||!roomHasPartner;
+   els.watchConsent.textContent=watchConsent?"关闭观战":"允许观战";
+   els.watchStatus.textContent=watchAllowed?"双方已允许观战，其他人可通过房间码旁观。":(watchConsent?"你已允许，等待另一位参与者同意。":"双方都允许后，其他人才能旁观。");
+  }
+  function showRoom(on){els.lobby.hidden=on;els.view.hidden=!on;document.body.classList.toggle("room-active",on);document.body.classList.toggle("watch-mode",watching);if(on)closeActionModal();els.voiceStart.disabled=!on||!me}
   function socketUrl(){return (location.protocol==="https:"?"wss://":"ws://")+location.host+"/ws"}
   function open(){
    if(ws&&(ws.readyState===0||ws.readyState===1))return;
    setState("wait",retry?"重连中…":"连接中…");
    ws=new WebSocket(socketUrl());
-   ws.onopen=()=>{retry=0;if(matching&&matchClientId){out({type:"matchmaking_join",clientId:matchClientId,nickname:els.nick.value.trim(),gender:els.matchGender.value,preference:els.matchPreference.value,rolePreference:els.matchRole.value,voicePreference:els.matchVoicePreference.value})}else if(want&&room)sendJoin()};
+   ws.onopen=()=>{retry=0;if(matching&&matchClientId){out({type:"matchmaking_join",clientId:matchClientId,nickname:els.nick.value.trim(),gender:els.matchGender.value,preference:els.matchPreference.value,rolePreference:els.matchRole.value,voicePreference:els.matchVoicePreference.value})}else if(watching&&room)sendWatchJoin();else if(want&&room)sendJoin()};
    ws.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return}handle(m)};
    ws.onclose=()=>{clearInterval(hb);hb=null;closeVoice(false,"语音已断开，请重新开启");els.voiceStart.disabled=true;if(!want){setState("off","未连接");return}
     setState("wait","重连中…");const delay=Math.min(15000,1000*2**retry)+Math.random()*500;retry++;clearTimeout(retryTimer);retryTimer=setTimeout(open,delay)};
@@ -477,6 +491,14 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   }
   const out=o=>{if(ws&&ws.readyState===1){ws.send(JSON.stringify(o));return true}return false};
   function sendJoin(){joining=true;out({type:"join",room,nickname:els.nick.value.trim(),token:localStorage.getItem(seatKey(room)),guestId,lastId,role:matchedRole||els.roomRole.value})}
+  function sendWatchJoin(){out({type:"watch_join",room,nickname:els.nick.value.trim(),guestId})}
+  function joinAsWatcher(){
+   const nick=els.nick.value.trim(),code=els.code.value.trim().toUpperCase();
+   if(!nick){toast("请先填写昵称");els.nick.focus();return}
+   if(!/^[A-Z0-9]{4,12}$/.test(code)){toast("请先填写有效的房间代码");els.code.focus();return}
+   closeVoice(false);room=code;me=null;myRole=null;watching=true;want=true;lastId=0;seen=new Set();
+   if(ws&&ws.readyState===1)sendWatchJoin();else open();
+  }
 
   function updateMicControls(){
    const active=!!(localStream&&localStream.getAudioTracks().some(t=>t.readyState==="live"));
@@ -630,11 +652,25 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
     matching=false;want=!!me;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;els.matchStatus.textContent=m.message||"匹配等待已超时，请重新开始匹配";toast(els.matchStatus.textContent);
    }else if(m.type==="room_ended"){
     reset(m.message||"本轮互动已结束，已自动退出房间");
+   }else if(m.type==="watch_joined"){
+    joining=false;watching=true;me=null;myRole=null;matchedRole=null;room=m.room;want=true;els.label.textContent=room;els.log.replaceChildren();seen=new Set();lastId=0;
+    showRoom(true);document.body.classList.add("watch-mode");setState("on","旁观中");els.roleStatus.textContent="观战模式：只读查看聊天与节拍状态，不能发送消息或控制挑战。";
+    renderMembers(m.members,m.seats);els.watcherCount.textContent="旁观 "+(m.watchers||0);setVoiceState("","观战不包含语音旁听");
+    const u=new URL(location.href);u.searchParams.set("room",room);u.hash="room";history.replaceState(null,"",u);
+    clearInterval(hb);hb=setInterval(()=>out({type:"ping",lastId:0}),20000);
+   }else if(m.type==="watch_state"){
+    watchConsent=Boolean(m.optedIn);watchAllowed=Boolean(m.allowed);renderWatchUI();
+   }else if(m.type==="watch_count"){
+    els.watcherCount.textContent="旁观 "+(Number(m.count)||0);
+   }else if(m.type==="watch_closed"){
+    reset(m.message||"房间已关闭观战");
+   }else if(m.type==="watch_left"){
+    reset("已退出观战");
    }else if(m.type==="joined"){
-    joining=false;const fresh=!m.resumed||!me||me.id!==m.you.id;
+    watching=false;document.body.classList.remove("watch-mode");watchConsent=Boolean(m.watchConsent);watchAllowed=Boolean(m.watchAllowed);joining=false;const fresh=!m.resumed||!me||me.id!==m.you.id;
     if(fresh){closeVoice(false);els.log.innerHTML="";seen=new Set();lastId=0;stopMetroTimer();clearMetroClocks();metroRunning=false;metroHasStarted=false;metroStopped=false;metroEndsAt=0;metroRemainingMs=(Number(els.metroDuration.value)||5)*60000;metroBeat=0;$("#beatNumber").textContent="—";renderQuickPhrases()}
     me=m.you;myRole=m.you.role||"controller";matchedRole=null;renderQuickPhrases();room=m.room;iceConfigCache=null;localStorage.setItem(seatKey(room),m.token);localStorage.setItem("np_nick",me.nickname);
-    els.label.textContent=room;showRoom(true);setState("on","已连接");setVoiceState("","语音未开启 · 双方需分别授权");
+    els.label.textContent=room;showRoom(true);setState("on","已连接");setVoiceState("","语音未开启 · 双方需分别授权");renderWatchUI();els.watcherCount.textContent="旁观 "+(m.watchers||0);
     const u=new URL(location.href);u.searchParams.set("room",room);u.hash="room";history.replaceState(null,"",u);
     if(fresh&&!m.history.length)note("房间已就绪。把邀请链接发给另一位参与者吧。");
     m.history.forEach(render);renderMembers(m.members,m.seats);
@@ -665,7 +701,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
     toast(m.message||"出错了");
    }
   }
-  function reset(msg){stopMetro(false);closeVoice(false);want=false;joining=false;matching=false;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;clearInterval(hb);hb=null;clearTimeout(retryTimer);me=null;myRole=null;matchedRole=null;showRoom(false);els.connect.disabled=false;if(ws){ws.onclose=null;try{ws.close()}catch{}ws=null}setState("off","未连接");if(msg)toast(msg);const u=new URL(location.href);u.searchParams.delete("room");history.replaceState(null,"",u)}
+  function reset(msg){stopMetro(false);closeVoice(false);watching=false;watchConsent=false;watchAllowed=false;document.body.classList.remove("watch-mode");want=false;joining=false;matching=false;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;clearInterval(hb);hb=null;clearTimeout(retryTimer);me=null;myRole=null;matchedRole=null;showRoom(false);els.connect.disabled=false;if(ws){ws.onclose=null;try{ws.close()}catch{}ws=null}setState("off","未连接");if(msg)toast(msg);const u=new URL(location.href);u.searchParams.delete("room");history.replaceState(null,"",u)}
   function startMatching(){
    const nick=els.nick.value.trim();
    if(!nick){toast("请先填写昵称");els.nick.focus();return}
@@ -686,7 +722,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    room=code;want=true;els.connect.disabled=true;setTimeout(()=>els.connect.disabled=false,1500);
    if(ws&&ws.readyState===1)sendJoin();else open();
   }
-  function leave(){if(metroRunning)stopMetro(true);closeVoice(true,"语音已结束");if(!out({type:"leave"})){if(room)localStorage.removeItem(seatKey(room));reset("已离开房间")}else if(room)localStorage.removeItem(seatKey(room))}
+  function leave(){if(watching){out({type:"watch_leave"});reset("已退出观战");return}if(metroRunning)stopMetro(true);closeVoice(true,"语音已结束");if(!out({type:"leave"})){if(room)localStorage.removeItem(seatKey(room));reset("已离开房间")}else if(room)localStorage.removeItem(seatKey(room))}
   function randomCode(){const a="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";const r=crypto.getRandomValues(new Uint8Array(6));r.forEach(x=>s+=a[x%a.length]);els.code.value=s;peek()}
   let peekTimer;function peek(){clearTimeout(peekTimer);const c=els.code.value.trim().toUpperCase();if(!/^[A-Z0-9]{4,12}$/.test(c)){els.peek.textContent="";return}
    peekTimer=setTimeout(()=>fetch("/api/rooms/"+c).then(r=>r.ok?r.json():null).then(d=>{if(!d)return;els.peek.textContent=d.taken===0?"房间 "+c+" 空闲，加入后即创建。":d.full?"房间 "+c+" 已满（2/2）。如果你之前在这个房间，可直接重新加入。":"房间 "+c+" 有 1 位参与者在等你。"}).catch(()=>{}),350)}
@@ -695,6 +731,8 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   els.matchStart.onclick=startMatching;
   els.matchCancel.onclick=cancelMatching;
   $("#randomCodeBtn").onclick=randomCode;
+  $("#watchJoinBtn").onclick=joinAsWatcher;
+  els.watchConsent.onclick=()=>{if(!me||!roomHasPartner)return;els.watchConsent.disabled=true;out({type:"watch_consent",open:!watchConsent})};
   els.code.oninput=peek;
   $("#disconnectBtn").onclick=leave;
   $("#copyLinkBtn").onclick=()=>{const u=new URL(location.origin+location.pathname);u.searchParams.set("room",room);u.hash="room";const t=u.toString();(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("邀请链接已复制"),()=>{prompt("复制邀请链接：",t)})};
