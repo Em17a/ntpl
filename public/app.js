@@ -579,25 +579,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    }catch(e){console.error("处理语音信令失败",e);setVoiceState("error","语音连接协商失败 · 请结束后重试")}
   }
   function handle(m){
-   if(m.type==="match_waiting"){
-    matching=true;els.matchStart.disabled=true;els.matchCancel.disabled=false;els.connect.disabled=true;els.matchStatus.textContent=m.message||"正在寻找匹配对象…";$("#matchingStatus").textContent=m.message||"正在寻找符合条件的玩家…";$("#matchingCancelBtn").disabled=false;$("#matchingCancelBtn").textContent="取消匹配";
-   }else if(m.type==="match_found"){
-    if(!matching)return;
-    const matchedClientId=String(m.clientId||matchClientId||"");
-    if(!/^[0-9a-f-]{36}$/i.test(matchedClientId)||!m.room){
-     returnToMatchSettings("匹配凭证无效，请重新匹配");
-     toast("匹配信息无效，请重试");
-     return;
-    }
-    watching=false;document.body.classList.remove("watch-mode");matching=false;stopMatchClock();showMatchingScreen(false);$("#matchingCancelBtn").disabled=false;$("#matchingCancelBtn").textContent="正在进入房间…";clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;els.matchStatus.textContent="匹配成功，正在进入房间…";
-    els.code.value=m.room;room=m.room;matchedRole=m.role||"any";matchClientId=matchedClientId;lastId=0;seen=new Set();want=true;sendJoin(matchedClientId);
-    clearInterval(joinRetry);
-    joinRetry=setInterval(()=>{if(joining&&want&&room){if(ws&&ws.readyState===1)sendJoin(matchedClientId);else open()}else{clearInterval(joinRetry);joinRetry=null}},2500);
-   }else if(m.type==="matchmaking_cancelled"){
-    want=!!me;$("#matchingCancelBtn").disabled=false;$("#matchingCancelBtn").textContent="取消匹配";returnToMatchSettings("已取消匹配");
-   }else if(m.type==="match_expired"){
-    want=!!me;$("#matchingCancelBtn").disabled=false;$("#matchingCancelBtn").textContent="取消匹配";returnToMatchSettings(m.message||"匹配等待已超时，请重新开始匹配");toast(els.matchStatus.textContent);
-   }else if(m.type==="room_ended"){
+   if(m.type==="room_ended"){
     reset(m.message||"本轮互动已结束，已自动退出房间");
    }else if(m.type==="watch_joined"){
     joining=false;watching=true;me=null;myRole=null;matchedRole=null;currentOpponentFriendCode="";currentOpponentNickname="";$("#metroAddFriendBtn").hidden=true;room=m.room;want=true;els.label.textContent=room;els.log.replaceChildren();seen=new Set();lastId=0;
