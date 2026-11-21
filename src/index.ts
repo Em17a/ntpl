@@ -281,8 +281,9 @@ export class NightplayRoom extends DurableObject<Env> {
     if(msg.type==='metronome_emergency_stop'){
       if(!(await this.touch(m)))return this.seatLost(ws);
       const previous=await this.metro(m.room)??{bpm:80,intensity:3,running:false,started:false,durationMinutes:5,holdCount:0,elapsedMs:0};
-      const remaining=previous.running&&Number(previous.endsAt)>0?Math.max(0,Number(previous.endsAt)-now()):Math.max(0,Number(previous.remainingMs)||0);
-      const elapsedMs=Math.max(Number(previous.elapsedMs)||0,(Number(previous.durationMinutes)||5)*60000-remaining);
+      const durationMs=(Number(previous.durationMinutes)||5)*60000;
+      const remaining=previous.running&&Number(previous.endsAt)>0?Math.max(0,Number(previous.endsAt)-now()):previous.started?Math.max(0,Number(previous.remainingMs)||0):durationMs;
+      const elapsedMs=previous.started?Math.max(Number(previous.elapsedMs)||0,durationMs-remaining):0;
       const state={...previous,running:false,started:true,stopped:true,endsAt:0,remainingMs:0,elapsedMs,holdCount:Math.max(0,Number(previous.holdCount)||0),nickname:m.nickname};
       await this.setMetro(m.room,state);this.broadcast(m.room,{type:'metronome_state',...state},ws);this.send(ws,{type:'metronome_state',...state});return;
     }
