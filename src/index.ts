@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { joinMatchmaking, cancelMatchmaking, pollMatchmaking } from './matchmaking-service.js';
+import { handleMatchmakingApi } from './matchmaking-api.js';
 
 interface Env {
   DB: D1Database;
@@ -20,8 +20,6 @@ type ClientMessage = Record<string, any> & { type: string };
 
 const MAX_SEATS = 2, ONLINE_WINDOW_S = 45, SEAT_TTL_S = 300, ROOM_RETENTION_DAYS = 7, HISTORY_LIMIT = 60;
 const CODE_RE = /^[A-Z0-9]{4,12}$/;
-const MATCH_GENDERS = new Set(['male', 'female', 'other']);
-const MATCH_PREFS = new Set(['male', 'female', 'any']);
 const ROLE_PREFS = new Set(['controller', 'receiver', 'any']);
 const CHALLENGES = [
   '两位参与者各写一个故事线索，然后共同选出下一步。',
@@ -344,63 +342,6 @@ export class NightplayRoom extends DurableObject<Env> {
       await this.scheduleNextAlarm();
     });
   }
-  private async matchmakingApi(request:Request):Promise<Response> {
-    const origin=request.headers.get('Origin');
-    if(origin&&origin!==new URL(request.url).origin)return json({error:'origin_mismatch'},403);
-    let input:any;
-    try { input=await request.json(); } catch { return json({error:'bad_json'},400); }
-    const action=String(input?.action??'');
-    const clientId=typeof input?.clientId==='string'&&/^[0-9a-f-]{36}$/i.test(input.clientId)?input.clientId:'';
-    if(!clientId||!['join','poll','cancel'].includes(action))return json({error:'bad_matchmaking_request'},400);
-
-    if(action==='join'){
-      const nickname=String(input.nickname??'').trim().replace(/\s+/g,' ').slice(0,24);
-      const gender=String(input.gender??''),preference=String(input.preference??'');
-      const rolePreference=String(input.rolePreference??'any'),voicePreference=String(input.voicePreference??'any');
-      if(!nickname||!MATCH_GENDERS.has(gender)||!MATCH_PREFS.has(preference)||!ROLE_PREFS.has(rolePreference)||
-        !new Set(['any','off','both','self','peer']).has(voicePreference))
-        return json({error:'bad_matchmaking_preferences',message:'请检查昵称和匹配偏好设置。'},400);
-    }
-
-    try {
-      // Poll and cancel are independent operations. They must not wait behind a
-      // slow join/match request in a promise chain.
-      if(action==='cancel'){
-        const result=await cancelMatchmaking(this.env.DB,clientId,now());
-        if(result.status==='matched')return json({state:'matched',room:result.room,role:result.role});
-        if(result.status==='repair_failed')return json({state:'repair_failed',message:'匹配房间正在恢复，请稍后重试。'},503);
-        return json({state:'cancelled'});
-      }
-
-      if(action==='poll'){
-        // Crucial: each poll actively runs the pairing algorithm. A passive
-        // SELECT here leaves every player waiting forever unless a second join
-        // happens to trigger matching.
-        const result=await pollMatchmaking(this.env.DB,clientId,now());
-        if(result.status==='matched')return json({state:'matched',room:result.room,role:result.role});
-        if(result.status==='waiting')return json({state:'waiting'});
-        if(result.status==='repair_failed')return json({state:'repair_failed',message:'匹配房间正在恢复，请稍后重试。'},503);
-        return json({state:'missing',message:'匹配请求已失效，请重新开始。'},404);
-      }
-
-      const timestamp=now();
-      const nickname=String(input.nickname).trim().replace(/\s+/g,' ').slice(0,24);
-      const result=await joinMatchmaking(this.env.DB,{
-        clientId,nickname,gender:String(input.gender),preference:String(input.preference),
-        rolePreference:String(input.rolePreference??'any'),voicePreference:String(input.voicePreference??'any'),
-      },timestamp);
-      if(result.status==='matched')this.ctx.waitUntil(this.scheduleNextAlarm().catch(()=>{}));
-      if(result.status==='matched')return json({state:'matched',room:result.room,role:result.role});
-      if(result.status==='waiting')return json({state:'waiting'});
-      if(result.status==='repair_failed')return json({state:'repair_failed',message:'匹配房间正在恢复，请稍后重试。'},503);
-      return json({state:'missing',message:'匹配请求已失效，请重新开始。'},404);
-    } catch(error) {
-      // A failed request must return a response so the UI can recover instead
-      // of leaving the player indefinitely in "matching" or "cancelling".
-      return json({state:'error',error:'matchmaking_unavailable',message:'匹配服务暂时不可用，请重试。'},503);
-    }
-  }
-
   async fetch(request:Request):Promise<Response> {
     // Room-expiry alarm setup must never block matchmaking, polling, or cancellation.
     this.ctx.waitUntil(this.ensureAlarmScheduled().catch(()=>{ this.alarmInitialized=false; }));
@@ -409,7 +350,7 @@ export class NightplayRoom extends DurableObject<Env> {
       const pair=new WebSocketPair(),client=pair[0],server=pair[1];this.ctx.acceptWebSocket(server);this.save(server,{});
       return new Response(null,{status:101,webSocket:client});
     }
-    if(request.method==='POST'&&url.pathname==='/api/matchmaking')return this.matchmakingApi(request);
+    if(request.method==='POST'&&url.pathname==='/api/matchmaking')return handleMatchmakingApi(request,this.env.DB,()=>this.ctx.waitUntil(this.scheduleNextAlarm().catch(()=>{})));
     if(request.method==='GET'&&url.pathname==='/api/public-rooms'){
       const cutoff=now()-ONLINE_WINDOW_S*1000;
       const result=await this.env.DB.prepare("SELECT r.code,r.room_name,r.created_at,m.nickname AS host_nickname,m.role AS host_role FROM rooms r JOIN room_members m ON m.id=r.owner_member_id AND m.room_code=r.code WHERE r.is_public=1 AND r.expires_at>? AND m.left_at IS NULL AND m.last_seen_at>? AND r.last_active_at>? AND (SELECT COUNT(*) FROM room_members p WHERE p.room_code=r.code AND p.left_at IS NULL AND p.last_seen_at>?)<2 ORDER BY r.created_at DESC LIMIT 50").bind(now(),cutoff,now()-ROOM_RETENTION_DAYS*86400000,cutoff).all<any>();
