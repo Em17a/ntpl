@@ -102,6 +102,9 @@ export async function findOrCreateMatch(
       const originalRoom = String(existing.room_code);
       const room = await repairLegacyRoomCode(db, originalRoom, timestamp);
       if (!room) return { status: 'repair_failed' };
+      const roomRecord = await db.prepare('SELECT expires_at FROM rooms WHERE code=?')
+        .bind(room).first<any>();
+      if (!roomRecord || Number(roomRecord.expires_at) <= timestamp) return { status: 'missing' };
       return await ensureMatchedSeats(db, room, timestamp)
         ? { status: 'matched', room, role: existing.matched_role }
         : { status: 'repair_failed' };
