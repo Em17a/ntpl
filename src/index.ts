@@ -99,6 +99,8 @@ export class NightplayRoom extends DurableObject<Env> {
     const room=String(msg.room??'').trim().toUpperCase(), nickname=String(msg.nickname??'').trim().replace(/\s+/g,' ').slice(0,24);
     const guestId=typeof msg.guestId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.guestId)?msg.guestId:null;
     if(!CODE_RE.test(room)||!nickname) return this.send(ws,{type:'error',code:'bad_watch_request',message:'请检查房间代码和昵称。'});
+    const roomRecord=await this.env.DB.prepare('SELECT expires_at FROM rooms WHERE code=?').bind(room).first<any>();
+    if(!roomRecord||Number(roomRecord.expires_at)<=now())return this.send(ws,{type:'error',code:'room_expired',message:'该房间已不存在或已超过有效期。'});
     const active=await this.env.DB.prepare('SELECT id,nickname,role,guest_id FROM room_members WHERE room_code=? AND left_at IS NULL AND last_seen_at>? ORDER BY joined_at').bind(room,now()-ONLINE_WINDOW_S*1000).all<any>();
     const consents=await this.ctx.storage.get<string[]>('watch-consent:'+room)??[];
     if(active.results.length!==2||!active.results.every((x:any)=>consents.includes(x.id))) return this.send(ws,{type:'error',code:'watch_not_open',message:'双方尚未同时允许观战，暂时无法进入。'});
@@ -161,7 +163,15 @@ export class NightplayRoom extends DurableObject<Env> {
   }
   private seatLost(ws: WebSocket) { this.send(ws,{type:'error',code:'seat_lost',message:'你的座位已失效，请重新加入房间。'}); this.detach(ws); }
   private async metro(room: string) { return await this.ctx.storage.get<any>('metro:'+room); }
-  private async setMetro(room: string, state: any) { await this.ctx.storage.put('metro:'+room,state); }
+  private async setMetro(room: string, state: any) { await this.ctx.storage.put('metro:'+room,state); await this.scheduleNextAlarm(); }
+  private async scheduleNextAlarm() {
+    const expiry=await this.env.DB.prepare('SELECT MIN(expires_at) AS at FROM rooms WHERE expires_at>?').bind(now()).first<any>();
+    let nextAt=Number(expiry?.at)||0;
+    const entries=await this.ctx.storage.list<any>({prefix:'metro:'});
+    for(const [,state] of entries)if(state?.running&&Number(state.endsAt)>0&&(!nextAt||Number(state.endsAt)<nextAt))nextAt=Number(state.endsAt);
+    if(nextAt>0)await this.ctx.storage.setAlarm(Math.max(now()+1000,nextAt));
+    else await this.ctx.storage.deleteAlarm();
+  }
   private compatible(a:any,b:any) {
     const genderOk=(a.preference==='any'||a.preference===b.gender)&&(b.preference==='any'||b.preference===a.gender);
     const roleOk=a.role_preference==='any'||b.role_preference==='any'||a.role_preference!==b.role_preference;
@@ -184,10 +194,11 @@ export class NightplayRoom extends DurableObject<Env> {
     else if(partner.role_preference==='any'){selfRole=self.role_preference;partnerRole=selfRole==='controller'?'receiver':'controller';}
     else{selfRole=self.role_preference;partnerRole=partner.role_preference;}
     await db.batch([
-      db.prepare('INSERT INTO rooms(code,created_at,last_active_at) VALUES(?,?,?)').bind(room,t,t),
+      db.prepare('INSERT INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)').bind(room,t,t,t+120*60000),
       db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,selfRole,clientId),
       db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,partnerRole,partner.client_id),
     ]);
+    await this.scheduleNextAlarm();
     return {status:'matched',room,role:selfRole};
   }
   private async matchmakingJoin(ws:WebSocket,msg:ClientMessage) {
@@ -212,14 +223,18 @@ export class NightplayRoom extends DurableObject<Env> {
     const room=String(msg.room??'').trim().toUpperCase(),nickname=String(msg.nickname??'').trim().replace(/\s+/g,' ').slice(0,24);
     const token=typeof msg.token==='string'&&/^[0-9a-f-]{36}$/i.test(msg.token)?msg.token:null,requestedRole=String(msg.role??'any'),guestId=typeof msg.guestId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.guestId)?msg.guestId:null;
     const publishRequested=msg.publish===true,roomName=String(msg.roomName??'').trim().replace(/\s+/g,' ').slice(0,20);
+    const requestedLifetime=Number(msg.roomLifetimeMinutes),roomLifetime=Number.isFinite(requestedLifetime)?Math.max(5,Math.min(120,Math.round(requestedLifetime/5)*5)):30;
     if(publishRequested&&!roomName)return this.send(ws,{type:'error',code:'bad_room_name',message:'请填写 1–20 个字的房间名称。'});
     if(!ROLE_PREFS.has(requestedRole))return this.send(ws,{type:'error',code:'bad_role',message:'请选择有效的挑战角色。'});
     if(!CODE_RE.test(room))return this.send(ws,{type:'error',code:'bad_room',message:'房间代码需为 4–12 位字母或数字。'});
     if(!nickname)return this.send(ws,{type:'error',code:'bad_nickname',message:'请先填写昵称。'});
     const t=now();
-    const roomInsert=await this.env.DB.prepare('INSERT OR IGNORE INTO rooms(code,created_at,last_active_at) VALUES(?,?,?)').bind(room,t,t).run();
+    const roomInsert=await this.env.DB.prepare('INSERT OR IGNORE INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)').bind(room,t,t,t+roomLifetime*60000).run();
     const roomCreated=Number(roomInsert.meta.changes)>0;
     if(publishRequested&&!roomCreated)return this.send(ws,{type:'error',code:'publish_room_exists',message:'房间代码已被占用，请重新生成后发布。'});
+    const roomRecord=await this.env.DB.prepare('SELECT expires_at FROM rooms WHERE code=?').bind(room).first<any>();
+    if(!roomRecord||Number(roomRecord.expires_at)<=t)return this.send(ws,{type:'error',code:'room_expired',message:'该房间已超过有效期，请重新创建房间。'});
+    if(roomCreated)await this.scheduleNextAlarm();
     await this.env.DB.prepare('UPDATE room_members SET left_at=? WHERE room_code=? AND left_at IS NULL AND last_seen_at<?').bind(t,room,t-SEAT_TTL_S*1000).run();
     let member:any=null,isNew=true;
     if(token){member=await this.env.DB.prepare('SELECT * FROM room_members WHERE id=? AND room_code=? AND left_at IS NULL').bind(token,room).first<any>();if(member){await this.env.DB.prepare('UPDATE room_members SET last_seen_at=?,nickname=?,guest_id=COALESCE(?,guest_id) WHERE id=?').bind(t,nickname,guestId,token).run();member.nickname=nickname;member.last_seen_at=t;isNew=false;}}
@@ -239,10 +254,10 @@ export class NightplayRoom extends DurableObject<Env> {
     const lastId=Number(msg.lastId)||0;
     const activeIds=(await this.env.DB.prepare('SELECT id FROM room_members WHERE room_code=? AND left_at IS NULL').bind(room).all<any>()).results.map((x:any)=>x.id);
     if(activeIds.length>=MAX_SEATS)await this.env.DB.prepare('UPDATE rooms SET is_public=0 WHERE code=?').bind(room).run();
-    const roomInfo=await this.env.DB.prepare('SELECT room_name,is_public FROM rooms WHERE code=?').bind(room).first<any>();
+    const roomInfo=await this.env.DB.prepare('SELECT room_name,is_public,expires_at FROM rooms WHERE code=?').bind(room).first<any>();
     const watchConsents=await this.ctx.storage.get<string[]>('watch-consent:'+room)??[];
     const watchAllowed=activeIds.length===2&&activeIds.every((id:string)=>watchConsents.includes(id));
-    this.send(ws,{type:'joined',room,roomName:roomInfo?.room_name||'',isPublic:Boolean(roomInfo?.is_public),token:member.id,you:{id:member.id,nickname:member.nickname,role:member.role},resumed:!isNew,history:await this.history(room,isNew?0:lastId),members:await this.presence(room),seats:MAX_SEATS,watchAllowed,watchConsent:watchConsents.includes(member.id),watchers:await this.watcherCount(room)});
+    this.send(ws,{type:'joined',room,roomName:roomInfo?.room_name||'',isPublic:Boolean(roomInfo?.is_public),expiresAt:Number(roomInfo?.expires_at)||0,token:member.id,you:{id:member.id,nickname:member.nickname,role:member.role},resumed:!isNew,history:await this.history(room,isNew?0:lastId),members:await this.presence(room),seats:MAX_SEATS,watchAllowed,watchConsent:watchConsents.includes(member.id),watchers:await this.watcherCount(room)});
     if(isNew)await this.addMessage(room,'system',`${member.nickname} 加入了房间`);
     await this.pushPresence(room);
     const metro=await this.metro(room);if(metro)this.send(ws,{type:'metronome_state',...metro});
@@ -332,6 +347,37 @@ export class NightplayRoom extends DurableObject<Env> {
       await this.closeWatchers(room);this.send(ws,{type:'left'});if(r.meta.changes)await this.addMessage(room,'system',`${nickname} 离开了房间`);return this.pushPresence(room);
     }
   }
+  async alarm() {
+    await this.queue(async()=>{
+      const t=now();
+      const metroEntries=await this.ctx.storage.list<any>({prefix:'metro:'});
+      for(const [key,state] of metroEntries){
+        if(state?.running&&Number(state.endsAt)>0&&Number(state.endsAt)<=t){
+          const durationMs=Math.max(60000,Math.min(900000,(Number(state.durationMinutes)||5)*60000));
+          const ended={...state,running:false,stopped:true,endsAt:0,remainingMs:0,elapsedMs:Math.max(Number(state.elapsedMs)||0,durationMs),endReason:'挑战时间已到，本轮自动结束。',nickname:'系统'};
+          await this.ctx.storage.put(key,ended);
+          const room=String(key).slice('metro:'.length);
+          this.broadcast(room,{type:'metronome_state',...ended});
+        }
+      }
+      const expired=await this.env.DB.prepare('SELECT code FROM rooms WHERE expires_at IS NOT NULL AND expires_at<=?').bind(t).all<any>();
+      for(const row of expired.results){
+        const room=String(row.code);
+        const active=await this.env.DB.prepare('SELECT id FROM room_members WHERE room_code=? AND left_at IS NULL').bind(room).all<any>();
+        for(const member of active.results)await this.saveGameHistory(room,member.id,t);
+        await this.env.DB.prepare('UPDATE room_members SET left_at=? WHERE room_code=? AND left_at IS NULL').bind(t,room).run();
+        await this.env.DB.prepare('UPDATE rooms SET is_public=0 WHERE code=?').bind(room).run();
+        await this.closeWatchers(room,'房间有效期已到，观战连接已结束。');
+        for(const peer of this.sockets()){
+          const meta=this.meta(peer);
+          if(meta?.room===room){this.send(peer,{type:'room_ended',message:'房间有效期已到，房间已自动关闭。'});this.detach(peer);}
+        }
+        await this.ctx.storage.delete('metro:'+room);
+        await this.ctx.storage.delete('watch-consent:'+room);
+      }
+      await this.scheduleNextAlarm();
+    });
+  }
   async fetch(request:Request):Promise<Response> {
     const url=new URL(request.url);
     if(url.pathname==='/ws'&&request.headers.get('Upgrade')?.toLowerCase()==='websocket'){
@@ -340,11 +386,11 @@ export class NightplayRoom extends DurableObject<Env> {
     }
     if(request.method==='GET'&&url.pathname==='/api/public-rooms'){
       const cutoff=now()-ONLINE_WINDOW_S*1000;
-      const result=await this.env.DB.prepare("SELECT r.code,r.room_name,r.created_at,m.nickname AS host_nickname,m.role AS host_role FROM rooms r JOIN room_members m ON m.id=r.owner_member_id AND m.room_code=r.code WHERE r.is_public=1 AND m.left_at IS NULL AND m.last_seen_at>? AND r.last_active_at>? AND (SELECT COUNT(*) FROM room_members p WHERE p.room_code=r.code AND p.left_at IS NULL AND p.last_seen_at>?)<2 ORDER BY r.created_at DESC LIMIT 50").bind(cutoff,now()-ROOM_RETENTION_DAYS*86400000,cutoff).all<any>();
+      const result=await this.env.DB.prepare("SELECT r.code,r.room_name,r.created_at,m.nickname AS host_nickname,m.role AS host_role FROM rooms r JOIN room_members m ON m.id=r.owner_member_id AND m.room_code=r.code WHERE r.is_public=1 AND r.expires_at>? AND m.left_at IS NULL AND m.last_seen_at>? AND r.last_active_at>? AND (SELECT COUNT(*) FROM room_members p WHERE p.room_code=r.code AND p.left_at IS NULL AND p.last_seen_at>?)<2 ORDER BY r.created_at DESC LIMIT 50").bind(now(),cutoff,now()-ROOM_RETENTION_DAYS*86400000,cutoff).all<any>();
       return json({rooms:result.results.map((r:any)=>({room:r.code,name:r.room_name,hostNickname:r.host_nickname,hostRole:r.host_role,createdAt:r.created_at,seats:1}))});
     }
     const roomMatch=url.pathname.match(/^\/api\/rooms\/([A-Za-z0-9]{4,12})$/);
-    if(request.method==='GET'&&roomMatch){const room=roomMatch[1].toUpperCase(),members=await this.presence(room);return json({room,seats:MAX_SEATS,taken:members.length,full:members.length>=MAX_SEATS});}
+    if(request.method==='GET'&&roomMatch){const room=roomMatch[1].toUpperCase(),record=await this.env.DB.prepare('SELECT expires_at FROM rooms WHERE code=?').bind(room).first<any>();if(!record||Number(record.expires_at)<=now())return json({error:'room_expired'},410);const members=await this.presence(room);return json({room,seats:MAX_SEATS,taken:members.length,full:members.length>=MAX_SEATS,expiresAt:Number(record.expires_at)||0});}
     if(request.method==='POST'&&url.pathname==='/api/online/heartbeat'){
       let body:any;try{body=await request.json()}catch{return json({error:'bad_json'},400)}
       const visitorId=String(body?.visitorId??'');
@@ -361,7 +407,7 @@ export class NightplayRoom extends DurableObject<Env> {
       return json({online:count,updatedAt:timestamp});
     }
     if(request.method==='GET'&&url.pathname==='/api/watchable'){
-      const recent=await this.env.DB.prepare('SELECT code FROM rooms WHERE last_active_at>? ORDER BY last_active_at DESC LIMIT 60').bind(now()-ROOM_RETENTION_DAYS*86400000).all<any>();
+      const recent=await this.env.DB.prepare('SELECT code FROM rooms WHERE expires_at>? AND last_active_at>? ORDER BY last_active_at DESC LIMIT 60').bind(now(),now()-ROOM_RETENTION_DAYS*86400000).all<any>();
       const rooms:any[]=[];
       for(const item of recent.results){
         const members=await this.env.DB.prepare('SELECT id,nickname,role,last_seen_at FROM room_members WHERE room_code=? AND left_at IS NULL AND last_seen_at>? ORDER BY joined_at').bind(item.code,now()-ONLINE_WINDOW_S*1000).all<any>();
