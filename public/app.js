@@ -197,6 +197,8 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   let ws=null,room=null,me=null,myRole=null,matchedRole=null,currentOpponentFriendCode="",currentOpponentNickname="",want=false,watching=false,watchConsent=false,watchAllowed=false,lastId=0,seen=new Set(),retry=0,retryTimer=null,hb=null,typingTimer=null,joining=false,matching=false,matchClientId=null,matchPoll=null,joinRetry=null,matchStartedAt=0,matchClock=null,pendingPublish=false,pendingPublishName="";
   // WebRTC 状态：麦克风只会在用户主动点击后申请，不会自动开启。
   let pc=null,pcPromise=null,localStream=null,remoteStream=null,pendingCandidates=[];
+  let voiceRecognition=null,voiceAudioContext=null,voiceSource=null,voiceDelay=null,voiceGate=null,voiceDestination=null;
+  let voiceRecentText='',voiceRecentAt=0,contactMutedUntil=0,localSpeechReady=false;
   let makingOffer=false,ignoreOffer=false,settingRemoteAnswerPending=false,voiceGeneration=0,iceConfigCache=null;
   const seatKey=r=>"np_seat_"+r;
   // 节拍器由双方浏览器本地发声，房间服务端只同步参数和运行状态。
@@ -296,8 +298,30 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    const display=$("#quickPhraseDisplay");
    if(display)display.textContent=(me.nickname||"我")+"："+text;
   }
+  function normalizeContactText(value){
+   const raw=String(value||"").toLowerCase().normalize("NFKC").replace(/[\u200B-\u200D\uFEFF]/g,"");
+   const compact=raw.replace(/[\s·•,，。:：;；_\-—()（）[\]【】]/g,"");
+   const digits={零:"0",〇:"0",洞:"0",幺:"1",两:"2",一:"1",二:"2",三:"3",四:"4",五:"5",六:"6",七:"7",八:"8",九:"9"};
+   return compact.replace(/[零〇洞幺两一二三四五六七八九]/g,ch=>digits[ch]||ch);
+  }
+  function containsContactInfo(value){
+   const text=normalizeContactText(value);if(!text)return false;
+   return /(?:\+?86)?1[3-9]\d{9}/.test(text)
+    ||/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(text)
+    ||/(?:https?\/{1,2}|www\.)|(?:t\.me|telegram\.me|wa\.me|instagram\.com|facebook\.com|line\.me|discord\.gg|discord\.com)/i.test(text)
+    ||/(?:微信|wechat|vx|wx|v信|w信|微x|薇信|威信|qq|扣扣|企鹅号|telegram|电报|飞机号|whatsapp|wats?app|line|instagram|ins号|discord|邮箱|电子邮件)(?:(?:号|id|账号|帐号)?(?:是|为)?|:|：)?[a-z0-9_@.-]{3,}/i.test(text)
+    ||(/\d{6,13}/.test(text)&&/(?:qq|扣扣|联系|加我|电话|手机|号码|号|vx|wx|微信|v信|w信)/i.test(text))
+    ||/(?:加我|私我|联系我)(?:v|vx|wx)[a-z0-9_-]{3,}/i.test(text);
+  }
+  let recentChatText="",recentChatAt=0;
   function sendChat(value){
    const text=String(value||"").trim().slice(0,500);if(!text)return;if(!me){toast("尚未连接");return}
+   if(contactMutedUntil>Date.now()){toast("你暂时无法发送消息，请等待限制结束。");return}
+   const timestamp=Date.now(),previous=timestamp-recentChatAt<=12000?recentChatText:"";
+   if(containsContactInfo(text)||containsContactInfo(previous+text)){
+    recentChatText="";recentChatAt=0;out({type:"contact_text_violation"});toast("检测到疑似站外联系方式，消息已拦截。");return;
+   }
+   recentChatText=text.slice(-120);recentChatAt=timestamp;
    if(out({type:"chat",text})){els.input.value="";els.input.focus({preventScroll:true})}else toast("连接中断，正在重连…");
   }
   function renderWatchUI(){
@@ -405,39 +429,114 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    })();
    try{return await pcPromise}finally{pcPromise=null}
   }
+  async function prepareLocalSpeechRecognition(){
+   const Speech=window.SpeechRecognition;
+   if(!Speech||typeof Speech.available!=="function"||typeof Speech.install!=="function")
+    throw new Error("当前浏览器不支持中文设备端语音识别，已阻止开启麦克风。请更新浏览器后重试。");
+   const options={langs:["zh-CN"],processLocally:true};
+   let availability=await Speech.available(options);
+   if(availability!=="available"){
+    if(availability==="unavailable")throw new Error("此设备暂不支持中文设备端语音模型，已阻止开启麦克风。");
+    setVoiceState("wait","正在准备设备端中文语音模型…");
+    const installed=await Speech.install(options);
+    if(!installed)throw new Error("中文设备端语音模型安装失败，请稍后重试。");
+    availability=await Speech.available(options);
+    if(availability!=="available")throw new Error("中文设备端语音模型尚未准备好，请稍后重试。");
+   }
+   localSpeechReady=true;
+   return Speech;
+  }
+  function stopLocalRecognition(){
+   const old=voiceRecognition;voiceRecognition=null;voiceRecentText="";voiceRecentAt=0;
+   if(old){old.onresult=null;old.onerror=null;old.onend=null;try{old.abort()}catch{}}
+  }
+  function startLocalRecognition(Speech,generation){
+   if(!localStream||!Speech||generation!==voiceGeneration)return;
+   const recognition=new Speech();recognition.lang="zh-CN";recognition.continuous=true;recognition.interimResults=true;recognition.processLocally=true;
+   voiceRecognition=recognition;
+   recognition.onresult=event=>{
+    if(voiceRecognition!==recognition||generation!==voiceGeneration)return;
+    let chunk="";
+    for(let i=event.resultIndex;i<event.results.length;i++)chunk+=event.results[i]?.[0]?.transcript||"";
+    if(!chunk.trim())return;
+    const timestamp=Date.now(),combined=(timestamp-voiceRecentAt<=12000?voiceRecentText:"")+chunk;
+    if(containsContactInfo(chunk)||containsContactInfo(combined)){
+     voiceRecentText="";voiceRecentAt=0;
+     out({type:"contact_voice_violation"});
+     closeVoice(true,"检测到疑似站外联系方式，语音已自动停止。");
+     toast("检测到疑似站外联系方式，语音已自动停止。");
+     return;
+    }
+    voiceRecentText=combined.slice(-120);voiceRecentAt=timestamp;
+   };
+   recognition.onerror=event=>{
+    if(voiceRecognition!==recognition||generation!==voiceGeneration||event.error==="aborted"||event.error==="no-speech")return;
+    closeVoice(false,"设备端语音识别中断，麦克风已关闭。");
+    toast("设备端语音识别中断，已关闭麦克风以保护隐私。");
+   };
+   recognition.onend=()=>{
+    if(voiceRecognition!==recognition||generation!==voiceGeneration||!localStream)return;
+    const muted=localStream.getAudioTracks().every(track=>!track.enabled);
+    if(!muted)setTimeout(()=>{if(voiceRecognition===recognition&&generation===voiceGeneration&&localStream){try{recognition.start()}catch{}}},300);
+   };
+   recognition.start();
+  }
   async function startMic(){
    if(!me){toast("请先加入房间");return}
    if(!ws||ws.readyState!==1){toast("房间连接暂时中断，请等待重新连接");return}
    if(localStream){toast("麦克风已经开启");return}
+   if(contactMutedUntil>Date.now()){toast("你暂时无法开启语音，请等待限制结束。");return}
    if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){toast("麦克风需要 HTTPS 安全连接，并使用支持的浏览器");setVoiceState("error","当前页面无法访问麦克风 · 请使用 HTTPS");return}
    const generation=voiceGeneration;
-   els.voiceStart.disabled=true;setVoiceState("wait","正在请求麦克风权限…");
+   els.voiceStart.disabled=true;setVoiceState("wait","正在检查设备端中文语音模型…");
    let stream=null;
    try{
-    // 只有点击此按钮才调用 getUserMedia；绝不自动开麦。
+    // 没有设备端中文模型时不降级到云端识别，也不会开启麦克风。
+    const Speech=await prepareLocalSpeechRecognition();
+    if(generation!==voiceGeneration||!me)return;
+    // 只有点击此按钮才请求麦克风权限；绝不自动开麦。
     stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
     if(generation!==voiceGeneration||!me){stream.getTracks().forEach(t=>t.stop());return}
     localStream=stream;
+    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+    if(!AudioContextClass)throw new Error("当前浏览器不支持受保护语音所需的 Web Audio。");
+    voiceAudioContext=new AudioContextClass();
+    await voiceAudioContext.resume();
+    voiceSource=voiceAudioContext.createMediaStreamSource(stream);
+    voiceDelay=voiceAudioContext.createDelay(2);
+    voiceDelay.delayTime.value=1.6;
+    voiceGate=voiceAudioContext.createGain();
+    voiceGate.gain.value=1;
+    voiceDestination=voiceAudioContext.createMediaStreamDestination();
+    voiceSource.connect(voiceDelay);voiceDelay.connect(voiceGate);voiceGate.connect(voiceDestination);
+    if(generation!==voiceGeneration||!me){closeVoice(false);return}
     const connection=await ensurePeerConnection();
-    if(generation!==voiceGeneration||!me){stream.getTracks().forEach(t=>t.stop());return}
-    stream.getAudioTracks().forEach(track=>connection.addTrack(track,stream));
+    if(generation!==voiceGeneration||!me){closeVoice(false);return}
+    const protectedTrack=voiceDestination.stream.getAudioTracks()[0];
+    if(!protectedTrack)throw new Error("无法建立语音保护音轨。");
+    connection.addTrack(protectedTrack,voiceDestination.stream);
+    startLocalRecognition(Speech,generation);
     updateMicControls();
-    setVoiceState("wait","麦克风已开启 · 等待对方加入语音…");
-    note("你已开启麦克风。对方也需要主动开启麦克风，才能进行双向语音。");
+    setVoiceState("wait","设备端语音保护已开启 · 上行延迟约 1.6 秒 · 等待对方加入…");
+    note("语音识别仅在本机处理，不上传录音或保存完整转写。为降低识别延迟带来的风险，语音上行增加约 1.6 秒缓冲。");
    }catch(e){
-    if(stream)stream.getTracks().forEach(t=>t.stop());if(localStream===stream)localStream=null;
+    if(stream&&localStream!==stream)stream.getTracks().forEach(t=>t.stop());
     if(generation!==voiceGeneration)return;
-    console.error("麦克风启动失败",e);els.voiceStart.disabled=!me;
-    const name=e?.name||"";
-    if(name==="NotAllowedError"||name==="PermissionDeniedError")setVoiceState("error","麦克风权限被拒绝 · 请在浏览器设置中允许麦克风");
-    else if(name==="NotFoundError"||name==="DevicesNotFoundError")setVoiceState("error","未找到可用的麦克风设备");
-    else setVoiceState("error",e?.message||"无法开启麦克风");
-    toast(els.voiceStatus.textContent);
+    const message=e?.message||"无法开启受保护语音";
+    console.warn("受保护语音启动失败",e);
+    closeVoice(false,message);
+    toast(message);
    }
   }
   function closeVoice(notify=false,statusText="语音未开启 · 双方需分别授权"){
    if(notify)out({type:"voice_signal",kind:"hangup"});
    voiceGeneration++;
+   stopLocalRecognition();
+   if(voiceGate&&voiceAudioContext){try{voiceGate.gain.setValueAtTime(0,voiceAudioContext.currentTime)}catch{}}
+   for(const node of [voiceSource,voiceDelay,voiceGate]){if(node){try{node.disconnect()}catch{}}}
+   if(voiceDestination){voiceDestination.stream.getTracks().forEach(track=>track.stop());voiceDestination=null}
+   voiceSource=null;voiceDelay=null;voiceGate=null;
+   if(voiceAudioContext){const context=voiceAudioContext;voiceAudioContext=null;context.close().catch(()=>{})}
    const old=pc;pc=null;pcPromise=null;pendingCandidates=[];makingOffer=false;ignoreOffer=false;settingRemoteAnswerPending=false;
    if(old){old.ontrack=null;old.onicecandidate=null;old.onnegotiationneeded=null;try{old.close()}catch{}}
    if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null}
@@ -542,6 +641,11 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
     }
    }
    else if(m.type==="voice_notice"){setVoiceState("wait",m.message||"等待另一位参与者上线");toast(m.message||"另一位参与者当前不在线")}
+   else if(m.type==="contact_blocked"){
+    contactMutedUntil=Math.max(contactMutedUntil,Number(m.mutedUntil)||0);
+    if(m.source==="voice"||contactMutedUntil>Date.now())closeVoice(false,m.message||"语音/消息功能暂时受限。");
+    toast(m.message||"检测到疑似站外联系方式，内容已拦截。");
+   }
    else if(m.type==="left"){reset("已离开房间")}
    else if(m.type==="error"){
     if(m.code==="server_error"&&joining&&matchClientId&&want&&room){toast(m.message||"服务器暂时出错，正在重试进入房间…");return}
@@ -721,7 +825,15 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   $("#metroHomeBtn").addEventListener("click",()=>{try{leave()}catch(err){console.error("返回主页前清理失败",err)}});
   updateMetroLabels();renderMetroState();
   els.voiceStart.onclick=startMic;
-  els.voiceMute.onclick=()=>{if(!localStream)return;const tracks=localStream.getAudioTracks();const next=tracks.some(t=>t.enabled);tracks.forEach(t=>t.enabled=!next);updateMicControls();setVoiceState("on",next?"麦克风已静音":"麦克风已开启")};
+  els.voiceMute.onclick=()=>{
+   if(!localStream)return;
+   const tracks=localStream.getAudioTracks(),next=tracks.some(t=>t.enabled);
+   tracks.forEach(t=>t.enabled=!next);
+   if(voiceGate&&voiceAudioContext)voiceGate.gain.setTargetAtTime(next?0:1,voiceAudioContext.currentTime,0.02);
+   if(next)stopLocalRecognition();
+   else if(localSpeechReady){try{startLocalRecognition(window.SpeechRecognition,voiceGeneration)}catch(e){closeVoice(false,"无法恢复设备端语音识别，麦克风已关闭。");toast("无法恢复设备端语音识别，麦克风已关闭。")}}
+   updateMicControls();setVoiceState("on",next?"麦克风已静音":"麦克风已开启");
+  };
   els.voiceHangup.onclick=()=>{closeVoice(true,"语音已结束")};
   els.voiceListen.onclick=()=>{els.remoteAudio.play().then(()=>{els.voiceListen.hidden=true}).catch(()=>toast("浏览器暂时无法播放对方声音"))};
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&want&&(!ws||ws.readyState>1)){retry=0;clearTimeout(retryTimer);open()}});
