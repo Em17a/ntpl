@@ -69,7 +69,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   $("#matchingVoice").textContent="语音："+(voice[els.matchVoicePreference.value]||"—");
  }
  function returnToMatchSettings(message){
-  matching=false;matchClientId=null;stopMatchClock();clearInterval(matchPoll);matchPoll=null;
+  matchCancelling=false;matching=false;matchClientId=null;stopMatchClock();clearInterval(matchPoll);matchPoll=null;
   els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;
   els.matchStatus.textContent=message||"已取消匹配";
   $("#matchingStatus").textContent=message||"已取消匹配";showMatchingScreen(false);openActionModal("match");
@@ -642,16 +642,17 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
     toast(m.message||"出错了");
    }
   }
-  function reset(msg){matchClientId=null;clearInterval(joinRetry);joinRetry=null;stopMetro(false);closeVoice(false);currentOpponentFriendCode="";currentOpponentNickname="";$("#metroAddFriendBtn").hidden=true;watching=false;watchConsent=false;watchAllowed=false;document.body.classList.remove("watch-mode");showMatchingScreen(false);stopMatchClock();want=false;joining=false;matching=false;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;clearInterval(hb);hb=null;clearTimeout(retryTimer);me=null;myRole=null;matchedRole=null;showRoom(false);els.connect.disabled=false;if(ws){ws.onclose=null;try{ws.close()}catch{}ws=null}setState("off","未连接");if(msg)toast(msg);const u=new URL(location.href);u.searchParams.delete("room");history.replaceState(null,"",u)}
-  let matchRequestBusy=false;
+  function reset(msg){matchCancelling=false;matchClientId=null;clearInterval(joinRetry);joinRetry=null;stopMetro(false);closeVoice(false);currentOpponentFriendCode="";currentOpponentNickname="";$("#metroAddFriendBtn").hidden=true;watching=false;watchConsent=false;watchAllowed=false;document.body.classList.remove("watch-mode");showMatchingScreen(false);stopMatchClock();want=false;joining=false;matching=false;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;clearInterval(hb);hb=null;clearTimeout(retryTimer);me=null;myRole=null;matchedRole=null;showRoom(false);els.connect.disabled=false;if(ws){ws.onclose=null;try{ws.close()}catch{}ws=null}setState("off","未连接");if(msg)toast(msg);const u=new URL(location.href);u.searchParams.delete("room");history.replaceState(null,"",u)}
+  let matchRequestBusy=false,matchCancelling=false;
   async function matchmakingRequest(action,clientId,details={}){
-   const response=await fetch("/api/matchmaking",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action,clientId,...details}),cache:"no-store",signal:AbortSignal.timeout(12000)});
+   const response=await fetch("/api/matchmaking",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action,clientId,...details}),cache:"no-store",signal:AbortSignal.timeout(action==="cancel"?8000:12000)});
    let data={};try{data=await response.json()}catch{}
    if(!response.ok)throw Object.assign(new Error(data.message||"匹配服务暂时不可用，请稍后重试。"),{status:response.status,code:data.code});
    return data;
   }
   function enterMatchedRoom(data,clientId){
    if(!matching||matchClientId!==clientId)return;
+   matchCancelling=false;
    if(!data?.room||!["controller","receiver"].includes(data.role)){
     returnToMatchSettings("匹配结果无效，请重新匹配");toast("匹配结果无效");return;
    }
@@ -663,19 +664,20 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    joinRetry=setInterval(()=>{if(joining&&want&&room){if(ws&&ws.readyState===1)sendJoin(clientId);else open()}else{clearInterval(joinRetry);joinRetry=null}},2500);
   }
   async function pollMatchmaking(clientId,initial=false){
-   if(matchRequestBusy||!matching||matchClientId!==clientId)return;
+   if(matchRequestBusy||matchCancelling||!matching||matchClientId!==clientId)return;
    matchRequestBusy=true;
    try{
     const details=initial?{nickname:els.nick.value.trim(),gender:els.matchGender.value,preference:els.matchPreference.value,rolePreference:els.matchRole.value,voicePreference:els.matchVoicePreference.value,guestId}: {};
     const data=await matchmakingRequest(initial?"join":"poll",clientId,details);
     if(!matching||matchClientId!==clientId)return;
     if(data.state==="matched"){enterMatchedRoom(data,clientId);return}
+    if(matchCancelling)return;
     if(data.state==="missing"){returnToMatchSettings(data.message||"匹配请求已失效，请重新开始");return}
     if(data.state==="waiting"){
      els.matchStatus.textContent="正在寻找符合双方偏好的参与者…";$("#matchingStatus").textContent="正在寻找符合双方偏好的参与者…";
     }
    }catch(error){
-    if(!matching||matchClientId!==clientId)return;
+    if(!matching||matchClientId!==clientId||matchCancelling)return;
     if([400,403,404,409].includes(error.status)){returnToMatchSettings(error.message);toast(error.message)}
     else{$("#matchingStatus").textContent="匹配服务暂时连接不稳定，正在自动重试…";els.matchStatus.textContent="匹配服务暂时连接不稳定，正在自动重试…"}
    }finally{matchRequestBusy=false}
@@ -684,7 +686,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    watching=false;document.body.classList.remove("watch-mode");
    const nick=els.nick.value.trim();
    if(!nick){toast("请先填写昵称");els.nick.focus();return}
-   matchClientId=crypto.randomUUID();matching=true;want=true;els.matchStart.disabled=true;els.matchCancel.disabled=false;els.connect.disabled=true;els.matchStatus.textContent="正在寻找性别、角色和语音偏好都符合的参与者…";
+   matchClientId=crypto.randomUUID();matching=true;matchCancelling=false;want=true;els.matchStart.disabled=true;els.matchCancel.disabled=false;els.connect.disabled=true;els.matchStatus.textContent="正在寻找性别、角色和语音偏好都符合的参与者…";
    stopMatchClock();matchStartedAt=Date.now();renderMatchingPreferences();$("#matchingStatus").textContent="正在连接匹配服务…";showMatchingScreen(true);updateMatchElapsed();matchClock=setInterval(updateMatchElapsed,1000);
    clearInterval(matchPoll);matchPoll=setInterval(()=>pollMatchmaking(matchClientId),2500);
    pollMatchmaking(matchClientId,true);
@@ -692,14 +694,17 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   async function cancelMatching(){
    const clientId=matchClientId;
    if(!clientId){returnToMatchSettings("已取消匹配");return}
+   matchCancelling=true;clearInterval(matchPoll);matchPoll=null;
    els.matchCancel.disabled=true;$("#matchingCancelBtn").disabled=true;$("#matchingCancelBtn").textContent="正在取消匹配…";$("#matchingStatus").textContent="正在取消匹配…";els.matchStatus.textContent="正在取消匹配…";
    try{
     const data=await matchmakingRequest("cancel",clientId);
-    if(data.state==="matched"){enterMatchedRoom(data,clientId);return}
-    if(data.state==="cancelled"){matchClientId=null;matching=false;want=!!me;stopMatchClock();clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;$("#matchingCancelBtn").disabled=false;$("#matchingCancelBtn").textContent="取消匹配";els.matchStatus.textContent="已取消匹配";showMatchingScreen(false);openActionModal("match");return}
+    if(data.state==="matched"){matchCancelling=false;enterMatchedRoom(data,clientId);return}
+    if(data.state==="cancelled"){matchCancelling=false;matchClientId=null;matching=false;want=!!me;stopMatchClock();clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;$("#matchingCancelBtn").disabled=false;$("#matchingCancelBtn").textContent="取消匹配";els.matchStatus.textContent="已取消匹配";showMatchingScreen(false);openActionModal("match");return}
     throw new Error("无法确认取消状态，请重试。");
    }catch(error){
+    matchCancelling=false;
     els.matchCancel.disabled=false;$("#matchingCancelBtn").disabled=false;$("#matchingCancelBtn").textContent="取消匹配";$("#matchingStatus").textContent="取消请求失败，请再次点击取消。";toast(error.message);
+    if(matching&&matchClientId===clientId&&!matchPoll)matchPoll=setInterval(()=>pollMatchmaking(clientId),2500);
    }
   }
   function join(){
