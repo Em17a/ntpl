@@ -204,6 +204,20 @@ body.watch-mode #watchStatus{color:#d2c4e6}
 .public-room-card p{margin:0;color:var(--muted);font-size:11px;line-height:1.6}
 .public-room-card .room-card-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#c7c1d0;font-size:10px}
 .public-room-card button{width:100%;min-height:38px}
+.public-home-section{position:relative;overflow:hidden;margin:22px 7vw 26px;padding:clamp(20px,3.5vw,34px);border:1px solid #75548f;border-radius:18px;background:radial-gradient(ellipse at 88% 8%,#56356c88 0,transparent 42%),linear-gradient(135deg,#21172d 0%,#17131f 56%,#211827 100%);box-shadow:0 18px 55px #0005}
+.public-home-section:before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:linear-gradient(#d7a7ff,#7c50a2)}
+.public-home-intro{display:flex;justify-content:space-between;align-items:center;gap:18px}
+.public-home-intro h2{margin:5px 0 8px;color:#fff;font-size:clamp(24px,3vw,34px);letter-spacing:-.03em}
+.public-home-intro p:not(.eyebrow){max-width:660px;margin:0;color:#c8bdcf;font-size:13px;line-height:1.8}
+.public-home-mark{flex:0 0 auto;display:grid;place-content:center;width:76px;height:76px;border:1px solid #b68ad477;border-radius:50%;color:#e4c5ff;text-align:center;font:700 12px/1.4 Manrope;letter-spacing:.08em;box-shadow:0 0 35px #a15ed033}
+.public-home-section .public-room-create{grid-template-columns:1.1fr 1.4fr .8fr auto;align-items:end;margin:22px 0 12px;padding:16px;background:#100d17aa;border-color:#554365}
+.public-home-section .public-room-create label{font-size:12px;color:#d8cbe3}
+.public-home-section .public-room-create button{min-height:44px;padding:0 24px;font-weight:800;white-space:nowrap}
+.public-home-section .public-room-heading{padding-top:16px;border-top:1px solid #ffffff18}
+.public-home-section .public-room-heading h3{font-size:17px;color:#f5effb}
+.public-home-section .public-room-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+.public-home-section .public-room-card{border-color:#554565;background:#191421}
+@media(max-width:760px){.public-home-section{margin:18px 5vw 22px;padding:19px 16px;border-radius:14px}.public-home-intro{align-items:flex-start}.public-home-mark{width:58px;height:58px;font-size:10px}.public-home-intro p:not(.eyebrow){font-size:12px}.public-home-section .public-room-create{grid-template-columns:1fr;gap:10px;margin-top:16px;padding:12px}.public-home-section .public-room-create button{width:100%;min-height:46px}.public-home-section .public-room-list{grid-template-columns:1fr}}
 .public-room-create{display:grid;gap:12px;margin:14px 0;padding:14px;border:1px solid var(--line);border-radius:10px;background:#17151f}
 .public-room-create label{display:grid;gap:6px;color:var(--muted);font-size:11px}
 .public-room-create input,.public-room-create select{width:100%}
@@ -262,7 +276,7 @@ body.watch-mode #watchStatus{color:#d2c4e6}
 <body>
 <header class="topbar">
   <a class="logo" href="/"><span class="logo-icon">N</span> NIGHTPLAY</a>
-  <nav><button type="button" data-open-modal="match">开始匹配</button><button type="button" data-open-modal="join">加入房间</button><button type="button" id="watchDirectoryBtn">观战大厅</button><button type="button" data-open-modal="friends">好友</button></nav>
+  <nav><button type="button" data-open-modal="match">开始匹配</button><button type="button" data-open-modal="join">加入房间</button><button type="button" id="publicRoomNavBtn">发布房间</button><button type="button" id="watchDirectoryBtn">观战大厅</button><button type="button" data-open-modal="friends">好友</button></nav>
   <span class="status"><i></i> 双人空间</span>
   <span class="online-counter" aria-live="polite"><i></i><span>在线</span><strong id="onlineCount">--</strong></span>
 </header>
@@ -283,6 +297,16 @@ body.watch-mode #watchStatus{color:#d2c4e6}
 <button class="quick-action" type="button" data-open-modal="history"><span class="quick-icon">▤</span><span><strong>对局历史</strong><small>查看最近的双人记录</small></span></button>
       <button class="quick-action" type="button" data-open-modal="friends"><span class="quick-icon">♧</span><span><strong>好友</strong><small>添加好友、私信和邀请对局</small></span></button>
     </section>
+<section id="publicPanel" class="public-home-section" aria-labelledby="publicHomeTitle">
+          <div class="public-home-intro"><div><p class="eyebrow">PUBLIC ROOMS · FIND YOUR PARTNER</p><h2 id="publicHomeTitle">公开房间大厅</h2><p>发布你的房间，设置醒目的名称，让其他玩家一眼找到你。陌生玩家可以直接加入，房间满员后自动关闭招募。</p></div><span class="public-home-mark">OPEN<br>ROOM</span></div>
+          <div class="public-room-create"><label>你的昵称<input id="publicRoomNickname" maxlength="24" placeholder="输入聊天昵称" autocomplete="nickname"></label>
+            <label>自定义房间名称<input id="publicRoomName" maxlength="20" placeholder="例如：S来求调" autocomplete="off"></label>
+            <label>你希望担任的角色<select id="publicRoomRole"><option value="controller">控制方（S）</option><option value="receiver">受控方（M）</option></select></label>
+            <button id="publicRoomPublishBtn" type="button" class="primary">发布房间</button>
+          </div>
+          <div class="public-room-heading"><h3>正在招募的房间</h3><button id="publicRoomRefreshBtn" type="button" class="ghost">刷新列表</button></div>
+          <div id="publicRoomList" class="public-room-list" aria-live="polite">正在加载公开房间…</div>
+        </section>
     <section id="watchDirectory" class="watch-directory featured-watch-directory" aria-labelledby="watchDirectoryTitle">
       <div class="watch-directory-head"><div><p class="eyebrow">LIVE ROOMS · SPECTATOR</p><h2 id="watchDirectoryTitle">观战大厅</h2><p class="chat-note">浏览正在开放观战的双人房间。只有双方玩家都主动同意，房间才会出现在这里。</p></div><button id="watchRefreshBtn" type="button" class="primary">刷新房间</button></div>
       <div id="watchDirectoryList" class="watch-directory-list" aria-live="polite">正在加载可观战房间…</div>
@@ -293,7 +317,7 @@ body.watch-mode #watchStatus{color:#d2c4e6}
       <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal-head"><div><p class="eyebrow">NIGHTPLAY · PRIVATE ROOM</p><h2 id="modalTitle">开始你的双人体验</h2></div><button type="button" class="modal-close" aria-label="关闭" data-close-modal>×</button></div>
         <label class="field-label">你的昵称<input id="nickname" maxlength="24" placeholder="输入聊天昵称" autocomplete="nickname" required></label>
-        <div class="modal-tabs"><button type="button" class="modal-tab active" data-modal-tab="match">偏好匹配</button><button type="button" class="modal-tab" data-modal-tab="join">邀请 / 加入</button><button type="button" class="modal-tab" data-modal-tab="public">公开房间</button><button type="button" class="modal-tab" data-modal-tab="history">对局历史</button><button type="button" class="modal-tab" data-modal-tab="friends">好友</button></div>
+        <div class="modal-tabs"><button type="button" class="modal-tab active" data-modal-tab="match">偏好匹配</button><button type="button" class="modal-tab" data-modal-tab="join">邀请 / 加入</button><button type="button" class="modal-tab" data-modal-tab="history">对局历史</button><button type="button" class="modal-tab" data-modal-tab="friends">好友</button></div>
         <section id="matchPanel" class="modal-panel">
           <p class="muted">设置你的性别、希望匹配的对象和挑战角色。只有双方偏好互相符合时才会配对。</p>
           <div class="match-grid">
@@ -313,16 +337,6 @@ body.watch-mode #watchStatus{color:#d2c4e6}
           </form>
           <p id="roomPeek" class="chat-note"></p>
           <button id="watchJoinBtn" type="button" class="ghost">以观战身份加入（需双方允许）</button>
-        </section>
-        <section id="publicPanel" class="modal-panel" hidden>
-          <p class="muted">发布一个公开房间，让其他玩家通过房间名称快速找到你。公开房间只允许一位玩家加入；双方都同意后才能开启观战。</p>
-          <div class="public-room-create">
-            <label>自定义房间名称<input id="publicRoomName" maxlength="20" placeholder="例如：S来求调" autocomplete="off"></label>
-            <label>你希望担任的角色<select id="publicRoomRole"><option value="controller">控制方（S）</option><option value="receiver">受控方（M）</option></select></label>
-            <button id="publicRoomPublishBtn" type="button" class="primary">发布房间</button>
-          </div>
-          <div class="public-room-heading"><h3>正在招募的房间</h3><button id="publicRoomRefreshBtn" type="button" class="ghost">刷新列表</button></div>
-          <div id="publicRoomList" class="public-room-list" aria-live="polite">正在加载公开房间…</div>
         </section>
         <section id="historyPanel" class="modal-panel" hidden>
           <p class="muted">使用本设备的随机游客 ID 保存最近 30 条对局记录，无需注册。记录会在你主动离开房间或结束对局时生成。</p>
@@ -457,17 +471,17 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
 
  // 首页弹窗：匹配与邀请共用昵称，避免重复表单。
  function setModalTab(tab){
-  const panels={match:$("#matchPanel"),join:$("#joinPanel"),public:$("#publicPanel"),history:$("#historyPanel"),friends:$("#friendsPanel")};
+  const panels={match:$("#matchPanel"),join:$("#joinPanel"),history:$("#historyPanel"),friends:$("#friendsPanel")};
   if(!panels[tab])tab="match";
   Object.entries(panels).forEach(([key,panel])=>panel.hidden=key!==tab);
   document.querySelectorAll("[data-modal-tab]").forEach(b=>b.classList.toggle("active",b.dataset.modalTab===tab));
-  $("#modalTitle").textContent=tab==="match"?"按偏好寻找搭档":tab==="join"?"邀请 / 加入双人房间":tab==="public"?"公开房间大厅":tab==="friends"?"好友与私信":"我的对局历史";
+  $("#modalTitle").textContent=tab==="match"?"按偏好寻找搭档":tab==="join"?"邀请 / 加入双人房间":tab==="friends"?"好友与私信":"我的对局历史";
   if(tab==="history")loadGameHistory();
   if(tab==="friends")loadFriends();
-  if(tab==="public")loadPublicRoomDirectory();
+
  }
  function openActionModal(tab){
-  setModalTab(["match","history","friends","public"].includes(tab)?tab:"join");
+  setModalTab(["match","history","friends"].includes(tab)?tab:"join");
   $("#actionModal").hidden=false;
   document.body.classList.add("modal-open");
  }
@@ -971,8 +985,9 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   function generateRoomCode(){const a="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";const r=crypto.getRandomValues(new Uint8Array(6));r.forEach(x=>s+=a[x%a.length]);return s}
   function randomCode(){els.code.value=generateRoomCode();peek()}
   function publishPublicRoom(){
-   const nick=els.nick.value.trim(),name=$("#publicRoomName").value.trim().replace(/\s+/g," ").slice(0,20);
-   if(!nick){toast("请先填写昵称");els.nick.focus();return}
+   const publicNick=$("#publicRoomNickname").value.trim(),nick=publicNick||els.nick.value.trim(),name=$("#publicRoomName").value.trim().replace(/\s+/g," ").slice(0,20);
+   if(!nick){toast("请先填写昵称");$("#publicRoomNickname").focus();return}
+   els.nick.value=nick;localStorage.setItem("np_nick",nick);
    if(!name){toast("请先填写房间名称");$("#publicRoomName").focus();return}
    pendingPublish=true;pendingPublishName=name;matchedRole=null;els.roomRole.value=$("#publicRoomRole").value;els.code.value=generateRoomCode();
    closeVoice(false);lastId=0;seen=new Set();me=null;room=els.code.value;want=true;watching=false;joining=false;closeActionModal();
@@ -1023,6 +1038,9 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   loadWatchDirectory();
   $("#publicRoomPublishBtn").onclick=publishPublicRoom;
   $("#publicRoomRefreshBtn").onclick=loadPublicRoomDirectory;
+  $("#publicRoomNickname").value=localStorage.getItem("np_nick")||"";
+  $("#publicRoomNickname").addEventListener("input",()=>{const value=$("#publicRoomNickname").value;els.nick.value=value;localStorage.setItem("np_nick",value)});
+  $("#publicRoomNavBtn").onclick=()=>$("#publicPanel").scrollIntoView({behavior:"smooth",block:"start"});
   $("#joinForm").onsubmit=e=>{e.preventDefault();join()};
   els.matchStart.onclick=startMatching;
   els.matchCancel.onclick=cancelMatching;
