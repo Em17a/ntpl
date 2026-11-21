@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { handleMatchmakingApi } from './matchmaking-api.js';
-import { areFriends, ensureFriendProfile, handleSocialApi } from './social-api.js';
+import { ensureFriendProfile, handleSocialApi } from './social-api.js';
 
 interface Env {
   DB: D1Database;
