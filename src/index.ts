@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { handleMatchmakingApi } from './matchmaking-api.js';
+import { areFriends, ensureFriendProfile, handleSocialApi } from './social-api.js';
 
 interface Env {
   DB: D1Database;
@@ -118,24 +119,6 @@ export class NightplayRoom extends DurableObject<Env> {
       : await this.env.DB.prepare('SELECT * FROM (SELECT * FROM messages WHERE room_code=? ORDER BY id DESC LIMIT ?) ORDER BY id').bind(room,HISTORY_LIMIT).all<any>();
     return rows.results.map((r: any) => ({ id:r.id, kind:r.kind, nickname:r.nickname, memberId:r.member_id, body:r.body, createdAt:r.created_at }));
   }
-  private async ensureFriendProfile(guestId:string,nickname:string) {
-    const clean=String(nickname||'访客').trim().replace(/\s+/g,' ').slice(0,24)||'访客';
-    for(let attempt=0;attempt<5;attempt++){
-      const existing=await this.env.DB.prepare('SELECT guest_id FROM guest_profiles WHERE guest_id=?').bind(guestId).first<any>();
-      if(existing){
-        await this.env.DB.prepare('UPDATE guest_profiles SET nickname=?,last_seen_at=?,updated_at=? WHERE guest_id=?').bind(clean,now(),now(),guestId).run();
-        return;
-      }
-      const code=uuid().replace(/-/g,'').slice(0,8).toUpperCase();
-      await this.env.DB.prepare('INSERT OR IGNORE INTO guest_profiles(guest_id,friend_code,nickname,online_visible,last_seen_at,created_at,updated_at) VALUES(?,?,?,1,?,?,?)').bind(guestId,code,clean,now(),now(),now()).run();
-    }
-    const profile=await this.env.DB.prepare('SELECT guest_id FROM guest_profiles WHERE guest_id=?').bind(guestId).first<any>();
-    if(!profile)throw new Error('无法创建好友资料');
-  }
-  private async areFriends(a:string,b:string) {
-    const [left,right]=a<b?[a,b]:[b,a];
-    return !!(await this.env.DB.prepare('SELECT 1 FROM friendships WHERE guest_a=? AND guest_b=?').bind(left,right).first());
-  }
   private async saveGameHistory(room: string, memberId: string, endedAt = now()) {
     const member = await this.env.DB.prepare('SELECT guest_id,nickname,role,joined_at FROM room_members WHERE id=? AND room_code=?').bind(memberId,room).first<any>();
     if (!member?.guest_id) return;
@@ -218,7 +201,7 @@ export class NightplayRoom extends DurableObject<Env> {
       let id=token??uuid();if(token){const prior=await this.env.DB.prepare('SELECT id FROM room_members WHERE id=? AND room_code=?').bind(token,room).first<any>();if(prior)id=uuid();}await this.env.DB.prepare('INSERT INTO room_members(id,room_code,nickname,role,joined_at,last_seen_at,guest_id) VALUES(?,?,?,?,?,?,?)').bind(id,room,nickname,assignedRole,t,t,guestId).run();
       member={id,room_code:room,nickname,role:assignedRole,joined_at:t,last_seen_at:t};
     }
-    if(guestId){try{await this.ensureFriendProfile(guestId,nickname)}catch(e){console.error('friend profile init failed',e)}}
+    if(guestId){try{await ensureFriendProfile(this.env.DB,guestId,nickname)}catch(e){console.error('friend profile init failed',e)}}
     if(publishRequested)await this.env.DB.prepare('UPDATE rooms SET room_name=?,is_public=1,owner_member_id=? WHERE code=?').bind(roomName,member.id,room).run();
     await this.env.DB.prepare('UPDATE rooms SET last_active_at=? WHERE code=?').bind(t,room).run();
     const a=this.attachment(ws);a.meta={memberId:member.id,room,nickname:member.nickname,role:member.role,bucket:8,bucketAt:t,lastTypingAt:0};this.save(ws,a);
@@ -351,6 +334,7 @@ export class NightplayRoom extends DurableObject<Env> {
       return new Response(null,{status:101,webSocket:client});
     }
     if(request.method==='POST'&&url.pathname==='/api/matchmaking')return handleMatchmakingApi(request,this.env.DB,()=>this.ctx.waitUntil(this.scheduleNextAlarm().catch(()=>{})));
+    const socialResponse=await handleSocialApi(request,this.env.DB);if(socialResponse)return socialResponse;
     if(request.method==='GET'&&url.pathname==='/api/public-rooms'){
       const cutoff=now()-ONLINE_WINDOW_S*1000;
       const result=await this.env.DB.prepare("SELECT r.code,r.room_name,r.created_at,m.nickname AS host_nickname,m.role AS host_role FROM rooms r JOIN room_members m ON m.id=r.owner_member_id AND m.room_code=r.code WHERE r.is_public=1 AND r.expires_at>? AND m.left_at IS NULL AND m.last_seen_at>? AND r.last_active_at>? AND (SELECT COUNT(*) FROM room_members p WHERE p.room_code=r.code AND p.left_at IS NULL AND p.last_seen_at>?)<2 ORDER BY r.created_at DESC LIMIT 50").bind(now(),cutoff,now()-ROOM_RETENTION_DAYS*86400000,cutoff).all<any>();
@@ -384,91 +368,6 @@ export class NightplayRoom extends DurableObject<Env> {
         rooms.push({room:item.code,players:members.results.map((member:any)=>({nickname:member.nickname,role:member.role})),watchers:await this.watcherCount(item.code)});
       }
       return json({rooms});
-    }
-    if(request.method==='POST'&&url.pathname==='/api/friends/presence'){
-      let body:any;try{body=await request.json()}catch{return json({error:'bad_json'},400)}
-      const guestId=String(body?.guestId??''),nickname=String(body?.nickname??'访客').trim().slice(0,24)||'访客';
-      if(!/^[0-9a-f-]{36}$/i.test(guestId))return json({error:'bad_guest_id'},400);
-      await this.ensureFriendProfile(guestId,nickname);
-      return json({ok:true});
-    }
-    if(request.method==='GET'&&url.pathname==='/api/friends'){
-      const guestId=String(url.searchParams.get('guestId')??'');
-      if(!/^[0-9a-f-]{36}$/i.test(guestId))return json({error:'bad_guest_id'},400);
-      const profile=await this.env.DB.prepare('SELECT friend_code,nickname,online_visible FROM guest_profiles WHERE guest_id=?').bind(guestId).first<any>();
-      if(!profile)return json({error:'profile_not_found'},404);
-      const friends=await this.env.DB.prepare('SELECT p.friend_code,p.nickname,p.online_visible,p.last_seen_at FROM friendships f JOIN guest_profiles p ON p.guest_id=CASE WHEN f.guest_a=? THEN f.guest_b ELSE f.guest_a END WHERE f.guest_a=? OR f.guest_b=? ORDER BY p.nickname COLLATE NOCASE').bind(guestId,guestId,guestId).all<any>();
-      const incoming=await this.env.DB.prepare("SELECT r.id,p.friend_code,p.nickname,r.created_at FROM friend_requests r JOIN guest_profiles p ON p.guest_id=r.requester_guest_id WHERE r.addressee_guest_id=? AND r.status='pending' ORDER BY r.created_at DESC LIMIT 50").bind(guestId).all<any>();
-      const outgoing=await this.env.DB.prepare("SELECT r.id,p.friend_code,p.nickname,r.created_at FROM friend_requests r JOIN guest_profiles p ON p.guest_id=r.addressee_guest_id WHERE r.requester_guest_id=? AND r.status='pending' ORDER BY r.created_at DESC LIMIT 50").bind(guestId).all<any>();
-      const t=now();
-      return json({profile:{friendCode:profile.friend_code,nickname:profile.nickname,onlineVisible:!!profile.online_visible},friends:friends.results.map((p:any)=>({friendCode:p.friend_code,nickname:p.nickname,online:!!p.online_visible&&Number(p.last_seen_at)>t-60000})),incoming:incoming.results.map((r:any)=>({id:r.id,friendCode:r.friend_code,nickname:r.nickname,createdAt:r.created_at})),outgoing:outgoing.results.map((r:any)=>({id:r.id,friendCode:r.friend_code,nickname:r.nickname,createdAt:r.created_at}))});
-    }
-    if(request.method==='PATCH'&&url.pathname==='/api/friends/profile'){
-      let body:any;try{body=await request.json()}catch{return json({error:'bad_json'},400)}
-      const guestId=String(body?.guestId??''),visible=body?.onlineVisible===true?1:0,nickname=String(body?.nickname??'').trim().replace(/\s+/g,' ').slice(0,24);
-      if(!/^[0-9a-f-]{36}$/i.test(guestId))return json({error:'bad_guest_id'},400);
-      const profile=await this.env.DB.prepare('SELECT guest_id FROM guest_profiles WHERE guest_id=?').bind(guestId).first<any>();
-      if(!profile)return json({error:'profile_not_found'},404);
-      if(nickname)await this.env.DB.prepare('UPDATE guest_profiles SET nickname=?,online_visible=?,updated_at=? WHERE guest_id=?').bind(nickname,visible,now(),guestId).run();
-      else await this.env.DB.prepare('UPDATE guest_profiles SET online_visible=?,updated_at=? WHERE guest_id=?').bind(visible,now(),guestId).run();
-      return json({ok:true});
-    }
-    if(request.method==='POST'&&url.pathname==='/api/friends/request'){
-      let body:any;try{body=await request.json()}catch{return json({error:'bad_json'},400)}
-      const guestId=String(body?.guestId??''),friendCode=String(body?.friendCode??'').trim().toUpperCase();
-      if(!/^[0-9a-f-]{36}$/i.test(guestId)||! /^[A-F0-9]{8}$/.test(friendCode))return json({error:'bad_request'},400);
-      const selfProfile=await this.env.DB.prepare('SELECT guest_id FROM guest_profiles WHERE guest_id=?').bind(guestId).first<any>();
-      if(!selfProfile)return json({error:'profile_not_found',message:'请先打开好友页面初始化你的游客资料。'},404);
-      const target=await this.env.DB.prepare('SELECT guest_id FROM guest_profiles WHERE friend_code=?').bind(friendCode).first<any>();
-      if(!target)return json({error:'friend_not_found',message:'没有找到这个好友码。'},404);
-      if(target.guest_id===guestId)return json({error:'self_request',message:'不能添加自己。'},400);
-      if(await this.areFriends(guestId,target.guest_id))return json({error:'already_friends',message:'你们已经是好友了。'},409);
-      const reverse=await this.env.DB.prepare("SELECT id FROM friend_requests WHERE requester_guest_id=? AND addressee_guest_id=? AND status='pending'").bind(target.guest_id,guestId).first<any>();
-      if(reverse)return json({error:'incoming_exists',message:'对方已经向你发送申请，请在好友申请中处理。'},409);
-      const duplicate=await this.env.DB.prepare("SELECT id FROM friend_requests WHERE requester_guest_id=? AND addressee_guest_id=? AND status='pending'").bind(guestId,target.guest_id).first<any>();
-      if(duplicate)return json({ok:true,message:'好友申请已发送，请等待对方接受。'});
-      await this.env.DB.prepare("INSERT INTO friend_requests(id,requester_guest_id,addressee_guest_id,status,created_at) VALUES(?,?,?,'pending',?)").bind(uuid(),guestId,target.guest_id,now()).run();
-      return json({ok:true,message:'好友申请已发送。'});
-    }
-    if(request.method==='POST'&&url.pathname==='/api/friends/respond'){
-      let body:any;try{body=await request.json()}catch{return json({error:'bad_json'},400)}
-      const guestId=String(body?.guestId??''),requestId=String(body?.requestId??''),accept=body?.accept===true;
-      if(!/^[0-9a-f-]{36}$/i.test(guestId)||!/^[0-9a-f-]{36}$/i.test(requestId))return json({error:'bad_request'},400);
-      const requestRow=await this.env.DB.prepare("SELECT requester_guest_id,addressee_guest_id FROM friend_requests WHERE id=? AND addressee_guest_id=? AND status='pending'").bind(requestId,guestId).first<any>();
-      if(!requestRow)return json({error:'request_not_found'},404);
-      if(accept){
-        const [a,b]=requestRow.requester_guest_id<requestRow.addressee_guest_id?[requestRow.requester_guest_id,requestRow.addressee_guest_id]:[requestRow.addressee_guest_id,requestRow.requester_guest_id];
-        await this.env.DB.prepare('INSERT OR IGNORE INTO friendships(guest_a,guest_b,created_at) VALUES(?,?,?)').bind(a,b,now()).run();
-      }
-      await this.env.DB.prepare('UPDATE friend_requests SET status=?,responded_at=? WHERE id=? AND status=\'pending\'').bind(accept?'accepted':'rejected',now(),requestId).run();
-      return json({ok:true});
-    }
-    if(request.method==='GET'&&url.pathname==='/api/dm'){
-      const guestId=String(url.searchParams.get('guestId')??''),friendCode=String(url.searchParams.get('friendCode')??'').trim().toUpperCase();
-      if(!/^[0-9a-f-]{36}$/i.test(guestId)||! /^[A-F0-9]{8}$/.test(friendCode))return json({error:'bad_request'},400);
-      const friend=await this.env.DB.prepare('SELECT guest_id FROM guest_profiles WHERE friend_code=?').bind(friendCode).first<any>();
-      if(!friend||!(await this.areFriends(guestId,friend.guest_id)))return json({error:'not_friends'},403);
-      const rows=await this.env.DB.prepare('SELECT id,sender_guest_id,message_type,body,room_code,created_at FROM direct_messages WHERE (sender_guest_id=? AND recipient_guest_id=?) OR (sender_guest_id=? AND recipient_guest_id=?) ORDER BY id DESC LIMIT 100').bind(guestId,friend.guest_id,friend.guest_id,guestId).all<any>();
-      return json({messages:rows.results.reverse().map((r:any)=>({id:r.id,mine:r.sender_guest_id===guestId,type:r.message_type,body:r.body,roomCode:r.room_code,createdAt:r.created_at}))});
-    }
-    if(request.method==='POST'&&url.pathname==='/api/dm'){
-      let body:any;try{body=await request.json()}catch{return json({error:'bad_json'},400)}
-      const guestId=String(body?.guestId??''),friendCode=String(body?.friendCode??'').trim().toUpperCase(),roomCode=String(body?.roomCode??'').trim().toUpperCase(),message=String(body?.text??'').trim().slice(0,1000);
-      if(!/^[0-9a-f-]{36}$/i.test(guestId)||! /^[A-F0-9]{8}$/.test(friendCode))return json({error:'bad_request'},400);
-      const friend=await this.env.DB.prepare('SELECT guest_id FROM guest_profiles WHERE friend_code=?').bind(friendCode).first<any>();
-      if(!friend||!(await this.areFriends(guestId,friend.guest_id)))return json({error:'not_friends'},403);
-      const invite=!!roomCode;
-      if(invite&&!CODE_RE.test(roomCode))return json({error:'bad_room'},400);
-      if(!message&&!invite)return json({error:'empty_message'},400);
-      const kind=invite?'invite':'text',bodyText=invite?'邀请你加入房间 '+roomCode:message;
-      await this.env.DB.prepare('INSERT INTO direct_messages(sender_guest_id,recipient_guest_id,message_type,body,room_code,created_at) VALUES(?,?,?,?,?,?)').bind(guestId,friend.guest_id,kind,bodyText,invite?roomCode:null,now()).run();
-      return json({ok:true});
-    }
-    if(request.method==='GET'&&url.pathname==='/api/history'){
-      const guestId=String(url.searchParams.get('guestId')??'');
-      if(!/^[0-9a-f-]{36}$/i.test(guestId))return json({error:'bad_guest_id'},400);
-      const rows=await this.env.DB.prepare('SELECT h.room_code,h.nickname,h.role,h.started_at,h.ended_at,h.duration_seconds,h.opponent_nickname,p.friend_code AS opponent_friend_code FROM game_history h LEFT JOIN guest_profiles p ON p.guest_id=h.opponent_guest_id WHERE h.guest_id=? ORDER BY h.ended_at DESC LIMIT 30').bind(guestId).all<any>();
-      return json({history:rows.results.map((r:any)=>({room:r.room_code,nickname:r.nickname,role:r.role,startedAt:r.started_at,endedAt:r.ended_at,durationSeconds:r.duration_seconds,opponentNickname:r.opponent_nickname||'',opponentFriendCode:r.opponent_friend_code||''}))});
     }
     if(request.method==='GET'&&url.pathname==='/api/rtc-config'){
       const room=String(url.searchParams.get('room')??'').trim().toUpperCase(),member=String(request.headers.get('authorization')??'').replace(/^Bearer\s+/i,'').trim();
