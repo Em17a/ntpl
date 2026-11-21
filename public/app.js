@@ -321,8 +321,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    if(containsContactInfo(text)||containsContactInfo(previous+text)){
     recentChatText="";recentChatAt=0;out({type:"contact_text_violation"});toast("检测到疑似站外联系方式，消息已拦截。");return;
    }
-   recentChatText=text.slice(-120);recentChatAt=timestamp;
-   if(out({type:"chat",text})){els.input.value="";els.input.focus({preventScroll:true})}else toast("连接中断，正在重连…");
+   if(out({type:"chat",text})){recentChatText=text.slice(-120);recentChatAt=timestamp;els.input.value="";els.input.focus({preventScroll:true})}else toast("连接中断，正在重连…");
   }
   function renderWatchUI(){
    if(!els.watchConsent)return;
@@ -452,7 +451,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   }
   function startLocalRecognition(Speech,generation){
    if(!localStream||!Speech||generation!==voiceGeneration)return;
-   const recognition=new Speech();recognition.lang="zh-CN";recognition.continuous=true;recognition.interimResults=true;recognition.processLocally=true;
+   const recognition=new Speech();if(!("processLocally" in recognition))throw new Error("当前浏览器无法保证设备端语音识别，已阻止开启麦克风。");recognition.lang="zh-CN";recognition.continuous=true;recognition.interimResults=true;recognition.processLocally=true;
    voiceRecognition=recognition;
    recognition.onresult=event=>{
     if(voiceRecognition!==recognition||generation!==voiceGeneration)return;
