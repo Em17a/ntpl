@@ -8,7 +8,7 @@
     "db:local": "wrangler d1 migrations apply nightplay-db --local",
     "db:remote": "wrangler d1 migrations apply nightplay-db --remote",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "test": "node --experimental-sqlite --experimental-strip-types --test tests/*.test.mjs",
     "check": "npm run typecheck && npm test && npm run build",
     "build": "wrangler deploy --dry-run"
   },
