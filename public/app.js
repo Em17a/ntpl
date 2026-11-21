@@ -477,7 +477,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    recognition.onend=()=>{
     if(voiceRecognition!==recognition||generation!==voiceGeneration||!localStream)return;
     const muted=localStream.getAudioTracks().every(track=>!track.enabled);
-    if(!muted)setTimeout(()=>{if(voiceRecognition===recognition&&generation===voiceGeneration&&localStream){try{recognition.start()}catch{}}},300);
+    if(!muted)setTimeout(()=>{if(voiceRecognition===recognition&&generation===voiceGeneration&&localStream){try{recognition.start()}catch{closeVoice(false,"设备端语音识别无法恢复，麦克风已关闭。");toast("设备端语音识别无法恢复，麦克风已关闭。")}}},300);
    };
    recognition.start();
   }
