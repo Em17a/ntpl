@@ -305,6 +305,18 @@ export class NightplayRoom extends DurableObject<Env> {
     }
     const roomMatch=url.pathname.match(/^\/api\/rooms\/([A-Za-z0-9]{4,12})$/);
     if(request.method==='GET'&&roomMatch){const room=roomMatch[1].toUpperCase(),members=await this.presence(room);return json({room,seats:MAX_SEATS,taken:members.length,full:members.length>=MAX_SEATS});}
+    if(request.method==='GET'&&url.pathname==='/api/watchable'){
+      const recent=await this.env.DB.prepare('SELECT code FROM rooms WHERE last_active_at>? ORDER BY last_active_at DESC LIMIT 60').bind(now()-ROOM_RETENTION_DAYS*86400000).all<any>();
+      const rooms:any[]=[];
+      for(const item of recent.results){
+        const members=await this.env.DB.prepare('SELECT id,nickname,role,last_seen_at FROM room_members WHERE room_code=? AND left_at IS NULL AND last_seen_at>? ORDER BY joined_at').bind(item.code,now()-ONLINE_WINDOW_S*1000).all<any>();
+        if(members.results.length!==2)continue;
+        const consents=await this.ctx.storage.get<string[]>('watch-consent:'+item.code)??[];
+        if(!members.results.every((member:any)=>consents.includes(member.id)))continue;
+        rooms.push({room:item.code,players:members.results.map((member:any)=>({nickname:member.nickname,role:member.role})),watchers:await this.watcherCount(item.code)});
+      }
+      return json({rooms});
+    }
     if(request.method==='GET'&&url.pathname==='/api/history'){
       const guestId=String(url.searchParams.get('guestId')??'');
       if(!/^[0-9a-f-]{36}$/i.test(guestId))return json({error:'bad_guest_id'},400);
