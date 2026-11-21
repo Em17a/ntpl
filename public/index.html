@@ -427,7 +427,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   const options={method,cache:"no-store",headers:{}};
   if(data){options.headers["content-type"]="application/json";options.body=JSON.stringify(data)}
   const response=await fetch(url,options);let result={};try{result=await response.json()}catch{}
-  if(!response.ok)throw new Error(result.message||result.error||"请求失败");
+  if(!response.ok){const messages={already_friends:"你们已经是好友了。",friend_not_found:"没有找到这个好友码。",not_friends:"你们还不是好友。",profile_not_found:"游客资料尚未初始化，请刷新好友页面。",request_not_found:"这条好友申请已失效。"};throw new Error(result.message||messages[result.error]||"请求失败，请稍后重试。")}
   return result;
  }
  async function friendPresence(){
