@@ -13,7 +13,8 @@
     "types": [
       "@cloudflare/workers-types"
     ],
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "noUnusedLocals": true
   },
   "include": [
     "src/**/*.ts",
