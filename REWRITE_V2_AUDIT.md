@@ -9,7 +9,8 @@
 
 ## Active Cloudflare surface
 
-- Worker entry: `src/index.ts`
+- Worker entry/router: `src/index.ts`
+- Durable Object room runtime: `src/nightplay-room.ts`
 - Matchmaking contract: `src/matchmaking-api.ts`
 - Matchmaking persistence/coordinator: `src/matchmaking-service.ts`
 - Match compatibility and role assignment: `src/matchmaking-core.ts`
@@ -17,7 +18,7 @@
 - Public-room, online-presence and spectator directory APIs: `src/directory-api.ts`
 - Authenticated WebRTC ICE/TURN configuration: `src/rtc-api.ts`
 - Contact text/voice moderation rules: `src/contact-protection.ts`
-- Durable Object room runtime: `NightplayRoom` in `src/index.ts`
+- Durable Object class export: `NightplayRoom` re-exported from `src/index.ts`, implemented in `src/nightplay-room.ts`
 - Static shell: `public/index.html`
 - Styles: `public/styles.css`
 - Browser application: `public/app.js`
