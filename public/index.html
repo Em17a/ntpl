@@ -998,7 +998,9 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    else if(m.type==="voice_notice"){setVoiceState("wait",m.message||"等待另一位参与者上线");toast(m.message||"另一位参与者当前不在线")}
    else if(m.type==="left"){reset("已离开房间")}
    else if(m.type==="error"){
+    if(m.code==="server_error"&&joining&&matchClientId&&want&&room){toast(m.message||"服务器暂时出错，正在重试进入房间…");return}
     clearInterval(joinRetry);joinRetry=null;joining=false;
+    if(matchClientId){if(room)localStorage.removeItem(seatKey(room));reset(m.message||"自动进入房间失败，请重新匹配");return}
     if(["room_full","seat_lost","bad_room","bad_nickname","publish_room_exists","bad_room_name","room_expired"].includes(m.code)){
      if(m.code==="seat_lost"&&room)localStorage.removeItem(seatKey(room));
      if(m.code==="room_full"&&room)localStorage.removeItem(seatKey(room));
