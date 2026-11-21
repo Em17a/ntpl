@@ -426,6 +426,55 @@ export class NightplayRoom extends DurableObject<Env> {
       await this.scheduleNextAlarm();
     });
   }
+  private async matchmakingApi(request:Request):Promise<Response> {
+    const origin=request.headers.get('Origin');
+    if(origin&&origin!==new URL(request.url).origin)return json({error:'origin_mismatch'},403);
+    let input:any;
+    try { input=await request.json(); } catch { return json({error:'bad_json'},400); }
+    const action=String(input?.action??'');
+    const clientId=typeof input?.clientId==='string'&&/^[0-9a-f-]{36}$/i.test(input.clientId)?input.clientId:'';
+    if(!clientId||!['join','poll','cancel'].includes(action))return json({error:'bad_matchmaking_request'},400);
+
+    if(action==='join'){
+      const nickname=String(input.nickname??'').trim().replace(/\\s+/g,' ').slice(0,24);
+      const gender=String(input.gender??''),preference=String(input.preference??'');
+      const rolePreference=String(input.rolePreference??'any'),voicePreference=String(input.voicePreference??'any');
+      if(!nickname||!MATCH_GENDERS.has(gender)||!MATCH_PREFS.has(preference)||!ROLE_PREFS.has(rolePreference)||
+        !new Set(['any','off','both','self','peer']).has(voicePreference))
+        return json({error:'bad_matchmaking_preferences',message:'请检查昵称和匹配偏好设置。'},400);
+    }
+
+    const result=await this.queueMatchmaking(async()=>{
+      if(action==='cancel'){
+        const existing=await this.env.DB.prepare('SELECT status FROM matchmaking_queue WHERE client_id=?')
+          .bind(clientId).first<any>();
+        if(existing?.status==='matched')return this.findOrCreateMatch(clientId);
+        await this.env.DB.prepare("DELETE FROM matchmaking_queue WHERE client_id=? AND status='waiting'")
+          .bind(clientId).run();
+        return {status:'cancelled' as const};
+      }
+
+      const timestamp=now();
+      if(action==='join'){
+        const nickname=String(input.nickname).trim().replace(/\\s+/g,' ').slice(0,24);
+        await this.env.DB.prepare("INSERT OR IGNORE INTO matchmaking_queue(client_id,nickname,gender,preference,role_preference,voice_preference,status,created_at,last_seen_at) VALUES(?,?,?,?,?,?,'waiting',?,?)")
+          .bind(clientId,nickname,String(input.gender),String(input.preference),String(input.rolePreference??'any'),String(input.voicePreference??'any'),timestamp,timestamp).run();
+        await this.env.DB.prepare("UPDATE matchmaking_queue SET nickname=?,gender=?,preference=?,role_preference=?,voice_preference=?,last_seen_at=? WHERE client_id=? AND status='waiting'")
+          .bind(nickname,String(input.gender),String(input.preference),String(input.rolePreference??'any'),String(input.voicePreference??'any'),timestamp,clientId).run();
+      }else{
+        await this.env.DB.prepare("UPDATE matchmaking_queue SET last_seen_at=? WHERE client_id=? AND status='waiting'")
+          .bind(timestamp,clientId).run();
+      }
+      return this.findOrCreateMatch(clientId);
+    });
+
+    if(result.status==='matched')return json({state:'matched',room:result.room,role:result.role});
+    if(result.status==='waiting')return json({state:'waiting'});
+    if(result.status==='cancelled')return json({state:'cancelled'});
+    if(result.status==='repair_failed')return json({state:'repair_failed',message:'匹配房间正在恢复，请稍后重试。'},503);
+    return json({state:'missing',message:'匹配请求已失效，请重新开始。'},404);
+  }
+
   async fetch(request:Request):Promise<Response> {
     await this.ensureAlarmScheduled();
     const url=new URL(request.url);
@@ -433,6 +482,7 @@ export class NightplayRoom extends DurableObject<Env> {
       const pair=new WebSocketPair(),client=pair[0],server=pair[1];this.ctx.acceptWebSocket(server);this.save(server,{});
       return new Response(null,{status:101,webSocket:client});
     }
+    if(request.method==='POST'&&url.pathname==='/api/matchmaking')return this.matchmakingApi(request);
     if(request.method==='GET'&&url.pathname==='/api/public-rooms'){
       const cutoff=now()-ONLINE_WINDOW_S*1000;
       const result=await this.env.DB.prepare("SELECT r.code,r.room_name,r.created_at,m.nickname AS host_nickname,m.role AS host_role FROM rooms r JOIN room_members m ON m.id=r.owner_member_id AND m.room_code=r.code WHERE r.is_public=1 AND r.expires_at>? AND m.left_at IS NULL AND m.last_seen_at>? AND r.last_active_at>? AND (SELECT COUNT(*) FROM room_members p WHERE p.room_code=r.code AND p.left_at IS NULL AND p.last_seen_at>?)<2 ORDER BY r.created_at DESC LIMIT 50").bind(now(),cutoff,now()-ROOM_RETENTION_DAYS*86400000,cutoff).all<any>();
