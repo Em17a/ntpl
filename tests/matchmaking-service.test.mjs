@@ -266,3 +266,23 @@ test('cancellation tombstone prevents an in-flight initial join from recreating 
   assert.deepEqual(await pollMatchmaking(db, a, 2_500), { status: 'missing' });
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM rooms').get().count, 0);
 });
+
+
+test('matched seats whose leases expired are reactivated for reconnect', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const a = 'abab1212-1111-4111-8111-abab12121212';
+  const b = 'cdcd3434-2222-4222-8222-cdcd34343434';
+  const room = 'AB234570';
+  db.raw.prepare('INSERT INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)').run(room, 1_000, 1_000, 7_201_000);
+  for (const [id, nickname, role] of [[a, '甲', 'controller'], [b, '乙', 'receiver']]) {
+    db.raw.prepare(`INSERT INTO matchmaking_queue
+      (client_id,nickname,gender,preference,role_preference,voice_preference,matched_role,status,room_code,created_at,last_seen_at)
+      VALUES(?,?, 'other','any','any','any',?,'matched',?,?,?)`).run(id, nickname, role, room, 1_000, 1_000);
+    db.raw.prepare('INSERT INTO room_members(id,room_code,nickname,role,joined_at,last_seen_at,left_at) VALUES(?,?,?,?,?,?,?)')
+      .run(id, room, nickname, role, 1_000, 1_000, 4_000);
+  }
+  const result = await findOrCreateMatch(db, a, 5_000);
+  assert.deepEqual(result, { status: 'matched', room, role: 'controller' });
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=? AND left_at IS NULL').get(room).count, 2);
+});
