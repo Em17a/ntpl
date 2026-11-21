@@ -252,3 +252,17 @@ test('simultaneous polls cannot create two rooms for the same pair', async t => 
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM rooms').get().count, 1);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=?').get(results[0].room).count, 2);
 });
+
+
+test('cancellation tombstone prevents an in-flight initial join from recreating the queue', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const a = 'abababab-1212-4121-8121-ababab121212';
+  assert.deepEqual(await cancelMatchmaking(db, a, 2_000), { status: 'cancelled' });
+  db.raw.prepare(`INSERT OR IGNORE INTO matchmaking_queue
+    (client_id,nickname,gender,preference,role_preference,voice_preference,status,created_at,last_seen_at)
+    VALUES(?, 'late join', 'male', 'any', 'any', 'any', 'waiting', 2_100, 2_100)`).run(a);
+  assert.equal(db.raw.prepare('SELECT status FROM matchmaking_queue WHERE client_id=?').get(a).status, 'cancelled');
+  assert.deepEqual(await pollMatchmaking(db, a, 2_500), { status: 'missing' });
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM rooms').get().count, 0);
+});
