@@ -29,88 +29,221 @@
 .hero.compact-hero{min-height:0;padding:42px 8vw 30px;grid-template-columns:1fr .55fr;gap:20px}.hero.compact-hero h1{font-size:clamp(38px,4.8vw,62px)}.hero.compact-hero .lead{margin:14px 0 20px;max-width:620px}.hero.compact-hero .hero-art{height:210px}.hero.compact-hero .orb-one{width:190px;height:190px}.hero.compact-hero .orb-two{width:130px;height:130px}.hero.compact-hero .art-card{transform:rotate(-5deg) scale(.86)}
 .quick-actions{padding:0 8vw 22px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.quick-action{min-height:74px;display:flex;align-items:center;gap:13px;padding:15px 18px;border:1px solid var(--line);border-radius:10px;background:linear-gradient(135deg,#191620,#111117);transition:.18s}.quick-action:hover{border-color:var(--accent);transform:translateY(-2px)}.quick-action .quick-icon{font-size:22px;color:var(--accent);width:30px;text-align:center}.quick-action strong{display:block;font-size:13px}.quick-action small{display:block;color:var(--muted);font-size:10px;margin-top:4px}.announcement{margin:0 8vw 18px;padding:14px 18px}.announcement h2{font-size:16px}.announcement p:not(.eyebrow){font-size:11px;line-height:1.7}.section#room{padding-top:35px}.mobile-dock{display:none}
 @media(max-width:760px){.topbar{height:58px}.topbar nav{gap:10px}.hero.compact-hero{padding:27px 7vw 20px;display:block;min-height:0;background:radial-gradient(ellipse at 85% 15%,#4d326329,transparent 55%)}.hero.compact-hero h1{font-size:clamp(34px,9vw,46px)}.hero.compact-hero .lead{font-size:12px;line-height:1.65;margin:12px 0 16px}.hero.compact-hero .hero-art{display:none}.quick-actions{padding:0 7vw 14px;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.quick-action{min-height:72px;padding:10px 7px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:4px}.quick-action .quick-icon{font-size:19px;width:auto}.quick-action strong{font-size:10px}.quick-action small{font-size:9px;margin-top:2px}.announcement{margin:0 7vw 12px;padding:11px 13px}.announcement .eyebrow{margin-bottom:5px}.announcement h2{font-size:14px;margin-bottom:5px}.announcement p:not(.eyebrow){font-size:10px;line-height:1.55}.section#room{padding:30px 7vw 45px}.room-studio{padding:12px}.mobile-dock{position:fixed;display:grid;grid-template-columns:repeat(3,1fr);gap:5px;left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom));padding:7px;background:#17141eeF;border:1px solid #51405f;border-radius:13px;box-shadow:0 8px 32px #000a;z-index:12;backdrop-filter:blur(14px)}.mobile-dock a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:7px 2px;border-radius:8px;color:#ddd6e8;font-size:10px}.mobile-dock a:active,.mobile-dock a:focus{background:#352842;color:var(--accent)}.mobile-dock span{font-size:16px}.mobile-dock small{font-size:9px;color:var(--muted)}body{padding-bottom:calc(82px + env(safe-area-inset-bottom))}}
+
+/* Simplified home, modal entry and compact in-room layout */
+.topbar nav button{background:none;border:0;color:#c4c1cc;font:inherit;cursor:pointer;padding:8px 0}
+.topbar nav button:hover{color:var(--accent)}
+.home-shell{display:block}
+.quick-actions{padding-top:0}
+.quick-action{font:inherit;text-align:left;cursor:pointer;width:100%}
+.quick-action:hover{color:var(--text)}
+#lobby[hidden],#roomView[hidden],.modal[hidden],.modal-panel[hidden]{display:none!important}
+.modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:18px}
+.modal-backdrop{position:absolute;inset:0;background:#050509df;backdrop-filter:blur(8px)}
+.modal-card{position:relative;width:min(560px,100%);max-height:min(88vh,760px);overflow:auto;padding:24px;background:#15131c;border:1px solid #51405f;border-radius:14px;box-shadow:0 28px 90px #000c}
+.modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:8px}
+.modal-head h2{font-size:22px;margin:0}
+.modal-close{width:34px;height:34px;border:1px solid var(--line);border-radius:50%;background:#0d0d13;color:var(--text);font-size:22px;cursor:pointer}
+.modal-card>.field-label{margin:16px 0}
+.modal-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;background:#0c0b11;border:1px solid var(--line);border-radius:9px;margin:16px 0}
+.modal-tab{border:0;border-radius:6px;padding:11px;background:transparent;color:var(--muted);font:12px Manrope;cursor:pointer}
+.modal-tab.active{background:#30243d;color:var(--accent);font-weight:700}
+.modal-panel>.muted{margin:10px 0 14px}
+.modal-panel .match-grid{margin-top:12px}
+.modal-panel .match-actions{margin-top:18px}
+.modal-panel .match-actions .primary{flex:1}
+.modal-panel .match-actions .ghost{min-width:110px}
+.modal-panel .room-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.modal-panel .room-controls .code-field,.modal-panel .room-controls>button{grid-column:1/-1}
+.modal-panel .role-picker select{width:100%}
+.room-shell{max-width:980px;margin:28px auto 60px;padding:0 22px}
+.room-bar{margin:0 0 14px}
+.chat-panel{margin:0;padding:18px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.chat-panel .panel-title h2{font-size:21px;margin:0}
+.chat-panel .voice-panel{margin:14px 0 12px;padding:10px 12px;gap:10px;background:#0b0b10}
+.chat-panel .voice-copy{flex:1 1 140px}
+.chat-panel .voice-copy p{display:none}
+.chat-panel .voice-actions{gap:6px}
+.chat-panel .voice-actions button{min-height:34px;padding:8px 11px;font-size:11px}
+.chat-panel .chat-log{height:min(42vh,390px);min-height:190px;margin-bottom:8px}
+.chat-panel .send-row input{min-width:0}
+.metronome-card{margin-top:12px;padding:0;overflow:hidden}
+.metro-summary{display:flex;align-items:center;gap:12px;list-style:none;cursor:pointer;padding:15px 17px}
+.metro-summary::-webkit-details-marker{display:none}
+.metro-summary-copy{display:flex;flex:1;flex-direction:column;gap:3px;min-width:0}
+.metro-summary-copy strong{font-size:13px}
+.metro-summary-copy small{font-size:10px;color:var(--muted)}
+.metro-summary-icon{font-size:22px;color:var(--accent)}
+.metro-summary-readout{display:flex;align-items:baseline;gap:4px;font-family:'DM Mono',monospace}
+.metro-summary-readout b{font-size:20px;color:var(--accent)}
+.metro-summary-readout small{font-size:9px;color:var(--muted)}
+.metro-chevron{color:var(--muted);font-size:17px;transition:transform .2s}
+#metroDetails[open] .metro-chevron{transform:rotate(180deg)}
+.metro-content{padding:0 17px 17px;border-top:1px solid var(--line)}
+.metro-content .beat-display{padding:18px 10px}
+.metro-content .metro-controls{gap:10px}
+.metro-content .metro-control{padding:12px}
+.metro-content .metro-actions{margin-top:12px}
+.room-shell .chat-note{font-size:10px}
+body.room-active footer{display:none}
+body.room-active .topbar nav{display:none}
+@media(max-width:760px){
+ .topbar nav{gap:12px}
+ .topbar nav button{font-size:10px}
+ .hero.compact-hero{padding:30px 7vw 24px}
+ .quick-actions{padding:0 7vw 14px;gap:7px}
+ .quick-action{min-height:74px;padding:9px 6px;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:4px}
+ .quick-action .quick-icon{width:auto;font-size:19px}
+ .quick-action strong{font-size:10px}
+ .quick-action small{font-size:9px}
+ .announcement{margin:0 7vw 18px}
+ .modal{padding:10px;align-items:end}
+ .modal-card{max-height:90vh;padding:18px 15px;border-radius:15px 15px 10px 10px}
+ .modal-head h2{font-size:19px}
+ .modal-panel .match-grid{grid-template-columns:1fr}
+ .modal-panel .room-controls{grid-template-columns:1fr}
+ .modal-panel .room-controls .code-field,.modal-panel .room-controls>button{grid-column:auto}
+ .room-shell{margin:12px auto 30px;padding:0 10px}
+ .room-bar{padding:11px}
+ .room-bar .room-actions{width:100%}
+ .room-bar .room-actions button{flex:1}
+ .chat-panel{padding:12px}
+ .chat-panel .voice-panel{align-items:center}
+ .chat-panel .voice-copy{flex-basis:100%}
+ .chat-panel .voice-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+ .chat-panel .voice-actions button{width:100%;white-space:nowrap}
+ .chat-panel .chat-log{height:48vh;min-height:210px}
+ .metro-summary{gap:8px;padding:13px 11px}
+ .metro-summary-copy small{max-width:145px;line-height:1.4}
+ .metro-summary-readout b{font-size:17px}
+ .metro-content .metro-controls{grid-template-columns:1fr}
+ .metro-actions button{flex:1 1 42%}
+ body{padding-bottom:0}
+}
+
 </style>
 </head>
 <body>
 <header class="topbar">
   <a class="logo" href="/"><span class="logo-icon">N</span> NIGHTPLAY</a>
-  <nav><a href="#room">双人聊天</a><a href="#challenge">节拍器挑战</a></nav>
+  <nav><button type="button" data-open-modal="match">偏好匹配</button><button type="button" data-open-modal="join">加入房间</button></nav>
   <span class="status"><i></i> 双人空间</span>
 </header>
 <main>
-<section class="hero compact-hero">
-  <div class="hero-copy">
-    <p class="eyebrow">NIGHTPLAY · 18+</p>
-    <h1>双人互动<br><em>由你掌控节奏。</em></h1>
-    <p class="lead">创建私人双人房间，与对方实时聊天，并在双方同意下开启节拍器寸止挑战。速度和力度均可随时调整，也可以立即暂停或结束。</p>
-    <a class="primary link-button" href="#room">进入双人房间 <span>↗</span></a>
-  </div>
-  <div class="hero-art"><div class="orb orb-one"></div><div class="orb orb-two"></div><div class="art-card"><span>NIGHTPLAY CHALLENGE</span><strong>2 PLAYERS</strong><div class="art-line"></div><small>CHAT · RHYTHM · CONSENT</small></div></div>
-</section>
-<section class="quick-actions" aria-label="快速进入功能"><a class="quick-action" href="#matchmaking"><span class="quick-icon">♡</span><span><strong>偏好匹配</strong><small>按偏好寻找搭档</small></span></a><a class="quick-action" href="#joinForm"><span class="quick-icon">↗</span><span><strong>邀请 / 加入</strong><small>使用房间码快速进入</small></span></a><a class="quick-action" href="#challenge"><span class="quick-icon">◉</span><span><strong>节拍器挑战</strong><small>进入房间后开启</small></span></a></section>
-<section class="announcement" aria-labelledby="announcementTitle"><p class="eyebrow">PLATFORM NOTICE · 18+</p><h2 id="announcementTitle">平台公告与免责声明</h2><p>Nightplay 仅供年满 18 周岁的成年人自愿使用。平台提供双人聊天、语音及互动工具，不对其他用户的身份、陈述或行为真实性作出保证。请勿分享真实姓名、住址、财务资料等敏感个人信息。参与任何互动前，请确认双方均明确自愿；任何一方都可以随时暂停、结束或离开。用户应遵守所在地法律法规，并对自己的言论、选择及互动行为负责。</p></section>
-<section id="room" class="section custom-section">
-  <div class="section-head"><div><p class="eyebrow">PRIVATE ROOM · 2 SEATS</p><h2>双人私人房间</h2></div><span class="pill">聊天 + 节拍器挑战</span></div>
-  <div class="studio room-studio">
-    <div id="lobby" class="lobby-wrap">
-      <section class="match-card" id="matchmaking">
-        <div class="panel-title"><div><p class="eyebrow">SMART MATCHMAKING</p><h3>偏好匹配</h3></div><span class="pill">1 对 1</span></div>
-        <p class="muted">设置昵称、性别和希望匹配的对象。只有双方偏好互相符合时才会配对；匹配成功后自动进入双人房间。</p>
-        <label class="field-label">你的昵称<input id="nickname" maxlength="24" placeholder="你的昵称" autocomplete="nickname" required></label>
-        <div class="match-grid">
-          <label>你的性别<select id="matchGender"><option value="male">男性</option><option value="female">女性</option><option value="other">其他 / 不便透露</option></select></label>
-          <label>希望匹配的性别<select id="matchPreference"><option value="female">女性</option><option value="male">男性</option><option value="any">不限</option></select></label>
-          <label>希望自己担任的角色<select id="matchRole"><option value="controller">控制方</option><option value="receiver">受控方</option><option value="any" selected>不限（自动分配）</option></select></label>
-        </div>
-        <div class="match-actions"><button id="matchStartBtn" type="button" class="primary">开始偏好匹配</button><button id="matchCancelBtn" type="button" class="ghost" disabled>取消匹配</button><span id="matchStatus" class="chat-note" aria-live="polite">尚未开始匹配</span></div>
-      </section>
-      <div class="private-room-divider"><span>或使用邀请链接 / 房间代码</span></div>
-      <p class="muted">输入昵称和房间代码，或生成新代码后把邀请链接发给另一位参与者。进入时可选择控制方或受控方；同一房间两人必须分别担任不同角色。</p>
-      <form id="joinForm" class="room-controls">
-        <div class="code-field"><input id="roomCode" maxlength="12" placeholder="房间代码（4–12 位字母或数字）" autocomplete="off" required><button type="button" id="randomCodeBtn" class="ghost" title="生成随机代码">↻ 随机</button></div>
-        <label class="role-picker">进入房间后担任<select id="roomRole"><option value="controller">控制方</option><option value="receiver">受控方</option><option value="any">由系统自动分配</option></select></label>
-        <button id="connectBtn" class="primary" type="submit">加入 / 创建房间</button>
-      </form>
-      <p id="roomPeek" class="chat-note"></p>
-    </div>
-    <div id="roomView" hidden>
-      <div class="room-bar">
-        <div class="room-id"><small>ROOM</small><strong id="roomLabel">—</strong><span id="seatLabel" class="pill">0 / 2</span></div>
-        <div id="members" class="members"></div>
-        <div class="room-actions"><button type="button" id="copyLinkBtn" class="ghost">复制邀请链接</button><button type="button" id="disconnectBtn" class="ghost danger-text">离开房间</button></div>
+  <div id="lobby" class="home-shell">
+    <section class="hero compact-hero">
+      <div class="hero-copy">
+        <p class="eyebrow">NIGHTPLAY · 18+</p>
+        <h1>双人互动<br><em>由你掌控节奏。</em></h1>
+        <p class="lead">创建私人双人房间，与对方实时聊天，并在双方同意下开启节拍器寸止挑战。</p>
+        <button class="primary link-button" type="button" data-open-modal="join">进入双人房间 <span>↗</span></button>
       </div>
-      <section class="voice-panel" aria-label="双人实时语音">
-        <div class="voice-copy"><div class="voice-heading"><strong>实时语音 · 双人自由通话</strong><span id="voiceStatus" class="voice-status" aria-live="polite">语音未开启 · 双方需分别授权</span></div><p class="chat-note">双方可自愿开启麦克风；不开启的一方不会发送声音。可随时静音或结束语音。</p></div>
-        <div class="voice-actions"><button type="button" id="voiceStartBtn" class="primary" disabled>🎙 开启麦克风</button><button type="button" id="voiceMuteBtn" class="ghost" disabled>静音</button><button type="button" id="voiceHangupBtn" class="ghost danger-text" disabled>结束语音</button><button type="button" id="voiceListenBtn" class="ghost" hidden>播放对方声音</button></div>
-        <audio id="remoteAudio" autoplay playsinline></audio>
-      </section>
-      <section id="challenge" class="metronome-card" aria-label="节拍器寸止挑战">
-        <div class="metronome-head"><div><p class="eyebrow">RHYTHM CHALLENGE</p><h3>节拍器寸止挑战</h3><p class="muted">控制方负责调整节拍；受控方跟随。受控方始终可以紧急停止或退出。</p></div><span id="metroStatus" class="pill">尚未开始</span></div>
-        <div class="beat-display"><div id="beatPulse" class="beat-pulse"><span id="beatNumber">—</span></div><div class="beat-readout"><strong><span id="bpmValue">80</span> <small>BPM</small></strong><span id="intensityText">力度 3 / 5</span></div></div>
-        <div class="metro-controls">
-          <div class="metro-control"><div class="control-title"><label for="bpmRange">节奏速度</label><strong><span id="bpmLabel">80</span> BPM</strong></div><input id="bpmRange" type="range" min="40" max="220" step="1" value="80"><div class="range-ends"><span>慢 40</span><span>快 220</span></div></div>
-          <div class="metro-control"><div class="control-title"><label for="intensityRange">节拍力度</label><strong><span id="intensityLabel">3</span> / 5</strong></div><input id="intensityRange" type="range" min="1" max="5" step="1" value="3"><div class="range-ends"><span>轻柔</span><span>强烈</span></div></div>
-        </div>
-        <div class="metro-actions"><button id="metroStart" class="primary" type="button">▶ 开始挑战</button><button id="metroPause" class="ghost" type="button" disabled>Ⅱ 暂停</button><button id="metroStop" class="ghost danger-text" type="button" disabled>■ 结束挑战</button><button id="metroEmergency" class="ghost danger-text" type="button" disabled>紧急停止</button></div><p id="roleStatus" class="chat-note" aria-live="polite">进入房间后显示你的挑战角色。</p>
-        <p class="chat-note">说明：力度控制节拍提示音量与视觉脉冲强度，不会控制外接设备。请双方先确认规则；不适或不愿继续时立即暂停。</p>
-      </section>
-      <section class="chat-panel"><div class="panel-title"><div><p class="eyebrow">LIVE CHAT</p><h3>双人聊天</h3></div><span id="connState" class="conn-state off">未连接</span></div>
-        <div id="chatLog" class="chat-log" aria-live="polite"></div><div class="typing" id="typing"></div>
-        <form id="chatForm" class="send-row"><input id="chatInput" maxlength="500" placeholder="输入消息…（Enter 发送）" autocomplete="off"><button class="primary" id="sendBtn">发送</button></form>
-        <p class="chat-note">请尊重对方意愿；任何一方都可以随时暂停或离开。</p>
+      <div class="hero-art"><div class="orb orb-one"></div><div class="orb orb-two"></div><div class="art-card"><span>NIGHTPLAY CHALLENGE</span><strong>2 PLAYERS</strong><div class="art-line"></div><small>CHAT · RHYTHM · CONSENT</small></div></div>
+    </section>
+    <section class="quick-actions" aria-label="快速进入功能">
+      <button class="quick-action" type="button" data-open-modal="match"><span class="quick-icon">♡</span><span><strong>偏好匹配</strong><small>按偏好寻找搭档</small></span></button>
+      <button class="quick-action" type="button" data-open-modal="join"><span class="quick-icon">↗</span><span><strong>邀请 / 加入</strong><small>使用房间码快速进入</small></span></button>
+      <button class="quick-action" type="button" data-open-modal="join"><span class="quick-icon">◉</span><span><strong>节拍器挑战</strong><small>进入房间后开启</small></span></button>
+    </section>
+    <section class="announcement" aria-labelledby="announcementTitle"><p class="eyebrow">PLATFORM NOTICE · 18+</p><h2 id="announcementTitle">平台公告与免责声明</h2><p>Nightplay 仅供年满 18 周岁的成年人自愿使用。平台不保证其他用户身份、陈述或行为的真实性。请勿分享真实姓名、住址、财务资料等敏感信息。任何互动均需双方明确自愿，任何一方都可以随时暂停、结束或离开。用户应遵守所在地法律法规，并对自己的言论与行为负责。</p></section>
+    <div id="actionModal" class="modal" hidden>
+      <div class="modal-backdrop" data-close-modal></div>
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-head"><div><p class="eyebrow">NIGHTPLAY · PRIVATE ROOM</p><h2 id="modalTitle">开始你的双人体验</h2></div><button type="button" class="modal-close" aria-label="关闭" data-close-modal>×</button></div>
+        <label class="field-label">你的昵称<input id="nickname" maxlength="24" placeholder="输入聊天昵称" autocomplete="nickname" required></label>
+        <div class="modal-tabs"><button type="button" class="modal-tab active" data-modal-tab="match">偏好匹配</button><button type="button" class="modal-tab" data-modal-tab="join">邀请 / 加入</button></div>
+        <section id="matchPanel" class="modal-panel">
+          <p class="muted">设置你的性别、希望匹配的对象和挑战角色。只有双方偏好互相符合时才会配对。</p>
+          <div class="match-grid">
+            <label>你的性别<select id="matchGender"><option value="male">男性</option><option value="female">女性</option><option value="other">其他 / 不便透露</option></select></label>
+            <label>希望匹配的性别<select id="matchPreference"><option value="female">女性</option><option value="male">男性</option><option value="any">不限</option></select></label>
+            <label>希望自己担任的角色<select id="matchRole"><option value="controller">控制方</option><option value="receiver">受控方</option><option value="any" selected>不限（自动分配）</option></select></label>
+          </div>
+          <div class="match-actions"><button id="matchStartBtn" type="button" class="primary">开始匹配</button><button id="matchCancelBtn" type="button" class="ghost" disabled>取消匹配</button></div>
+          <p id="matchStatus" class="chat-note" aria-live="polite">尚未开始匹配</p>
+        </section>
+        <section id="joinPanel" class="modal-panel" hidden>
+          <p class="muted">输入对方分享的房间代码，或生成新房间后复制邀请链接。两位参与者需分别选择不同的挑战角色。</p>
+          <form id="joinForm" class="room-controls">
+            <div class="code-field"><input id="roomCode" maxlength="12" placeholder="房间代码（4–12 位字母或数字）" autocomplete="off" required><button type="button" id="randomCodeBtn" class="ghost" title="生成随机代码">↻ 随机</button></div>
+            <label class="role-picker">进入房间后担任<select id="roomRole"><option value="controller">控制方</option><option value="receiver">受控方</option><option value="any">由系统自动分配</option></select></label>
+            <button id="connectBtn" class="primary" type="submit">加入 / 创建房间</button>
+          </form>
+          <p id="roomPeek" class="chat-note"></p>
+        </section>
       </section>
     </div>
   </div>
-</section>
-<section class="safety"><div class="safety-icon">♡</div><div><p class="eyebrow">CONSENT FIRST</p><h2>双方自愿，随时可停</h2><p>仅限成年人参与。节拍器挑战需要双方明确同意；任何一方都可以调整设置、暂停或退出。不要分享真实身份、住址或支付信息。</p></div></section>
+  <div id="roomView" hidden>
+  <div class="room-shell">
+    <div class="room-bar">
+      <div class="room-id"><small>ROOM</small><strong id="roomLabel">—</strong><span id="seatLabel" class="pill">0 / 2</span></div>
+      <div id="members" class="members"></div>
+      <div class="room-actions"><button type="button" id="copyLinkBtn" class="ghost">复制邀请链接</button><button type="button" id="disconnectBtn" class="ghost danger-text">离开房间</button></div>
+    </div>
+    <section class="chat-panel">
+      <div class="panel-title"><div><p class="eyebrow">PRIVATE LIVE ROOM</p><h2>双人聊天</h2></div><span id="connState" class="conn-state off">未连接</span></div>
+      <div class="voice-panel" aria-label="双人实时语音">
+        <div class="voice-copy"><div class="voice-heading"><strong>🎙 实时语音</strong><span id="voiceStatus" class="voice-status" aria-live="polite">语音未开启 · 双方需分别授权</span></div></div>
+        <div class="voice-actions"><button type="button" id="voiceStartBtn" class="primary" disabled>开启麦克风</button><button type="button" id="voiceMuteBtn" class="ghost" disabled>静音</button><button type="button" id="voiceHangupBtn" class="ghost danger-text" disabled>结束语音</button><button type="button" id="voiceListenBtn" class="ghost" hidden>播放对方声音</button></div>
+        <audio id="remoteAudio" autoplay playsinline></audio>
+      </div>
+      <div id="chatLog" class="chat-log" aria-live="polite"></div>
+      <div class="typing" id="typing"></div>
+      <form id="chatForm" class="send-row"><input id="chatInput" maxlength="500" placeholder="输入消息…（Enter 发送）" autocomplete="off"><button class="primary" id="sendBtn">发送</button></form>
+      <p class="chat-note">双方自愿参与；任何一方都可以随时静音、暂停或离开。</p>
+    </section>
+    <section id="challenge" class="metronome-card" aria-label="节拍器寸止挑战">
+      <details id="metroDetails">
+        <summary class="metro-summary">
+          <span class="metro-summary-icon">◉</span>
+          <span class="metro-summary-copy"><strong>节拍器挑战</strong><small>控制方调整节奏 · 受控方可随时紧急停止</small></span>
+          <span class="metro-summary-readout"><b id="metroSummaryBpm">80</b><small>BPM</small></span>
+          <span id="metroStatus" class="pill">尚未开始</span><span class="metro-chevron">⌄</span>
+        </summary>
+        <div class="metro-content">
+          <div class="beat-display"><div id="beatPulse" class="beat-pulse"><span id="beatNumber">—</span></div><div class="beat-readout"><strong><span id="bpmValue">80</span> <small>BPM</small></strong><span id="intensityText">力度 3 / 5</span></div></div>
+          <div class="metro-controls">
+            <div class="metro-control"><div class="control-title"><label for="bpmRange">节奏速度</label><strong><span id="bpmLabel">80</span> BPM</strong></div><input id="bpmRange" type="range" min="40" max="220" step="1" value="80"><div class="range-ends"><span>慢 40</span><span>快 220</span></div></div>
+            <div class="metro-control"><div class="control-title"><label for="intensityRange">节拍力度</label><strong><span id="intensityLabel">3</span> / 5</strong></div><input id="intensityRange" type="range" min="1" max="5" step="1" value="3"><div class="range-ends"><span>轻柔</span><span>强烈</span></div></div>
+          </div>
+          <div class="metro-actions"><button id="metroStart" class="primary" type="button">▶ 开始挑战</button><button id="metroPause" class="ghost" type="button" disabled>Ⅱ 暂停</button><button id="metroStop" class="ghost danger-text" type="button" disabled>■ 结束挑战</button><button id="metroEmergency" class="ghost danger-text" type="button" disabled>紧急停止</button></div>
+          <p id="roleStatus" class="chat-note" aria-live="polite">进入房间后显示你的挑战角色。</p>
+          <p class="chat-note">力度只影响节拍提示音量与视觉脉冲。请双方先确认规则；任何一方不适或不愿继续时立即暂停。</p>
+        </div>
+      </details>
+    </section>
+  </div>
+</div>
 </main>
-<nav class="mobile-dock" aria-label="底部快捷导航"><a href="#matchmaking"><span>♡</span>偏好匹配</a><a href="#joinForm"><span>↗</span>加入房间</a><a href="#challenge"><span>◉</span>节拍器</a></nav>
 <footer><span class="logo">NIGHTPLAY</span><span>Private two-player experience</span><span>18+ · Consent · Privacy</span></footer>
 <div id="toast" class="toast"></div>
 <script>
 
 const $=s=>document.querySelector(s);
 const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2600)};
+
+ // 首页弹窗：匹配与邀请共用昵称，避免重复表单。
+ function setModalTab(tab){
+  const match=tab==="match";
+  $("#matchPanel").hidden=!match;$("#joinPanel").hidden=match;
+  document.querySelectorAll("[data-modal-tab]").forEach(b=>b.classList.toggle("active",b.dataset.modalTab===tab));
+  $("#modalTitle").textContent=match?"按偏好寻找搭档":"邀请 / 加入双人房间";
+ }
+ function openActionModal(tab){
+  setModalTab(tab==="match"?"match":"join");
+  $("#actionModal").hidden=false;
+  document.body.classList.add("modal-open");
+ }
+ function closeActionModal(){
+  const modal=$("#actionModal");if(modal)modal.hidden=true;
+  document.body.classList.remove("modal-open");
+ }
+ document.querySelectorAll("[data-open-modal]").forEach(b=>b.addEventListener("click",()=>openActionModal(b.dataset.openModal)));
+ document.querySelectorAll("[data-modal-tab]").forEach(b=>b.addEventListener("click",()=>setModalTab(b.dataset.modalTab)));
+ document.querySelectorAll("[data-close-modal]").forEach(b=>b.addEventListener("click",closeActionModal));
+ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#actionModal").hidden)closeActionModal()});
+
  // ===== 双人房间：WebSocket + WebRTC 双人语音 =====
  const Room=(()=>{
   const els={lobby:$("#lobby"),view:$("#roomView"),state:$("#connState"),log:$("#chatLog"),members:$("#members"),seat:$("#seatLabel"),label:$("#roomLabel"),typing:$("#typing"),input:$("#chatInput"),nick:$("#nickname"),code:$("#roomCode"),connect:$("#connectBtn"),peek:$("#roomPeek"),voiceStatus:$("#voiceStatus"),voiceStart:$("#voiceStartBtn"),voiceMute:$("#voiceMuteBtn"),voiceHangup:$("#voiceHangupBtn"),voiceListen:$("#voiceListenBtn"),remoteAudio:$("#remoteAudio"),matchGender:$("#matchGender"),matchPreference:$("#matchPreference"),matchRole:$("#matchRole"),roomRole:$("#roomRole"),roleStatus:$("#roleStatus"),metroEmergency:$("#metroEmergency"),matchStart:$("#matchStartBtn"),matchCancel:$("#matchCancelBtn"),matchStatus:$("#matchStatus"),bpm:$("#bpmRange"),intensity:$("#intensityRange"),metroStart:$("#metroStart"),metroPause:$("#metroPause"),metroStop:$("#metroStop"),metroStatus:$("#metroStatus")};
@@ -122,7 +255,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   // 节拍器由双方浏览器本地发声，房间服务端只同步参数和运行状态。
   let metroTimer=null,metroBeat=0,metroRunning=false,metroHasStarted=false,metroStopped=false,audioCtx=null,metroSyncGuard=false,roomHasPartner=false;
   const metroIntensity=()=>Number(els.intensity.value);
-  function updateMetroLabels(){const bpm=Number(els.bpm.value),level=metroIntensity();$("#bpmValue").textContent=bpm;$("#bpmLabel").textContent=bpm;$("#intensityLabel").textContent=level;$("#intensityText").textContent="力度 "+level+" / 5";$("#beatPulse").style.setProperty("--pulse-scale",String(1+level*.035));}
+  function updateMetroLabels(){const bpm=Number(els.bpm.value),level=metroIntensity();$("#bpmValue").textContent=bpm;$("#bpmLabel").textContent=bpm;$("#metroSummaryBpm").textContent=bpm;$("#intensityLabel").textContent=level;$("#intensityText").textContent="力度 "+level+" / 5";$("#beatPulse").style.setProperty("--pulse-scale",String(1+level*.035));}
   function stopMetroTimer(){if(metroTimer){clearInterval(metroTimer);metroTimer=null}}
   function tick(){if(!metroRunning)return;metroBeat=(metroBeat%4)+1;const level=metroIntensity(),accent=metroBeat===1;const pulse=$("#beatPulse");pulse.classList.remove("active");void pulse.offsetWidth;pulse.classList.add("active");$("#beatNumber").textContent=String(metroBeat);setTimeout(()=>pulse.classList.remove("active"),110);
    try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume();const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type="sine";osc.frequency.value=accent?1050:760;gain.gain.setValueAtTime(Math.min(.32,.035+level*.045),audioCtx.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.075);osc.connect(gain);gain.connect(audioCtx.destination);osc.start();osc.stop(audioCtx.currentTime+.08)}catch(e){console.warn("节拍提示音不可用",e)}
@@ -161,7 +294,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    els.seat.textContent=list.length+" / "+seats;
    renderMetroState();
   }
-  function showRoom(on){els.lobby.hidden=on;els.view.hidden=!on;els.voiceStart.disabled=!on||!me}
+  function showRoom(on){els.lobby.hidden=on;els.view.hidden=!on;document.body.classList.toggle("room-active",on);if(on)closeActionModal();els.voiceStart.disabled=!on||!me}
   function socketUrl(){return (location.protocol==="https:"?"wss://":"ws://")+location.host+"/ws"}
   function open(){
    if(ws&&(ws.readyState===0||ws.readyState===1))return;
