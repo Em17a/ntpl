@@ -386,6 +386,8 @@ export class NightplayRoom extends DurableObject<Env> {
       let body:any;try{body=await request.json()}catch{return json({error:'bad_json'},400)}
       const guestId=String(body?.guestId??''),friendCode=String(body?.friendCode??'').trim().toUpperCase();
       if(!/^[0-9a-f-]{36}$/i.test(guestId)||! /^[A-F0-9]{8}$/.test(friendCode))return json({error:'bad_request'},400);
+      const selfProfile=await this.env.DB.prepare('SELECT guest_id FROM guest_profiles WHERE guest_id=?').bind(guestId).first<any>();
+      if(!selfProfile)return json({error:'profile_not_found',message:'请先打开好友页面初始化你的游客资料。'},404);
       const target=await this.env.DB.prepare('SELECT guest_id FROM guest_profiles WHERE friend_code=?').bind(friendCode).first<any>();
       if(!target)return json({error:'friend_not_found',message:'没有找到这个好友码。'},404);
       if(target.guest_id===guestId)return json({error:'self_request',message:'不能添加自己。'},400);
