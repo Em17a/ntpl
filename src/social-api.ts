@@ -10,7 +10,7 @@ const GUEST_ID = /^[0-9a-f-]{36}$/i;
 const FRIEND_CODE = /^[A-F0-9]{8}$/;
 
 export async function ensureFriendProfile(db: D1Database, guestId: string, nickname: string): Promise<void> {
-  const clean = String(nickname || '访客').trim().replace(/\\s+/g, ' ').slice(0, 24) || '访客';
+  const clean = String(nickname || '访客').trim().replace(/\s+/g, ' ').slice(0, 24) || '访客';
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const existing = await db.prepare('SELECT guest_id FROM guest_profiles WHERE guest_id=?')
       .bind(guestId).first<any>();
@@ -81,7 +81,7 @@ export async function handleSocialApi(request: Request, db: D1Database): Promise
     try { body = await request.json(); } catch { return json({ error: 'bad_json' }, 400); }
     const guestId = String(body?.guestId ?? '');
     const visible = body?.onlineVisible === true ? 1 : 0;
-    const nickname = String(body?.nickname ?? '').trim().replace(/\\s+/g, ' ').slice(0, 24);
+    const nickname = String(body?.nickname ?? '').trim().replace(/\s+/g, ' ').slice(0, 24);
     if (!GUEST_ID.test(guestId)) return json({ error: 'bad_guest_id' }, 400);
     const profile = await db.prepare('SELECT guest_id FROM guest_profiles WHERE guest_id=?')
       .bind(guestId).first<any>();
