@@ -165,7 +165,7 @@ export class NightplayRoom extends DurableObject<Env> {
   private async metro(room: string) { return await this.ctx.storage.get<any>('metro:'+room); }
   private async setMetro(room: string, state: any) { await this.ctx.storage.put('metro:'+room,state); await this.scheduleNextAlarm(); }
   private async scheduleNextAlarm() {
-    const expiry=await this.env.DB.prepare('SELECT MIN(expires_at) AS at FROM rooms WHERE expires_at>0').bind(now()).first<any>();
+    const expiry=await this.env.DB.prepare('SELECT MIN(expires_at) AS at FROM rooms WHERE expires_at>0').first<any>();
     let nextAt=Number(expiry?.at)||0;
     const entries=await this.ctx.storage.list<any>({prefix:'metro:'});
     for(const [,state] of entries)if(state?.running&&Number(state.endsAt)>0&&(!nextAt||Number(state.endsAt)<nextAt))nextAt=Number(state.endsAt);
@@ -175,31 +175,39 @@ export class NightplayRoom extends DurableObject<Env> {
   private compatible(a:any,b:any) {
     const genderOk=(a.preference==='any'||a.preference===b.gender)&&(b.preference==='any'||b.preference===a.gender);
     const roleOk=a.role_preference==='any'||b.role_preference==='any'||a.role_preference!==b.role_preference;
+    return genderOk&&roleOk;
+  }
+  private voiceMatchScore(a:any,b:any) {
     const av=a.voice_preference||'any',bv=b.voice_preference||'any';
-    const voiceOk=av==='any'||bv==='any'||(av==='off'&&bv==='off')||(av==='both'&&bv==='both')||(av==='self'&&bv==='peer')||(av==='peer'&&bv==='self');
-    return genderOk&&roleOk&&voiceOk;
+    if(av==='any'||bv==='any')return 1;
+    if((av==='off'&&bv==='off')||(av==='both'&&bv==='both')||(av==='self'&&bv==='peer')||(av==='peer'&&bv==='self'))return 2;
+    return 0;
   }
   private async findOrCreateMatch(clientId:string) {
-    const db=this.env.DB,t=now();
-    await db.prepare("DELETE FROM matchmaking_queue WHERE status='waiting' AND last_seen_at<?").bind(t-45000).run();
-    await db.prepare('DELETE FROM matchmaking_queue WHERE created_at<?').bind(t-86400000).run();
-    const self=await db.prepare("SELECT * FROM matchmaking_queue WHERE client_id=? AND status='waiting'").bind(clientId).first<any>();
-    if(!self){const existing=await db.prepare('SELECT * FROM matchmaking_queue WHERE client_id=?').bind(clientId).first<any>();return existing?.status==='matched'?{status:'matched',room:existing.room_code,role:existing.matched_role}:{status:'missing'};}
-    const waiting=await db.prepare("SELECT * FROM matchmaking_queue WHERE status='waiting' AND client_id<>? ORDER BY created_at LIMIT 100").bind(clientId).all<any>();
-    const partner=waiting.results.find((x:any)=>this.compatible(self,x));if(!partner)return {status:'waiting'};
-    const room=crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase();
-    let selfRole:Role,partnerRole:Role;
-    if(self.role_preference==='any'&&partner.role_preference==='any'){selfRole='controller';partnerRole='receiver';}
-    else if(self.role_preference==='any'){partnerRole=partner.role_preference;selfRole=partnerRole==='controller'?'receiver':'controller';}
-    else if(partner.role_preference==='any'){selfRole=self.role_preference;partnerRole=selfRole==='controller'?'receiver':'controller';}
-    else{selfRole=self.role_preference;partnerRole=partner.role_preference;}
-    await db.batch([
-      db.prepare('INSERT INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)').bind(room,t,t,t+120*60000),
-      db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,selfRole,clientId),
-      db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,partnerRole,partner.client_id),
-    ]);
-    await this.scheduleNextAlarm();
-    return {status:'matched',room,role:selfRole};
+    return this.queue(async()=>{
+      const db=this.env.DB,t=now();
+      await db.prepare("DELETE FROM matchmaking_queue WHERE status='waiting' AND last_seen_at<?").bind(t-45000).run();
+      await db.prepare('DELETE FROM matchmaking_queue WHERE created_at<?').bind(t-86400000).run();
+      const self=await db.prepare("SELECT * FROM matchmaking_queue WHERE client_id=? AND status='waiting'").bind(clientId).first<any>();
+      if(!self){const existing=await db.prepare('SELECT * FROM matchmaking_queue WHERE client_id=?').bind(clientId).first<any>();return existing?.status==='matched'?{status:'matched',room:existing.room_code,role:existing.matched_role}:{status:'missing'};}
+      const waiting=await db.prepare("SELECT * FROM matchmaking_queue WHERE status='waiting' AND client_id<>? ORDER BY created_at LIMIT 100").bind(clientId).all<any>();
+      const candidates=waiting.results.filter((x:any)=>this.compatible(self,x));
+      candidates.sort((a:any,b:any)=>this.voiceMatchScore(self,b)-this.voiceMatchScore(self,a)||Number(a.created_at)-Number(b.created_at));
+      const partner=candidates[0];if(!partner)return {status:'waiting'};
+      const room=crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase();
+      let selfRole:Role,partnerRole:Role;
+      if(self.role_preference==='any'&&partner.role_preference==='any'){selfRole='controller';partnerRole='receiver';}
+      else if(self.role_preference==='any'){partnerRole=partner.role_preference;selfRole=partnerRole==='controller'?'receiver':'controller';}
+      else if(partner.role_preference==='any'){selfRole=self.role_preference;partnerRole=selfRole==='controller'?'receiver':'controller';}
+      else{selfRole=self.role_preference;partnerRole=partner.role_preference;}
+      await db.batch([
+        db.prepare('INSERT INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)').bind(room,t,t,t+120*60000),
+        db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,selfRole,clientId),
+        db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,partnerRole,partner.client_id),
+      ]);
+      await this.scheduleNextAlarm();
+      return {status:'matched',room,role:selfRole};
+    });
   }
   private async matchmakingJoin(ws:WebSocket,msg:ClientMessage) {
     const clientId=typeof msg.clientId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.clientId)?msg.clientId:'';
@@ -257,11 +265,13 @@ export class NightplayRoom extends DurableObject<Env> {
     const roomInfo=await this.env.DB.prepare('SELECT room_name,is_public,expires_at FROM rooms WHERE code=?').bind(room).first<any>();
     const watchConsents=await this.ctx.storage.get<string[]>('watch-consent:'+room)??[];
     const watchAllowed=activeIds.length===2&&activeIds.every((id:string)=>watchConsents.includes(id));
-    this.send(ws,{type:'joined',room,roomName:roomInfo?.room_name||'',isPublic:Boolean(roomInfo?.is_public),expiresAt:Number(roomInfo?.expires_at)||0,token:member.id,you:{id:member.id,nickname:member.nickname,role:member.role},resumed:!isNew,history:await this.history(room,isNew?0:lastId),members:await this.presence(room),seats:MAX_SEATS,watchAllowed,watchConsent:watchConsents.includes(member.id),watchers:await this.watcherCount(room)});
+    const opponentInfo=await this.env.DB.prepare('SELECT rm.nickname,gp.friend_code FROM room_members rm LEFT JOIN guest_profiles gp ON gp.guest_id=rm.guest_id WHERE rm.room_code=? AND rm.id<>? AND rm.left_at IS NULL ORDER BY rm.joined_at DESC LIMIT 1').bind(room,member.id).first<any>();
+    this.send(ws,{type:'joined',room,roomName:roomInfo?.room_name||'',isPublic:Boolean(roomInfo?.is_public),expiresAt:Number(roomInfo?.expires_at)||0,token:member.id,you:{id:member.id,nickname:member.nickname,role:member.role},opponentFriendCode:opponentInfo?.friend_code||'',opponentNickname:opponentInfo?.nickname||'',resumed:!isNew,history:await this.history(room,isNew?0:lastId),members:await this.presence(room),seats:MAX_SEATS,watchAllowed,watchConsent:watchConsents.includes(member.id),watchers:await this.watcherCount(room)});
     if(isNew)await this.addMessage(room,'system',`${member.nickname} 加入了房间`);
     await this.pushPresence(room);
     const metro=await this.metro(room);if(metro)this.send(ws,{type:'metronome_state',...metro});
-    for(const peer of this.sockets()){const pm=this.meta(peer);if(peer!==ws&&pm?.room===room)this.send(peer,{type:'voice_peer_ready',memberId:member.id,nickname:member.nickname});}
+    const joiningProfile=guestId?await this.env.DB.prepare('SELECT friend_code FROM guest_profiles WHERE guest_id=?').bind(guestId).first<any>():null;
+    for(const peer of this.sockets()){const pm=this.meta(peer);if(peer!==ws&&pm?.room===room){this.send(peer,{type:'voice_peer_ready',memberId:member.id,nickname:member.nickname});this.send(peer,{type:'opponent_info',friendCode:joiningProfile?.friend_code||'',nickname:member.nickname});}}
     await this.env.DB.prepare('DELETE FROM rooms WHERE last_active_at<?').bind(t-ROOM_RETENTION_DAYS*86400000).run();
   }
   private async handle(ws:WebSocket,msg:ClientMessage) {
