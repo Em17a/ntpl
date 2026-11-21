@@ -1014,7 +1014,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   function reset(msg){matchClientId=null;clearInterval(joinRetry);joinRetry=null;stopMetro(false);closeVoice(false);currentOpponentFriendCode="";currentOpponentNickname="";$("#metroAddFriendBtn").hidden=true;watching=false;watchConsent=false;watchAllowed=false;document.body.classList.remove("watch-mode");showMatchingScreen(false);stopMatchClock();want=false;joining=false;matching=false;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;clearInterval(hb);hb=null;clearTimeout(retryTimer);me=null;myRole=null;matchedRole=null;showRoom(false);els.connect.disabled=false;if(ws){ws.onclose=null;try{ws.close()}catch{}ws=null}setState("off","未连接");if(msg)toast(msg);const u=new URL(location.href);u.searchParams.delete("room");history.replaceState(null,"",u)}
   let matchRequestBusy=false;
   async function matchmakingRequest(action,clientId,details={}){
-   const response=await fetch("/api/matchmaking",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action,clientId,...details}),cache:"no-store"});
+   const response=await fetch("/api/matchmaking",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action,clientId,...details}),cache:"no-store",signal:AbortSignal.timeout(12000)});
    let data={};try{data=await response.json()}catch{}
    if(!response.ok)throw Object.assign(new Error(data.message||"匹配服务暂时不可用，请稍后重试。"),{status:response.status,code:data.code});
    return data;
