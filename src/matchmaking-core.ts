@@ -15,7 +15,7 @@ export function isMatchCompatible(a: MatchCandidate, b: MatchCandidate): boolean
   const roleOk = a.role_preference === 'any'
     || b.role_preference === 'any'
     || a.role_preference !== b.role_preference;
-  return genderOk && roleOk && voiceMatchScore(a, b) > 0;
+  return genderOk && roleOk;
 }
 
 export function voiceMatchScore(a: MatchCandidate, b: MatchCandidate): number {
