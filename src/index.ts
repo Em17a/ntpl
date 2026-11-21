@@ -190,8 +190,7 @@ export class NightplayRoom extends DurableObject<Env> {
     return 0;
   }
   private async findOrCreateMatch(clientId:string) {
-    // webSocketMessage already serializes every message through this.queue().
-    // Do not enqueue again here: awaiting a nested queue operation deadlocks.
+    // Matchmaking calls are serialized separately from ordinary WebSocket traffic.
     const db=this.env.DB,t=now();
     await db.prepare("DELETE FROM matchmaking_queue WHERE status='waiting' AND last_seen_at<?").bind(t-45000).run();
     await db.prepare('DELETE FROM matchmaking_queue WHERE created_at<?').bind(t-86400000).run();
