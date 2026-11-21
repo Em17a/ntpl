@@ -223,7 +223,7 @@ export class NightplayRoom extends DurableObject<Env> {
     const room=String(msg.room??'').trim().toUpperCase(),nickname=String(msg.nickname??'').trim().replace(/\s+/g,' ').slice(0,24);
     const token=typeof msg.token==='string'&&/^[0-9a-f-]{36}$/i.test(msg.token)?msg.token:null,requestedRole=String(msg.role??'any'),guestId=typeof msg.guestId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.guestId)?msg.guestId:null;
     const publishRequested=msg.publish===true,roomName=String(msg.roomName??'').trim().replace(/\s+/g,' ').slice(0,20);
-    const requestedLifetime=Number(msg.roomLifetimeMinutes),roomLifetime=Number.isFinite(requestedLifetime)?Math.max(5,Math.min(120,Math.round(requestedLifetime/5)*5)):30;
+    const requestedLifetime=Number(msg.roomLifetimeMinutes),roomLifetime=Number.isFinite(requestedLifetime)?Math.max(5,Math.min(120,Math.round(requestedLifetime))):30;
     if(publishRequested&&!roomName)return this.send(ws,{type:'error',code:'bad_room_name',message:'请填写 1–20 个字的房间名称。'});
     if(!ROLE_PREFS.has(requestedRole))return this.send(ws,{type:'error',code:'bad_role',message:'请选择有效的挑战角色。'});
     if(!CODE_RE.test(room))return this.send(ws,{type:'error',code:'bad_room',message:'房间代码需为 4–12 位字母或数字。'});
