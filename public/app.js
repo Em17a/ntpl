@@ -491,15 +491,17 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    let stream=null;
    try{
     // 没有设备端中文模型时不降级到云端识别，也不会开启麦克风。
+    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+    if(!AudioContextClass)throw new Error("当前浏览器不支持受保护语音所需的 Web Audio。");
+    voiceAudioContext=new AudioContextClass();
+    // 在用户点击的同步调用栈内先请求恢复音频上下文，随后在异步步骤后再次确认。
+    voiceAudioContext.resume().catch(()=>{});
     const Speech=await prepareLocalSpeechRecognition();
     if(generation!==voiceGeneration||!me)return;
     // 只有点击此按钮才请求麦克风权限；绝不自动开麦。
     stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
     if(generation!==voiceGeneration||!me){stream.getTracks().forEach(t=>t.stop());return}
     localStream=stream;
-    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
-    if(!AudioContextClass)throw new Error("当前浏览器不支持受保护语音所需的 Web Audio。");
-    voiceAudioContext=new AudioContextClass();
     await voiceAudioContext.resume();
     voiceSource=voiceAudioContext.createMediaStreamSource(stream);
     voiceDelay=voiceAudioContext.createDelay(2);
