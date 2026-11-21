@@ -135,10 +135,6 @@ body.room-active .topbar nav{display:none}
 .metro-countdown b{font:600 17px 'DM Mono';color:var(--accent);margin-left:5px}
 .metro-cues{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
 .metro-cues button{min-height:34px;padding:6px 11px;font-size:10px}
-.solo-readout{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:18px 0;padding:16px;background:#0d0d13;border:1px solid var(--line);border-radius:9px}
-.solo-readout strong{font-size:14px;color:var(--accent);flex:1}
-.solo-readout span{font-size:11px;color:var(--muted)}
-.solo-readout b{font:600 18px 'DM Mono';color:var(--text)}
 .modal-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media(max-width:760px){.metro-extra-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metro-extra-controls label{min-width:0}.metro-countdown{margin:0;grid-column:1/-1}.metro-cues{display:grid;grid-template-columns:repeat(3,1fr)}.metro-cues button{padding:6px 4px}.solo-readout{gap:10px}.solo-readout strong{flex-basis:100%}.quick-phrase-wrap{margin:7px 0 10px}.quick-phrase-head{font-size:9px}}
 
@@ -172,9 +168,13 @@ body.watch-mode #watchStatus{color:#d2c4e6}
 
 /* Spectator directory cards */
 .watch-directory{margin:0 8vw 18px;padding:18px;border:1px solid #665078;border-radius:12px;background:#17151f}
-.solo-watch-directory{margin:22px 0 0;padding:16px;background:#100f16}
-.solo-watch-directory .watch-directory-head h2{font-size:17px}
-.solo-watch-directory .watch-directory-head .eyebrow{margin-bottom:6px}
+.featured-watch-directory{margin:22px 0 26px;padding:22px;border:1px solid #8a6aa8;background:linear-gradient(135deg,#21182c,#14121c);box-shadow:0 10px 34px rgba(0,0,0,.24)}
+.featured-watch-directory .watch-directory-head{align-items:center}
+.featured-watch-directory .watch-directory-head h2{font-size:24px;color:#fff}
+.featured-watch-directory .watch-directory-head .eyebrow{color:#d7a8ff}
+.featured-watch-directory .watch-directory-head .chat-note{max-width:620px;color:#ded5e8}
+.featured-watch-directory .watch-directory-list{min-height:54px}
+@media(max-width:760px){.featured-watch-directory{margin:16px 7vw 20px;padding:15px}.featured-watch-directory .watch-directory-head{align-items:flex-start;flex-direction:column}.featured-watch-directory .watch-directory-head h2{font-size:21px}}
 .watch-directory-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
 .watch-directory-head h2{margin:0;font-size:19px}
 .watch-directory-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;color:#c3bfce;font-size:12px}
@@ -212,7 +212,11 @@ body.watch-mode #watchStatus{color:#d2c4e6}
     <section class="quick-actions" aria-label="快速进入功能">
       <button class="quick-action quick-match" type="button" data-open-modal="match"><span class="quick-icon">♡</span><span><strong>开始匹配</strong><small>按性别、角色和语音偏好寻找搭档</small></span></button>
       <button class="quick-action" type="button" data-open-modal="join"><span class="quick-icon">↗</span><span><strong>邀请 / 加入</strong><small>使用房间码快速进入</small></span></button>
-      <button class="quick-action" type="button" data-open-modal="solo"><span class="quick-icon">◉</span><span><strong>单人练习</strong><small>无需等待搭档</small></span></button><button class="quick-action" type="button" data-open-modal="history"><span class="quick-icon">▤</span><span><strong>对局历史</strong><small>查看最近的双人记录</small></span></button>
+<button class="quick-action" type="button" data-open-modal="history"><span class="quick-icon">▤</span><span><strong>对局历史</strong><small>查看最近的双人记录</small></span></button>
+    </section>
+    <section id="watchDirectory" class="watch-directory featured-watch-directory" aria-labelledby="watchDirectoryTitle">
+      <div class="watch-directory-head"><div><p class="eyebrow">LIVE ROOMS · SPECTATOR</p><h2 id="watchDirectoryTitle">观战大厅</h2><p class="chat-note">浏览正在开放观战的双人房间。只有双方玩家都主动同意，房间才会出现在这里。</p></div><button id="watchRefreshBtn" type="button" class="primary">刷新房间</button></div>
+      <div id="watchDirectoryList" class="watch-directory-list" aria-live="polite">正在加载可观战房间…</div>
     </section>
     <section class="announcement" aria-labelledby="announcementTitle"><p class="eyebrow">PLATFORM NOTICE · 18+</p><h2 id="announcementTitle">平台公告与免责声明</h2><p>Nightplay 仅供年满 18 周岁的成年人自愿使用。平台不保证其他用户身份、陈述或行为的真实性。请勿分享真实姓名、住址、财务资料等敏感信息。任何互动均需双方明确自愿，任何一方都可以随时暂停、结束或离开。用户应遵守所在地法律法规，并对自己的言论与行为负责。</p></section>
     <div id="actionModal" class="modal" hidden>
@@ -220,7 +224,7 @@ body.watch-mode #watchStatus{color:#d2c4e6}
       <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal-head"><div><p class="eyebrow">NIGHTPLAY · PRIVATE ROOM</p><h2 id="modalTitle">开始你的双人体验</h2></div><button type="button" class="modal-close" aria-label="关闭" data-close-modal>×</button></div>
         <label class="field-label">你的昵称<input id="nickname" maxlength="24" placeholder="输入聊天昵称" autocomplete="nickname" required></label>
-        <div class="modal-tabs"><button type="button" class="modal-tab active" data-modal-tab="match">偏好匹配</button><button type="button" class="modal-tab" data-modal-tab="join">邀请 / 加入</button><button type="button" class="modal-tab" data-modal-tab="solo">单人练习</button><button type="button" class="modal-tab" data-modal-tab="history">对局历史</button></div>
+        <div class="modal-tabs"><button type="button" class="modal-tab active" data-modal-tab="match">偏好匹配</button><button type="button" class="modal-tab" data-modal-tab="join">邀请 / 加入</button><button type="button" class="modal-tab" data-modal-tab="history">对局历史</button></div>
         <section id="matchPanel" class="modal-panel">
           <p class="muted">设置你的性别、希望匹配的对象和挑战角色。只有双方偏好互相符合时才会配对。</p>
           <div class="match-grid">
@@ -242,20 +246,6 @@ body.watch-mode #watchStatus{color:#d2c4e6}
           <button id="watchJoinBtn" type="button" class="ghost">以观战身份加入（需双方允许）</button>
         </section>
       </section>
-        <section id="soloPanel" class="modal-panel" hidden>
-          <p class="muted">无需匹配对象，独自熟悉节奏。随机模式会在快拍、慢拍和短暂停拍之间切换。声音仅在你点击开始后播放。</p>
-          <div class="match-grid">
-            <label>练习难度<select id="soloDifficulty"><option value="easy">轻松</option><option value="normal" selected>标准</option><option value="hard">进阶</option></select></label>
-            <label>练习时长<select id="soloDuration"><option value="1">1 分钟</option><option value="3" selected>3 分钟</option><option value="5">5 分钟</option><option value="10">10 分钟</option></select></label>
-          </div>
-          <div class="solo-readout"><strong id="soloCue">准备开始</strong><span><b id="soloBpm">75</b> BPM</span><span>剩余 <b id="soloCountdown">03:00</b></span></div>
-          <div class="match-actions"><button id="soloStart" type="button" class="primary">开始练习</button><button id="soloStop" type="button" class="ghost" disabled>结束练习</button></div>
-          <p id="soloStatus" class="chat-note" aria-live="polite">练习不会上传或保存记录。</p>
-          <section id="watchDirectory" class="watch-directory solo-watch-directory" hidden aria-labelledby="watchDirectoryTitle">
-            <div class="watch-directory-head"><div><p class="eyebrow">LIVE ROOMS</p><h2 id="watchDirectoryTitle">观战大厅</h2><p class="chat-note">仅显示双方玩家都主动允许旁观、且仍在线的房间。</p></div><button id="watchRefreshBtn" type="button" class="ghost">刷新列表</button></div>
-            <div id="watchDirectoryList" class="watch-directory-list" aria-live="polite">点击下方入口加载可观战房间。</div>
-          </section>
-        </section>
         <section id="historyPanel" class="modal-panel" hidden>
           <p class="muted">使用本设备的随机游客 ID 保存最近 30 条对局记录，无需注册。记录会在你主动离开房间或结束对局时生成。</p>
           <div id="historyList" class="result" aria-live="polite">正在读取对局历史…</div>
@@ -350,20 +340,19 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
 
  // 首页弹窗：匹配与邀请共用昵称，避免重复表单。
  function setModalTab(tab){
-  const panels={match:$("#matchPanel"),join:$("#joinPanel"),solo:$("#soloPanel"),history:$("#historyPanel")};
+  const panels={match:$("#matchPanel"),join:$("#joinPanel"),history:$("#historyPanel")};
   if(!panels[tab])tab="match";
   Object.entries(panels).forEach(([key,panel])=>panel.hidden=key!==tab);
   document.querySelectorAll("[data-modal-tab]").forEach(b=>b.classList.toggle("active",b.dataset.modalTab===tab));
-  $("#modalTitle").textContent=tab==="match"?"按偏好寻找搭档":tab==="join"?"邀请 / 加入双人房间":tab==="solo"?"单人节奏练习":"我的对局历史";
+  $("#modalTitle").textContent=tab==="match"?"按偏好寻找搭档":tab==="join"?"邀请 / 加入双人房间":"我的对局历史";
   if(tab==="history")loadGameHistory();
  }
  function openActionModal(tab){
-  setModalTab(["match","solo","history"].includes(tab)?tab:"join");
+  setModalTab(["match","history"].includes(tab)?tab:"join");
   $("#actionModal").hidden=false;
   document.body.classList.add("modal-open");
  }
  function closeActionModal(){
-  if(soloActive)soloStop("练习已暂停");
   const modal=$("#actionModal");if(modal)modal.hidden=true;
   document.body.classList.remove("modal-open");
  }
@@ -374,49 +363,6 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#actionModal").hidden)closeActionModal()});
 
  
- // 单人节奏练习：本地运行，不创建房间，也不上传练习数据。
- let soloBeatTimer=null,soloPatternTimer=null,soloClockTimer=null,soloPauseTimer=null,soloEndsAt=0,soloAudio=null,soloActive=false;
- function soloTone(){
-  try{
-   soloAudio=soloAudio||new (window.AudioContext||window.webkitAudioContext)();
-   if(soloAudio.state==="suspended")soloAudio.resume();
-   const osc=soloAudio.createOscillator(),gain=soloAudio.createGain();
-   osc.type="sine";osc.frequency.value=soloCue==="停拍"?420:soloAccent?1050:760;
-   gain.gain.setValueAtTime(.13,soloAudio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,soloAudio.currentTime+.08);
-   osc.connect(gain);gain.connect(soloAudio.destination);osc.start();osc.stop(soloAudio.currentTime+.085);
-  }catch(e){console.warn("单人练习提示音不可用",e)}
- }
- let soloCue="准备开始",soloAccent=false,soloTempo=75;
- function soloSetTempo(value,label){
-  soloCue=label;soloTempo=value;$("#soloBpm").textContent=String(value);$("#soloCue").textContent=label;
-  if(soloBeatTimer){clearInterval(soloBeatTimer);soloBeatTimer=setInterval(soloTick,60000/soloTempo)}
- }
- function soloTick(){if(!soloActive)return;soloAccent=!soloAccent;soloTone()}
- function soloStop(message="练习已结束"){
-  soloActive=false;[soloBeatTimer,soloPatternTimer,soloClockTimer,soloPauseTimer].forEach(x=>{if(x)clearInterval(x)});soloBeatTimer=soloPatternTimer=soloClockTimer=soloPauseTimer=null;
-  $("#soloStart").disabled=false;$("#soloStop").disabled=true;$("#soloStatus").textContent=message;$("#soloCue").textContent="练习结束";$("#soloCountdown").textContent="00:00";
- }
- function soloStart(){
-  if(soloActive)return;
-  const duration=Number($("#soloDuration").value)||3,difficulty=$("#soloDifficulty").value;
-  const ranges={easy:[55,85],normal:[60,115],hard:[80,145]},range=ranges[difficulty]||ranges.normal;
-  soloActive=true;soloEndsAt=Date.now()+duration*60000;$("#soloStart").disabled=true;$("#soloStop").disabled=false;$("#soloStatus").textContent="练习进行中 · 仅在本设备运行";
-  soloSetTempo(Math.round((range[0]+range[1])/2),"稳定节拍");
-  soloTick();soloBeatTimer=setInterval(soloTick,60000/soloTempo);
-  soloPatternTimer=setInterval(()=>{
-   if(!soloActive)return;
-   if(Math.random()<.2){
-    if(soloBeatTimer){clearInterval(soloBeatTimer);soloBeatTimer=null}
-    $("#soloCue").textContent="停拍 · 放松呼吸";$("#soloBpm").textContent="—";
-    if(soloPauseTimer)clearTimeout(soloPauseTimer);
-    soloPauseTimer=setTimeout(()=>{if(!soloActive)return;soloPauseTimer=null;soloSetTempo(Math.floor(range[0]+Math.random()*(range[1]-range[0]+1)),"随机节奏");soloBeatTimer=setInterval(soloTick,60000/soloTempo)},2200);
-   }else soloSetTempo(Math.floor(range[0]+Math.random()*(range[1]-range[0]+1)),"随机变速");
-  },9000);
-  soloClockTimer=setInterval(()=>{const left=Math.max(0,soloEndsAt-Date.now()),sec=Math.ceil(left/1000);$("#soloCountdown").textContent=String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");if(left<=0)soloStop("练习时间已完成");},250);
- }
- $("#soloStart").addEventListener("click",soloStart);
- $("#soloStop").addEventListener("click",()=>soloStop("你结束了本次练习"));
-
  // ===== 双人房间：WebSocket + WebRTC 双人语音 =====
  const Room=(()=>{
   const els={lobby:$("#lobby"),view:$("#roomView"),state:$("#connState"),log:$("#chatLog"),members:$("#members"),seat:$("#seatLabel"),label:$("#roomLabel"),typing:$("#typing"),input:$("#chatInput"),nick:$("#nickname"),code:$("#roomCode"),connect:$("#connectBtn"),peek:$("#roomPeek"),voiceStatus:$("#voiceStatus"),voiceStart:$("#voiceStartBtn"),voiceMute:$("#voiceMuteBtn"),voiceHangup:$("#voiceHangupBtn"),voiceListen:$("#voiceListenBtn"),remoteAudio:$("#remoteAudio"),matchGender:$("#matchGender"),matchPreference:$("#matchPreference"),matchRole:$("#matchRole"),matchVoicePreference:$("#matchVoicePreference"),roomRole:$("#roomRole"),roleStatus:$("#roleStatus"),metroEmergency:$("#metroEmergency"),matchStart:$("#matchStartBtn"),matchCancel:$("#matchCancelBtn"),matchStatus:$("#matchStatus"),bpm:$("#bpmRange"),intensity:$("#intensityRange"),metroStart:$("#metroStart"),metroPause:$("#metroPause"),metroStop:$("#metroStop"),metroStatus:$("#metroStatus"),metroMode:$("#metroMode"),metroDifficulty:$("#metroDifficulty"),metroDuration:$("#metroDuration"),metroSlow:$("#metroSlow"),metroNormal:$("#metroNormal"),metroFast:$("#metroFast"),metroHold:$("#metroHold"),metroResume:$("#metroResume"),watchConsent:$("#watchConsentBtn"),watcherCount:$("#watcherCount"),watchStatus:$("#watchStatus")};
@@ -789,8 +735,9 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    }catch(error){list.textContent="暂时无法加载观战列表，请稍后刷新。"}
   }
   // 绑定事件
-  $("#watchDirectoryBtn").onclick=()=>{openActionModal("solo");loadWatchDirectory()};
+  $("#watchDirectoryBtn").onclick=()=>{loadWatchDirectory();$("#watchDirectory").scrollIntoView({behavior:"smooth",block:"center"})};
   $("#watchRefreshBtn").onclick=loadWatchDirectory;
+  loadWatchDirectory();
   $("#joinForm").onsubmit=e=>{e.preventDefault();join()};
   els.matchStart.onclick=startMatching;
   els.matchCancel.onclick=cancelMatching;
