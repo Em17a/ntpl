@@ -211,28 +211,16 @@ export class NightplayRoom extends DurableObject<Env> {
       db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,selfRole,clientId),
       db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,partnerRole,partner.client_id),
     ]);
-    // Join both live sockets on the server instead of relying on mobile browsers
-    // to receive match_found and send a follow-up join message.
-    const joined=new Set<string>();
-    for (const peer of this.sockets()) {
-      const attachment=this.attachment(peer);
-      const peerId=attachment.matchmakingClientId;
-      if(peerId===clientId){
-        await this.join(peer,{type:'join',room,nickname:self.nickname,role:selfRole,token:uuid(),guestId:attachment.matchmakingGuestId||null,lastId:0});
-        joined.add(clientId);
-      } else if(peerId===partner.client_id){
-        await this.join(peer,{type:'join',room,nickname:partner.nickname,role:partnerRole,token:uuid(),guestId:attachment.matchmakingGuestId||null,lastId:0});
-        joined.add(partner.client_id);
-      }
-    }
-    // Keep the client-side recovery path for a participant whose socket vanished.
-    for (const peer of this.sockets()) {
-      const peerId=this.attachment(peer).matchmakingClientId;
-      if(peerId===clientId&&!joined.has(clientId))this.send(peer,{type:'match_found',room,role:selfRole});
-      else if(peerId===partner.client_id&&!joined.has(partner.client_id))this.send(peer,{type:'match_found',room,role:partnerRole});
-    }
+    // Each matched client enters from its own matchmaking request or heartbeat.
     await this.scheduleNextAlarm();
     return {status:'matched',room,role:selfRole};
+  }
+  private async enterMatchedRoom(ws:WebSocket,room:string,role:Role) {
+    const attachment=this.attachment(ws),clientId=attachment.matchmakingClientId;
+    if(!clientId||this.meta(ws)?.room===room)return;
+    const row=await this.env.DB.prepare('SELECT nickname FROM matchmaking_queue WHERE client_id=? AND status=\'matched\' AND room_code=?').bind(clientId,room).first<any>();
+    if(!row)return;
+    await this.join(ws,{type:'join',room,nickname:row.nickname,role,token:uuid(),guestId:attachment.matchmakingGuestId||null,lastId:0});
   }
   private matchmakingJoin(ws:WebSocket,msg:ClientMessage) {
     return this.queueMatchmaking(()=>this.matchmakingJoinNow(ws,msg));
@@ -246,7 +234,7 @@ export class NightplayRoom extends DurableObject<Env> {
     await this.env.DB.prepare('UPDATE matchmaking_queue SET last_seen_at=? WHERE client_id=?').bind(t,clientId).run();
     const a=this.attachment(ws);a.matchmakingClientId=clientId;a.matchmakingGuestId=typeof msg.guestId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.guestId)?msg.guestId:null;this.save(ws,a);
     const result=await this.findOrCreateMatch(clientId);
-    if(result.status==='matched')this.send(ws,{type:'match_found',room:result.room,role:result.role});
+    if(result.status==='matched')await this.enterMatchedRoom(ws,result.room,result.role);
     else this.send(ws,{type:'match_waiting',message:'正在寻找符合双方偏好的参与者…'});
   }
   private pollMatchmaking(ws:WebSocket) {
@@ -256,7 +244,7 @@ export class NightplayRoom extends DurableObject<Env> {
     const id=this.attachment(ws).matchmakingClientId;if(!id)return;
     const r=await this.env.DB.prepare('UPDATE matchmaking_queue SET last_seen_at=? WHERE client_id=?').bind(now(),id).run();
     if(!r.meta.changes){const a=this.attachment(ws);delete a.matchmakingClientId;this.save(ws,a);this.send(ws,{type:'match_expired',message:'匹配等待已超时，请重新开始匹配。'});return;}
-    const result=await this.findOrCreateMatch(id);if(result.status==='matched')this.send(ws,{type:'match_found',room:result.room,role:result.role});
+    const result=await this.findOrCreateMatch(id);if(result.status==='matched')await this.enterMatchedRoom(ws,result.room,result.role);
   }
   private async join(ws:WebSocket,msg:ClientMessage) {
     const room=String(msg.room??'').trim().toUpperCase(),nickname=String(msg.nickname??'').trim().replace(/\s+/g,' ').slice(0,24);
