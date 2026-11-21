@@ -27,8 +27,8 @@ test('contact detection catches phone numbers, email, social links and account p
 
 test('chat filter detects contact information split across adjacent messages for 12 seconds', () => {
   const state = {};
-  assert.equal(inspectChatForContact(state, '我的微信是', 10_000), false);
-  assert.equal(inspectChatForContact(state, 'wxabc123', 15_000), true);
+  assert.equal(inspectChatForContact(state, '我的微信', 10_000), false);
+  assert.equal(inspectChatForContact(state, '号abc123', 15_000), true);
   assert.equal(state.recentChatText, '');
   assert.equal(inspectChatForContact(state, '普通聊天内容', 30_000), false);
 });
