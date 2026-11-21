@@ -106,7 +106,9 @@ export class NightplayRoom extends DurableObject<Env> {
   private compatible(a:any,b:any) {
     const genderOk=(a.preference==='any'||a.preference===b.gender)&&(b.preference==='any'||b.preference===a.gender);
     const roleOk=a.role_preference==='any'||b.role_preference==='any'||a.role_preference!==b.role_preference;
-    return genderOk&&roleOk;
+    const av=a.voice_preference||'any',bv=b.voice_preference||'any';
+    const voiceOk=av==='any'||bv==='any'||(av==='off'&&bv==='off')||(av==='both'&&bv==='both')||(av==='self'&&bv==='peer')||(av==='peer'&&bv==='self');
+    return genderOk&&roleOk&&voiceOk;
   }
   private async findOrCreateMatch(clientId:string) {
     const db=this.env.DB,t=now();
@@ -131,10 +133,10 @@ export class NightplayRoom extends DurableObject<Env> {
   }
   private async matchmakingJoin(ws:WebSocket,msg:ClientMessage) {
     const clientId=typeof msg.clientId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.clientId)?msg.clientId:'';
-    const nickname=String(msg.nickname??'').trim().replace(/\s+/g,' ').slice(0,24),gender=String(msg.gender??''),preference=String(msg.preference??''),rolePreference=String(msg.rolePreference??'any');
-    if(!clientId||!nickname||!MATCH_GENDERS.has(gender)||!MATCH_PREFS.has(preference)||!ROLE_PREFS.has(rolePreference))return this.send(ws,{type:'error',code:'bad_matchmaking',message:'请检查昵称和匹配偏好设置。'});
+    const nickname=String(msg.nickname??'').trim().replace(/\s+/g,' ').slice(0,24),gender=String(msg.gender??''),preference=String(msg.preference??''),rolePreference=String(msg.rolePreference??'any'),voicePreference=String(msg.voicePreference??'any');
+    if(!clientId||!nickname||!MATCH_GENDERS.has(gender)||!MATCH_PREFS.has(preference)||!ROLE_PREFS.has(rolePreference)||!new Set(['any','off','both','self','peer']).has(voicePreference))return this.send(ws,{type:'error',code:'bad_matchmaking',message:'请检查昵称和匹配偏好设置。'});
     const t=now();
-    await this.env.DB.prepare("INSERT OR IGNORE INTO matchmaking_queue(client_id,nickname,gender,preference,role_preference,status,created_at,last_seen_at) VALUES(?,?,?,?,?,'waiting',?,?)").bind(clientId,nickname,gender,preference,rolePreference,t,t).run();
+    await this.env.DB.prepare("INSERT OR IGNORE INTO matchmaking_queue(client_id,nickname,gender,preference,role_preference,voice_preference,status,created_at,last_seen_at) VALUES(?,?,?,?,?,?,'waiting',?,?)").bind(clientId,nickname,gender,preference,rolePreference,voicePreference,t,t).run();
     await this.env.DB.prepare('UPDATE matchmaking_queue SET last_seen_at=? WHERE client_id=?').bind(t,clientId).run();
     const a=this.attachment(ws);a.matchmakingClientId=clientId;this.save(ws,a);
     const result=await this.findOrCreateMatch(clientId);
@@ -198,13 +200,13 @@ export class NightplayRoom extends DurableObject<Env> {
     if(!m)return this.send(ws,{type:'error',code:'not_joined',message:'请先加入房间。'});
     if(msg.type==='metronome_emergency_stop'){
       if(!(await this.touch(m)))return this.seatLost(ws);
-      const previous=await this.metro(m.room)??{bpm:80,intensity:3,running:false,started:false};const state={...previous,running:false,started:true,stopped:true,nickname:m.nickname};await this.setMetro(m.room,state);this.broadcast(m.room,{type:'metronome_state',...state},ws);this.send(ws,{type:'metronome_state',...state});return;
+      const previous=await this.metro(m.room)??{bpm:80,intensity:3,running:false,started:false};const state={...previous,running:false,started:true,stopped:true,endsAt:0,remainingMs:0,nickname:m.nickname};await this.setMetro(m.room,state);this.broadcast(m.room,{type:'metronome_state',...state},ws);this.send(ws,{type:'metronome_state',...state});return;
     }
     if(msg.type==='metronome_state'){
       if(m.role!=='controller')return this.send(ws,{type:'error',code:'role_forbidden',message:'只有控制方可以调整节拍参数和挑战进度。受控方可使用紧急停止。'});
       if(this.rateLimited(ws,m))return this.send(ws,{type:'error',code:'rate_limited',message:'操作太快了，请稍等片刻。'});
       if(!(await this.touch(m)))return this.seatLost(ws);
-      const previous=await this.metro(m.room);const started=Boolean(msg.started||msg.running||msg.stopped||previous?.started);const state={bpm:Math.max(40,Math.min(220,Math.round(Number(msg.bpm)||80))),intensity:Math.max(1,Math.min(5,Math.round(Number(msg.intensity)||3))),running:msg.stopped?false:Boolean(msg.running),started,stopped:Boolean(msg.stopped),nickname:m.nickname};await this.setMetro(m.room,state);this.broadcast(m.room,{type:'metronome_state',...state},ws);return;
+      const previous=await this.metro(m.room);const started=Boolean(msg.started||msg.running||msg.stopped||previous?.started);const durationMinutes=Math.max(1,Math.min(15,Math.round(Number(msg.durationMinutes)||previous?.durationMinutes||5)));const endsAt=Math.max(0,Math.min(now()+900000,Number(msg.endsAt)||previous?.endsAt||0));const remainingMs=Math.max(0,Math.min(900000,Number(msg.remainingMs)||previous?.remainingMs||0));const state={bpm:Math.max(40,Math.min(220,Math.round(Number(msg.bpm)||80))),intensity:Math.max(1,Math.min(5,Math.round(Number(msg.intensity)||3))),running:msg.stopped?false:Boolean(msg.running),started,stopped:Boolean(msg.stopped),mode:msg.mode==='random'?'random':msg.mode==='steady'?'steady':(previous?.mode||'steady'),durationMinutes,endsAt,remainingMs,nickname:m.nickname};await this.setMetro(m.room,state);this.broadcast(m.room,{type:'metronome_state',...state},ws);return;
     }
     if(msg.type==='chat'){
       const text=String(msg.text??'').trim().slice(0,500);if(!text)return;
