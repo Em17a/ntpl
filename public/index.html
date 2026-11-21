@@ -1038,6 +1038,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   loadWatchDirectory();
   $("#publicRoomPublishBtn").onclick=publishPublicRoom;
   $("#publicRoomRefreshBtn").onclick=loadPublicRoomDirectory;
+  loadPublicRoomDirectory();
   $("#publicRoomNickname").value=localStorage.getItem("np_nick")||"";
   $("#publicRoomNickname").addEventListener("input",()=>{const value=$("#publicRoomNickname").value;els.nick.value=value;localStorage.setItem("np_nick",value)});
   $("#publicRoomNavBtn").onclick=()=>$("#publicPanel").scrollIntoView({behavior:"smooth",block:"start"});
