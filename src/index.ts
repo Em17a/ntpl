@@ -358,7 +358,7 @@ export class NightplayRoom extends DurableObject<Env> {
     if(msg.type==='matchmaking_join')return this.matchmakingJoin(ws,msg);
     if(msg.type==='matchmaking_cancel')return this.matchmakingCancel(ws,msg);
     if(msg.type==='watch_join')return this.watchJoin(ws,msg);
-    if(msg.type==='join'&&typeof msg.matchClientId==='string')return this.joinMatchedRoom(ws,msg);
+    if(msg.type==='join'&&typeof msg.matchClientId==='string')return this.queueMatchmaking(()=>this.joinMatchedRoom(ws,msg));
     if(msg.type==='join')return this.join(ws,msg);
     const m=this.meta(ws);
     if(msg.type==='watch_consent'){
