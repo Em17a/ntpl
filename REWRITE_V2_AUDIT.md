@@ -13,6 +13,10 @@
 - Matchmaking contract: `src/matchmaking-api.ts`
 - Matchmaking persistence/coordinator: `src/matchmaking-service.ts`
 - Match compatibility and role assignment: `src/matchmaking-core.ts`
+- Guest social APIs: `src/social-api.ts`
+- Public-room, online-presence and spectator directory APIs: `src/directory-api.ts`
+- Authenticated WebRTC ICE/TURN configuration: `src/rtc-api.ts`
+- Contact text/voice moderation rules: `src/contact-protection.ts`
 - Durable Object room runtime: `NightplayRoom` in `src/index.ts`
 - Static shell: `public/index.html`
 - Styles: `public/styles.css`
@@ -72,8 +76,11 @@ Nightplay adaptations:
 - Added a single `joinMatchmaking` service entry point.
 - Removed the unused duplicate WebSocket matchmaking join/cancel/poll implementation.
 - Extracted request validation and HTTP state mapping into `src/matchmaking-api.ts`.
-- Added tests for the HTTP join/poll/handoff contract, cancellation tombstones, and origin rejection.
+- Added tests for the HTTP join/poll/handoff contract, cancellation tombstones, cancellation-vs-poll races, and origin rejection.
 - Added reciprocal voice-preference compatibility tests.
+- Extracted social, public-room/directory and RTC configuration endpoints from the Durable Object class.
+- Restored text contact blocking on both client and server, including 12-second split-message context and in-memory escalation state.
+- Restored local-only Chinese voice contact detection; microphone access fails closed if the on-device model/API is unavailable, and WebRTC uplink passes through a 1.6-second audio delay/gate.
 
 ## Still required before acceptance
 
@@ -81,7 +88,8 @@ Nightplay adaptations:
 - Map every frontend feature and every HTTP/WebSocket action to regression coverage.
 - Add deterministic race tests for join/poll/cancel ordering and duplicate requests.
 - Validate public room publishing, custom names, room expiry, spectator consent and reconnect.
-- Validate voice signaling and TURN configuration.
+- Validate voice signaling and TURN configuration, including the on-device Chinese model flow and the 1.6-second outbound audio gate.
+- Validate contact-protection text patterns, split-message handling, violation escalation, and fail-closed voice behavior.
 - Validate challenge/metronome permissions, stop/end behavior and S/M quick-phrase placement.
 - Validate friend requests, direct messages, presence, history and post-match friend action.
 - Run `npm run check` on the final rewrite head.
