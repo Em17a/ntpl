@@ -766,7 +766,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    if(ws&&(ws.readyState===0||ws.readyState===1))return;
    setState("wait",retry?"重连中…":"连接中…");
    ws=new WebSocket(socketUrl());
-   ws.onopen=()=>{retry=0;if(matching&&matchClientId){out({type:"matchmaking_join",clientId:matchClientId,nickname:els.nick.value.trim(),gender:els.matchGender.value,preference:els.matchPreference.value,rolePreference:els.matchRole.value,voicePreference:els.matchVoicePreference.value})}else if(watching&&room)sendWatchJoin();else if(want&&room)sendJoin()};
+   ws.onopen=()=>{retry=0;if(matching&&matchClientId){out({type:"matchmaking_join",clientId:matchClientId,nickname:els.nick.value.trim(),gender:els.matchGender.value,preference:els.matchPreference.value,rolePreference:els.matchRole.value,voicePreference:els.matchVoicePreference.value,guestId})}else if(watching&&room)sendWatchJoin();else if(want&&room)sendJoin()};
    ws.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return}handle(m)};
    ws.onclose=()=>{clearInterval(hb);hb=null;closeVoice(false,"语音已断开，请重新开启");els.voiceStart.disabled=true;if(!want){setState("off","未连接");return}
     setState("wait","重连中…");const delay=Math.min(15000,1000*2**retry)+Math.random()*500;retry++;clearTimeout(retryTimer);retryTimer=setTimeout(open,delay)};
@@ -952,7 +952,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    }else if(m.type==="watch_left"){
     reset("已退出观战");
    }else if(m.type==="joined"){
-    watching=false;document.body.classList.remove("watch-mode");watchConsent=Boolean(m.watchConsent);watchAllowed=Boolean(m.watchAllowed);joining=false;clearInterval(joinRetry);joinRetry=null;const fresh=!m.resumed||!me||me.id!==m.you.id;
+    watching=false;document.body.classList.remove("watch-mode");watchConsent=Boolean(m.watchConsent);watchAllowed=Boolean(m.watchAllowed);joining=false;matching=false;stopMatchClock();showMatchingScreen(false);clearInterval(matchPoll);matchPoll=null;clearInterval(joinRetry);joinRetry=null;const fresh=!m.resumed||!me||me.id!==m.you.id;
     if(fresh){closeVoice(false);els.log.innerHTML="";seen=new Set();lastId=0;stopMetroTimer();clearMetroClocks();metroRunning=false;metroHasStarted=false;metroStopped=false;metroEndsAt=0;metroRemainingMs=(Number(els.metroDuration.value)||5)*60000;metroHoldCount=0;metroElapsedMs=0;metroEndReason="";$("#metroLivePanel").hidden=false;$("#metroEndScreen").hidden=true;metroBeat=0;$("#beatNumber").textContent="—";renderQuickPhrases()}
     me=m.you;myRole=m.you.role||"controller";matchedRole=null;currentOpponentFriendCode=String(m.opponentFriendCode||"");currentOpponentNickname=String(m.opponentNickname||"");$("#metroAddFriendBtn").hidden=!currentOpponentFriendCode;$("#metroAddFriendBtn").textContent=currentOpponentNickname?"添加 "+currentOpponentNickname+" 为好友":"添加对方为好友";renderQuickPhrases();room=m.room;iceConfigCache=null;localStorage.setItem(seatKey(room),m.token);localStorage.setItem("np_nick",me.nickname);
     const publishedNow=pendingPublish&&Boolean(m.isPublic);pendingPublish=false;pendingPublishName="";els.label.textContent=(m.roomName?m.roomName+" · ":"")+room;showRoom(true);if(publishedNow)toast("公开房间已发布，其他玩家现在可以加入");setState("on","已连接");setVoiceState("","语音未开启 · 双方需分别授权");renderWatchUI();els.watcherCount.textContent="旁观 "+(m.watchers||0);
@@ -998,7 +998,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    matchClientId=crypto.randomUUID();matching=true;want=true;els.matchStart.disabled=true;els.matchCancel.disabled=false;els.connect.disabled=true;els.matchStatus.textContent="正在寻找性别、角色和语音偏好都符合的参与者…";
    stopMatchClock();matchStartedAt=Date.now();renderMatchingPreferences();$("#matchingStatus").textContent="正在连接匹配服务…";showMatchingScreen(true);updateMatchElapsed();matchClock=setInterval(updateMatchElapsed,1000);
    clearInterval(matchPoll);matchPoll=setInterval(()=>out({type:"ping",lastId:0}),2500);
-   if(ws&&ws.readyState===1)out({type:"matchmaking_join",clientId:matchClientId,nickname:nick,gender:els.matchGender.value,preference:els.matchPreference.value,rolePreference:els.matchRole.value,voicePreference:els.matchVoicePreference.value});
+   if(ws&&ws.readyState===1)out({type:"matchmaking_join",clientId:matchClientId,nickname:nick,gender:els.matchGender.value,preference:els.matchPreference.value,rolePreference:els.matchRole.value,voicePreference:els.matchVoicePreference.value,guestId});
    else open();
   }
   function cancelMatching(){
