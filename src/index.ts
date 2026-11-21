@@ -269,7 +269,8 @@ export class NightplayRoom extends DurableObject<Env> {
     const row=await this.env.DB.prepare("SELECT nickname,room_code,matched_role FROM matchmaking_queue WHERE client_id=? AND status='matched'").bind(clientId).first<any>();
     if(!row||row.room_code!==room||(row.matched_role!=='controller'&&row.matched_role!=='receiver'))
       return this.send(ws,{type:'error',code:'match_invalid',message:'匹配记录已失效，请重新开始匹配。'});
-    return this.join(ws,{type:'join',room,nickname:row.nickname,role:row.matched_role,token:clientId,guestId:msg.guestId,lastId:msg.lastId});
+    const seat=await this.env.DB.prepare('SELECT id FROM room_members WHERE room_code=? AND role=? AND left_at IS NULL ORDER BY joined_at LIMIT 1').bind(room,row.matched_role).first<any>();
+    return this.join(ws,{type:'join',room,nickname:row.nickname,role:row.matched_role,token:seat?.id||clientId,guestId:msg.guestId,lastId:msg.lastId});
   }
 
   private async join(ws:WebSocket,msg:ClientMessage) {
