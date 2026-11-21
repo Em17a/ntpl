@@ -165,7 +165,7 @@ export class NightplayRoom extends DurableObject<Env> {
   private async metro(room: string) { return await this.ctx.storage.get<any>('metro:'+room); }
   private async setMetro(room: string, state: any) { await this.ctx.storage.put('metro:'+room,state); await this.scheduleNextAlarm(); }
   private async scheduleNextAlarm() {
-    const expiry=await this.env.DB.prepare('SELECT MIN(expires_at) AS at FROM rooms WHERE expires_at>?').bind(now()).first<any>();
+    const expiry=await this.env.DB.prepare('SELECT MIN(expires_at) AS at FROM rooms WHERE expires_at>0').bind(now()).first<any>();
     let nextAt=Number(expiry?.at)||0;
     const entries=await this.ctx.storage.list<any>({prefix:'metro:'});
     for(const [,state] of entries)if(state?.running&&Number(state.endsAt)>0&&(!nextAt||Number(state.endsAt)<nextAt))nextAt=Number(state.endsAt);
@@ -360,13 +360,13 @@ export class NightplayRoom extends DurableObject<Env> {
           this.broadcast(room,{type:'metronome_state',...ended});
         }
       }
-      const expired=await this.env.DB.prepare('SELECT code FROM rooms WHERE expires_at IS NOT NULL AND expires_at<=?').bind(t).all<any>();
+      const expired=await this.env.DB.prepare('SELECT code FROM rooms WHERE expires_at>0 AND expires_at<=?').bind(t).all<any>();
       for(const row of expired.results){
         const room=String(row.code);
         const active=await this.env.DB.prepare('SELECT id FROM room_members WHERE room_code=? AND left_at IS NULL').bind(room).all<any>();
         for(const member of active.results)await this.saveGameHistory(room,member.id,t);
         await this.env.DB.prepare('UPDATE room_members SET left_at=? WHERE room_code=? AND left_at IS NULL').bind(t,room).run();
-        await this.env.DB.prepare('UPDATE rooms SET is_public=0 WHERE code=?').bind(room).run();
+        await this.env.DB.prepare('UPDATE rooms SET is_public=0,expires_at=0 WHERE code=?').bind(room).run();
         await this.closeWatchers(room,'房间有效期已到，观战连接已结束。');
         for(const peer of this.sockets()){
           const meta=this.meta(peer);
