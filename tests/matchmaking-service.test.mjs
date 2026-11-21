@@ -219,10 +219,10 @@ test('cancel never deletes an already matched room or queue result', async t => 
 });
 
 
-test('compatibility enforces gender and role while voice preference only affects ranking', () => {
+test('compatibility enforces gender, role and reciprocal voice preferences', () => {
   const base = { client_id: 'a', gender: 'male', preference: 'female', role_preference: 'controller', voice_preference: 'both', created_at: 1 };
   assert.equal(isMatchCompatible(base, { ...base, client_id: 'b', gender: 'female', preference: 'male', role_preference: 'receiver', voice_preference: 'both' }), true);
-  assert.equal(isMatchCompatible(base, { ...base, client_id: 'c', gender: 'female', preference: 'male', role_preference: 'receiver', voice_preference: 'off' }), true);
+  assert.equal(isMatchCompatible(base, { ...base, client_id: 'c', gender: 'female', preference: 'male', role_preference: 'receiver', voice_preference: 'off' }), false);
   assert.equal(isMatchCompatible(base, { ...base, client_id: 'd', gender: 'female', preference: 'female', role_preference: 'receiver', voice_preference: 'both' }), false);
   assert.equal(isMatchCompatible(base, { ...base, client_id: 'e', gender: 'female', preference: 'male', role_preference: 'controller', voice_preference: 'both' }), false);
 });
