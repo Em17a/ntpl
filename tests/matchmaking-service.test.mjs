@@ -287,3 +287,19 @@ test('matched seats whose leases expired are reactivated for reconnect', async t
   assert.deepEqual(result, { status: 'matched', room, role: 'controller' });
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=? AND left_at IS NULL').get(room).count, 2);
 });
+
+
+test('expired matched room is not returned as a usable matchmaking result', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const a = 'abab1212-aaaa-4aaa-8aaa-abab12121212';
+  const b = 'cdcd3434-bbbb-4bbb-8bbb-cdcd34343434';
+  const room = 'AB234571';
+  db.raw.prepare('INSERT INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)').run(room, 1_000, 1_000, 4_000);
+  for (const [id, nickname, role] of [[a, '甲', 'controller'], [b, '乙', 'receiver']]) {
+    db.raw.prepare(`INSERT INTO matchmaking_queue
+      (client_id,nickname,gender,preference,role_preference,voice_preference,matched_role,status,room_code,created_at,last_seen_at)
+      VALUES(?,?, 'other','any','any','any',?,'matched',?,?,?)`).run(id, nickname, role, room, 1_000, 1_000);
+  }
+  assert.deepEqual(await findOrCreateMatch(db, a, 5_000), { status: 'missing' });
+});
