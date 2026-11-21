@@ -60,7 +60,7 @@ export async function handleMatchmakingApi(
   }
 
   if (action === 'join') {
-    const nickname = String(input.nickname ?? '').trim().replace(/\\s+/g, ' ').slice(0, 24);
+    const nickname = String(input.nickname ?? '').trim().replace(/\s+/g, ' ').slice(0, 24);
     const gender = String(input.gender ?? '');
     const preference = String(input.preference ?? '');
     const rolePreference = String(input.rolePreference ?? 'any');
