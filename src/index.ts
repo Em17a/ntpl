@@ -94,7 +94,7 @@ export class NightplayRoom extends DurableObject<Env> {
     if(!allowed) await this.closeWatchers(m.room);
   }
   private async watchJoin(ws: WebSocket, msg: ClientMessage) {
-    const room=String(msg.room??'').trim().toUpperCase(), nickname=String(msg.nickname??'').trim().replace(/\\s+/g,' ').slice(0,24);
+    const room=String(msg.room??'').trim().toUpperCase(), nickname=String(msg.nickname??'').trim().replace(/\s+/g,' ').slice(0,24);
     const guestId=typeof msg.guestId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.guestId)?msg.guestId:null;
     if(!CODE_RE.test(room)||!nickname) return this.send(ws,{type:'error',code:'bad_watch_request',message:'请检查房间代码和昵称。'});
     const active=await this.env.DB.prepare('SELECT id,nickname,role,guest_id FROM room_members WHERE room_code=? AND left_at IS NULL ORDER BY joined_at').bind(room).all<any>();
