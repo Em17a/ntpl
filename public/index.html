@@ -603,10 +603,6 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
     const bub=document.createElement("div");bub.className="bubble";bub.textContent=m.body;
     d.append(meta,bub);
    }
-   if(m.kind!=="system"&&rolePhrases&&(rolePhrases.controller.includes(m.body)||rolePhrases.receiver.includes(m.body))){
-    const phraseDisplay=$("#quickPhraseDisplay");
-    if(phraseDisplay)phraseDisplay.textContent=(m.nickname||"参与者")+"："+m.body;
-   }
    const atBottom=els.log.scrollHeight-els.log.scrollTop-els.log.clientHeight<60;
    els.log.appendChild(d);
    if(atBottom||(me&&m.memberId===me.id))els.log.scrollTop=els.log.scrollHeight;
@@ -627,7 +623,13 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   function renderQuickPhrases(){
    if(!me)return;const controller=myRole==="controller";$("#quickPhraseRole").textContent=controller?"控制方 · S 快捷语":"受控方 · M 快捷语";
    const box=$("#quickPhrases");box.replaceChildren();
-   (controller?rolePhrases.controller:rolePhrases.receiver).forEach(phrase=>{const button=document.createElement("button");button.type="button";button.className="qa";button.textContent=phrase;button.addEventListener("click",()=>sendChat(phrase));box.appendChild(button)});
+   (controller?rolePhrases.controller:rolePhrases.receiver).forEach(phrase=>{const button=document.createElement("button");button.type="button";button.className="qa";button.textContent=phrase;button.addEventListener("click",()=>showQuickPhrase(phrase));box.appendChild(button)});
+  }
+  function showQuickPhrase(value){
+   const text=String(value||"").trim().slice(0,500);if(!text)return;
+   if(!me){toast("尚未连接");return}
+   const display=$("#quickPhraseDisplay");
+   if(display)display.textContent=(me.nickname||"我")+"："+text;
   }
   function sendChat(value){
    const text=String(value||"").trim().slice(0,500);if(!text)return;if(!me){toast("尚未连接");return}
