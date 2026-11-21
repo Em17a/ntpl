@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "nightplay",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-20",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*", "/ws"]
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "NIGHTPLAY_ROOM", "class_name": "NightplayRoom" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["NightplayRoom"] }
+  ],
+  "d1_databases": [
+    { "binding": "DB", "database_name": "nightplay-db", "database_id": "在Cloudflare创建D1后替换为实际ID" }
+  ]
+}
