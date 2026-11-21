@@ -197,7 +197,7 @@ test('cancel removes a waiting player and returns immediately as cancelled', asy
   const a = '56565656-5656-4656-8656-565656565656';
   queue(db, a);
   assert.deepEqual(await cancelMatchmaking(db, a, 2_000), { status: 'cancelled' });
-  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM matchmaking_queue WHERE client_id=?').get(a).count, 0);
+  assert.equal(db.raw.prepare('SELECT status FROM matchmaking_queue WHERE client_id=?').get(a).status, 'cancelled');
 });
 
 test('cancel never deletes an already matched room or queue result', async t => {
