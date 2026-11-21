@@ -227,7 +227,8 @@ export class NightplayRoom extends DurableObject<Env> {
 
   private async notifyMatchedParticipants(room:string) {
     const rows=await this.env.DB.prepare("SELECT client_id,matched_role FROM matchmaking_queue WHERE status='matched' AND room_code=?").bind(room).all<any>();
-    const byClient=new Map<string,any>(rows.results.map((row:any)=>[String(row.client_id),row]));
+    const byClient=new Map<string,any>();
+    for(const row of rows.results)byClient.set(String(row.client_id),row);
     for(const peer of this.sockets()){
       const clientId=this.attachment(peer).matchmakingClientId;
       const row=clientId?byClient.get(clientId):null;
