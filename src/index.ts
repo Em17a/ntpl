@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { findOrCreateMatch as findOrCreateMatchInDb, pollMatchmaking, cancelMatchmaking } from './matchmaking-service.js';
+import { joinMatchmaking, cancelMatchmaking, pollMatchmaking } from './matchmaking-service.js';
 
 interface Env {
   DB: D1Database;
@@ -57,18 +57,12 @@ export default {
 
 export class NightplayRoom extends DurableObject<Env> {
   private chain: Promise<unknown> = Promise.resolve();
-  private matchmakingChain: Promise<unknown> = Promise.resolve();
   private alarmInitialized = false;
   constructor(ctx: DurableObjectState, env: Env) { super(ctx, env); }
 
   private queue<T>(fn: () => Promise<T>): Promise<T> {
     const result = this.chain.then(fn, fn);
     this.chain = result.catch(() => undefined);
-    return result;
-  }
-  private queueMatchmaking<T>(fn: () => Promise<T>): Promise<T> {
-    const result = this.matchmakingChain.then(fn, fn);
-    this.matchmakingChain = result.catch(() => undefined);
     return result;
   }
   private sockets() { return this.ctx.getWebSockets(); }
@@ -186,85 +180,6 @@ export class NightplayRoom extends DurableObject<Env> {
     try { await this.scheduleNextAlarm(); }
     catch(error) { this.alarmInitialized=false; throw error; }
   }
-  private async findOrCreateMatch(clientId:string) {
-    // Alarm scheduling is best-effort and deliberately detached from the match transaction.
-    return findOrCreateMatchInDb(this.env.DB,clientId,now(),()=>{
-      this.ctx.waitUntil(this.scheduleNextAlarm().catch(()=>{}));
-      return Promise.resolve();
-    });
-  }
-
-  private async notifyMatchedParticipants(room:string) {
-    const rows=await this.env.DB.prepare("SELECT client_id,matched_role FROM matchmaking_queue WHERE status='matched' AND room_code=?").bind(room).all<any>();
-    const byClient=new Map<string,any>();
-    for(const row of rows.results)byClient.set(String(row.client_id),row);
-    for(const peer of this.sockets()){
-      const clientId=this.attachment(peer).matchmakingClientId;
-      const row=clientId?byClient.get(clientId):null;
-      if(row&&(row.matched_role==='controller'||row.matched_role==='receiver'))
-        this.send(peer,{type:'match_found',clientId,room,role:row.matched_role});
-    }
-  }
-
-  private matchmakingJoin(ws:WebSocket,msg:ClientMessage) {
-    return this.queueMatchmaking(()=>this.matchmakingJoinNow(ws,msg));
-  }
-  private async matchmakingJoinNow(ws:WebSocket,msg:ClientMessage) {
-    const clientId=typeof msg.clientId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.clientId)?msg.clientId:'';
-    const nickname=String(msg.nickname??'').trim().replace(/\s+/g,' ').slice(0,24);
-    const gender=String(msg.gender??''),preference=String(msg.preference??''),rolePreference=String(msg.rolePreference??'any'),voicePreference=String(msg.voicePreference??'any');
-    if(!clientId||!nickname||!MATCH_GENDERS.has(gender)||!MATCH_PREFS.has(preference)||!ROLE_PREFS.has(rolePreference)||!new Set(['any','off','both','self','peer']).has(voicePreference))
-      return this.send(ws,{type:'error',code:'bad_matchmaking',message:'请检查昵称和匹配偏好设置。'});
-
-    const t=now();
-    await this.env.DB.prepare("INSERT OR IGNORE INTO matchmaking_queue(client_id,nickname,gender,preference,role_preference,voice_preference,status,created_at,last_seen_at) VALUES(?,?,?,?,?,?,'waiting',?,?)")
-      .bind(clientId,nickname,gender,preference,rolePreference,voicePreference,t,t).run();
-    await this.env.DB.prepare("UPDATE matchmaking_queue SET last_seen_at=? WHERE client_id=? AND status='waiting'").bind(t,clientId).run();
-
-    const attachment=this.attachment(ws);
-    attachment.matchmakingClientId=clientId;
-    this.save(ws,attachment);
-
-    const result=await this.findOrCreateMatch(clientId);
-    if(result.status==='matched')await this.notifyMatchedParticipants(result.room);
-    else if(result.status==='waiting')this.send(ws,{type:'match_waiting',message:'正在寻找符合双方偏好的参与者…'});
-    else this.send(ws,{type:'error',code:'match_expired',message:'匹配请求已失效，请重新开始匹配。'});
-  }
-
-  private pollMatchmaking(ws:WebSocket) {
-    return this.queueMatchmaking(()=>this.pollMatchmakingNow(ws));
-  }
-  private async pollMatchmakingNow(ws:WebSocket) {
-    const clientId=this.attachment(ws).matchmakingClientId;
-    if(!clientId)return;
-    await this.env.DB.prepare("UPDATE matchmaking_queue SET last_seen_at=? WHERE client_id=? AND status='waiting'").bind(now(),clientId).run();
-    const row=await this.env.DB.prepare('SELECT status,room_code,matched_role FROM matchmaking_queue WHERE client_id=?').bind(clientId).first<any>();
-    if(!row){
-      const attachment=this.attachment(ws);delete attachment.matchmakingClientId;this.save(ws,attachment);
-      this.send(ws,{type:'match_expired',message:'匹配等待已超时，请重新开始匹配。'});
-      return;
-    }
-    if(row.status==='matched'&&row.room_code&&(row.matched_role==='controller'||row.matched_role==='receiver'))
-      this.send(ws,{type:'match_found',clientId,room:row.room_code,role:row.matched_role});
-  }
-
-  private matchmakingCancel(ws:WebSocket,msg:ClientMessage) {
-    return this.queueMatchmaking(()=>this.matchmakingCancelNow(ws,msg));
-  }
-  private async matchmakingCancelNow(ws:WebSocket,msg:ClientMessage) {
-    const clientId=typeof msg.clientId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.clientId)?msg.clientId:'';
-    const row=clientId?await this.env.DB.prepare('SELECT status,room_code,matched_role FROM matchmaking_queue WHERE client_id=?').bind(clientId).first<any>():null;
-    if(row?.status==='matched'&&row.room_code){
-      this.send(ws,{type:'match_found',clientId,room:row.room_code,role:row.matched_role});
-      return;
-    }
-    if(clientId)await this.env.DB.prepare("DELETE FROM matchmaking_queue WHERE client_id=? AND status='waiting'").bind(clientId).run();
-    const attachment=this.attachment(ws);
-    if(!clientId||attachment.matchmakingClientId===clientId)delete attachment.matchmakingClientId;
-    this.save(ws,attachment);
-    this.send(ws,{type:'matchmaking_cancelled'});
-  }
-
   private async joinMatchedRoom(ws:WebSocket,msg:ClientMessage) {
     const clientId=typeof msg.matchClientId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.matchClientId)?msg.matchClientId:'';
     const room=String(msg.room??'').trim().toUpperCase();
@@ -325,10 +240,8 @@ export class NightplayRoom extends DurableObject<Env> {
     await this.env.DB.prepare('DELETE FROM rooms WHERE last_active_at<?').bind(t-ROOM_RETENTION_DAYS*86400000).run();
   }
   private async handle(ws:WebSocket,msg:ClientMessage) {
-    if(msg.type==='matchmaking_join')return this.matchmakingJoin(ws,msg);
-    if(msg.type==='matchmaking_cancel')return this.matchmakingCancel(ws,msg);
     if(msg.type==='watch_join')return this.watchJoin(ws,msg);
-    if(msg.type==='join'&&typeof msg.matchClientId==='string')return this.queueMatchmaking(()=>this.joinMatchedRoom(ws,msg));
+    if(msg.type==='join'&&typeof msg.matchClientId==='string')return this.joinMatchedRoom(ws,msg);
     if(msg.type==='join')return this.join(ws,msg);
     const m=this.meta(ws);
     if(msg.type==='watch_consent'){
@@ -336,7 +249,7 @@ export class NightplayRoom extends DurableObject<Env> {
       return this.setWatchConsent(ws,m,msg.open===true);
     }
     if(msg.type==='ping'){
-      if(!m){await this.pollMatchmaking(ws);return this.send(ws,{type:'pong'});}
+      if(!m)return this.send(ws,{type:'pong'});
       if(m.watcher)return this.send(ws,{type:'pong',members:await this.presence(m.room),seats:MAX_SEATS,watchers:await this.watcherCount(m.room)});
       if(!(await this.touch(m)))return this.seatLost(ws);
       return this.send(ws,{type:'pong',missed:await this.history(m.room,Number(msg.lastId)||0),members:await this.presence(m.room),seats:MAX_SEATS});
@@ -472,12 +385,11 @@ export class NightplayRoom extends DurableObject<Env> {
 
       const timestamp=now();
       const nickname=String(input.nickname).trim().replace(/\s+/g,' ').slice(0,24);
-      await this.env.DB.prepare("INSERT OR IGNORE INTO matchmaking_queue(client_id,nickname,gender,preference,role_preference,voice_preference,status,created_at,last_seen_at) VALUES(?,?,?,?,?,?,'waiting',?,?)")
-        .bind(clientId,nickname,String(input.gender),String(input.preference),String(input.rolePreference??'any'),String(input.voicePreference??'any'),timestamp,timestamp).run();
-      await this.env.DB.prepare("UPDATE matchmaking_queue SET nickname=?,gender=?,preference=?,role_preference=?,voice_preference=?,last_seen_at=? WHERE client_id=? AND status='waiting'")
-        .bind(nickname,String(input.gender),String(input.preference),String(input.rolePreference??'any'),String(input.voicePreference??'any'),timestamp,clientId).run();
-
-      const result=await this.findOrCreateMatch(clientId);
+      const result=await joinMatchmaking(this.env.DB,{
+        clientId,nickname,gender:String(input.gender),preference:String(input.preference),
+        rolePreference:String(input.rolePreference??'any'),voicePreference:String(input.voicePreference??'any'),
+      },timestamp);
+      if(result.status==='matched')this.ctx.waitUntil(this.scheduleNextAlarm().catch(()=>{}));
       if(result.status==='matched')return json({state:'matched',room:result.room,role:result.role});
       if(result.status==='waiting')return json({state:'waiting'});
       if(result.status==='repair_failed')return json({state:'repair_failed',message:'匹配房间正在恢复，请稍后重试。'},503);
