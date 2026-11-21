@@ -96,8 +96,16 @@
 .metro-summary-readout{display:flex;align-items:baseline;gap:4px;font-family:'DM Mono',monospace}
 .metro-summary-readout b{font-size:20px;color:var(--accent)}
 .metro-summary-readout small{font-size:9px;color:var(--muted)}
-.metro-chevron{color:var(--muted);font-size:17px;transition:transform .2s}
-#metroDetails[open] .metro-chevron{transform:rotate(180deg)}
+.metro-chevron{display:none}
+.metro-end-screen{padding:28px 12px;text-align:center;border-top:1px solid var(--line)}
+.metro-end-mark{width:58px;height:58px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;background:#87d9b21a;border:1px solid #87d9b266;color:var(--green);font-size:28px}
+.metro-end-screen h3{font-size:24px;margin:6px 0 20px}
+.metro-end-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:440px;margin:0 auto 18px}
+.metro-end-stats>div{padding:18px 12px;background:#0d0d13;border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;gap:7px}
+.metro-end-stats strong{font-size:28px;font-weight:800;color:var(--accent)}
+.metro-end-stats span{font-size:11px;color:var(--muted)}
+.metro-end-screen .primary{margin-top:18px;min-width:160px}
+@media(max-width:480px){.metro-end-stats{gap:8px}.metro-end-stats strong{font-size:24px}}
 .metro-content{padding:0 17px 17px;border-top:1px solid var(--line)}
 .metro-content .beat-display{padding:18px 10px}
 .metro-content .metro-controls{gap:10px}
@@ -388,14 +396,14 @@ body.watch-mode #watchStatus{color:#d2c4e6}
       <p id="watchStatus" class="chat-note" aria-live="polite">双方都允许后，其他人才能旁观。</p>
     </div>
     <section id="challenge" class="metronome-card" aria-label="寸止挑战">
-      <details id="metroDetails">
-        <summary class="metro-summary">
+      <div class="metro-summary">
           <span class="metro-summary-icon">◉</span>
           <span class="metro-summary-copy"><strong>寸止挑战</strong><small>控制方调整节奏 · 受控方可随时紧急停止</small></span>
           <span class="metro-summary-readout"><b id="metroSummaryBpm">80</b><small>BPM</small></span>
           <span id="metroStatus" class="pill">尚未开始</span><span class="metro-chevron">⌄</span>
-        </summary>
+        </div>
         <div class="metro-content">
+          <div id="metroLivePanel">
           <div class="quick-phrase-wrap"><div class="quick-phrase-head"><strong id="quickPhraseRole">角色快捷语</strong><span>点击即可发送</span></div><div id="quickPhrases" class="quick-phrases" aria-label="角色聊天快捷语"></div><div id="quickPhraseDisplay" class="quick-phrase-display" aria-live="polite">快捷语发送后会在这里同步显示</div></div>
           <div class="beat-display"><div id="beatPulse" class="beat-pulse"><span id="beatNumber">—</span></div><div class="beat-readout"><strong><span id="bpmValue">80</span> <small>BPM</small></strong><span id="intensityText">力度 3 / 5</span></div></div>
           <div class="metro-extra-controls"><label>挑战模式<select id="metroMode"><option value="steady">固定节奏</option><option value="random">随机变速</option></select></label><label>挑战难度<select id="metroDifficulty"><option value="easy">轻松</option><option value="normal" selected>标准</option><option value="hard">进阶</option></select></label><label>挑战时长<select id="metroDuration"><option value="1">1 分钟</option><option value="3">3 分钟</option><option value="5" selected>5 分钟</option><option value="10">10 分钟</option><option value="15">15 分钟</option></select></label><span class="metro-countdown">剩余 <b id="metroCountdown">05:00</b></span></div>
@@ -408,8 +416,19 @@ body.watch-mode #watchStatus{color:#d2c4e6}
           <p id="roleStatus" class="chat-note" aria-live="polite">进入房间后显示你的挑战角色。</p>
 
           <p class="chat-note">力度只影响节拍提示音量与视觉脉冲。请双方先确认规则；任何一方不适或不愿继续时立即暂停。</p>
+          </div>
+        <div id="metroEndScreen" class="metro-end-screen" hidden>
+          <div class="metro-end-mark">✓</div>
+          <p class="eyebrow">CHALLENGE COMPLETE</p>
+          <h3>本轮挑战结束</h3>
+          <div class="metro-end-stats">
+            <div><strong id="metroEndDuration">00:00</strong><span>有效挑战时长</span></div>
+            <div><strong id="metroEndHoldCount">0</strong><span>寸止次数</span></div>
+          </div>
+          <p id="metroEndReason" class="chat-note">本轮挑战已结束，结果已记录。</p>
+          <button type="button" id="metroRestartBtn" class="primary">再来一轮</button>
         </div>
-      </details>
+      </div>
     </section>
     <section class="chat-panel">
       <div class="panel-title"><div><p class="eyebrow">PRIVATE LIVE ROOM</p><h2>双人聊天</h2></div><span id="connState" class="conn-state off">未连接</span></div>
@@ -632,16 +651,16 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   let makingOffer=false,ignoreOffer=false,settingRemoteAnswerPending=false,voiceGeneration=0,iceConfigCache=null;
   const seatKey=r=>"np_seat_"+r;
   // 节拍器由双方浏览器本地发声，房间服务端只同步参数和运行状态。
-  let metroTimer=null,metroBeat=0,metroRunning=false,metroHasStarted=false,metroStopped=false,audioCtx=null,metroSyncGuard=false,roomHasPartner=false,metroChallengeTimer=null,metroRandomTimer=null,metroEndsAt=0,metroRemainingMs=300000,metroModeValue="steady",metroDifficultyValue="normal",metroDurationMinutes=5;
+  let metroTimer=null,metroBeat=0,metroRunning=false,metroHasStarted=false,metroStopped=false,audioCtx=null,metroSyncGuard=false,roomHasPartner=false,metroChallengeTimer=null,metroRandomTimer=null,metroEndsAt=0,metroRemainingMs=300000,metroModeValue="steady",metroDifficultyValue="normal",metroDurationMinutes=5,metroHoldCount=0,metroElapsedMs=0;
   const metroIntensity=()=>Number(els.intensity.value);
   function updateMetroLabels(){const bpm=Number(els.bpm.value),level=metroIntensity();$("#bpmValue").textContent=bpm;$("#bpmLabel").textContent=bpm;$("#metroSummaryBpm").textContent=bpm;$("#intensityLabel").textContent=level;$("#intensityText").textContent="力度 "+level+" / 5";$("#beatPulse").style.setProperty("--pulse-scale",String(1+level*.035));}
   function stopMetroTimer(){if(metroTimer){clearInterval(metroTimer);metroTimer=null}}
   function tick(){if(!metroRunning)return;metroBeat=(metroBeat%4)+1;const level=metroIntensity(),accent=metroBeat===1;const pulse=$("#beatPulse");pulse.classList.remove("active");void pulse.offsetWidth;pulse.classList.add("active");$("#beatNumber").textContent=String(metroBeat);setTimeout(()=>pulse.classList.remove("active"),110);
    try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume();const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type="sine";osc.frequency.value=accent?1050:760;gain.gain.setValueAtTime(Math.min(.32,.035+level*.045),audioCtx.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.075);osc.connect(gain);gain.connect(audioCtx.destination);osc.start();osc.stop(audioCtx.currentTime+.08)}catch(e){console.warn("节拍提示音不可用",e)}
   }
-  function renderMetroState(){updateMetroLabels();updateMetroCountdown();els.metroStatus.textContent=metroRunning?"挑战进行中":metroStopped?"挑战已结束":metroHasStarted?"已暂停":roomHasPartner?"准备就绪":"等待另一位参与者加入";const controller=myRole==="controller";els.bpm.disabled=!controller;els.intensity.disabled=!controller;els.metroMode.disabled=!controller;els.metroDifficulty.disabled=!controller;els.metroDuration.disabled=!controller;[els.metroSlow,els.metroNormal,els.metroFast,els.metroHold,els.metroResume].forEach(b=>b.disabled=!controller||!roomHasPartner);els.metroStart.disabled=!controller||metroRunning||!roomHasPartner;els.metroPause.disabled=!controller||!metroRunning;els.metroStop.disabled=!controller||!metroHasStarted||metroStopped;els.metroEmergency.disabled=!me;els.roleStatus.textContent=!myRole?"进入房间后显示你的挑战角色。":controller?"你的角色：控制方（S）· 可调整节奏与挑战时长。":"你的角色：受控方（M）· 跟随节拍，可随时紧急停止或在聊天中表达感受。";}
+  function renderMetroState(){updateMetroLabels();updateMetroCountdown();$("#metroLivePanel").hidden=metroStopped;$("#metroEndScreen").hidden=!metroStopped;els.metroStatus.textContent=metroRunning?"挑战进行中":metroStopped?"挑战已结束":metroHasStarted?"已暂停":roomHasPartner?"准备就绪":"等待另一位参与者加入";const controller=myRole==="controller";els.bpm.disabled=!controller;els.intensity.disabled=!controller;els.metroMode.disabled=!controller;els.metroDifficulty.disabled=!controller;els.metroDuration.disabled=!controller;[els.metroSlow,els.metroNormal,els.metroFast,els.metroHold,els.metroResume].forEach(b=>b.disabled=!controller||!roomHasPartner);els.metroStart.disabled=!controller||metroRunning||!roomHasPartner;els.metroPause.disabled=!controller||!metroRunning;els.metroStop.disabled=!controller||!metroHasStarted||metroStopped;els.metroEmergency.disabled=!me;els.roleStatus.textContent=!myRole?"进入房间后显示你的挑战角色。":controller?"你的角色：控制方（S）· 可调整节奏与挑战时长。":"你的角色：受控方（M）· 跟随节拍，可随时紧急停止或在聊天中表达感受。";}
   function clearMetroClocks(){if(metroChallengeTimer)clearInterval(metroChallengeTimer);if(metroRandomTimer)clearInterval(metroRandomTimer);metroChallengeTimer=metroRandomTimer=null}
-  function metroPayload(running=metroRunning,stopped=metroStopped){return {type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running,started:metroHasStarted,stopped,mode:metroModeValue,difficulty:metroDifficultyValue,durationMinutes:metroDurationMinutes,endsAt:metroEndsAt,remainingMs:metroRemainingMs}}
+  function metroPayload(running=metroRunning,stopped=metroStopped){return {type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running,started:metroHasStarted,stopped,mode:metroModeValue,difficulty:metroDifficultyValue,durationMinutes:metroDurationMinutes,endsAt:metroEndsAt,remainingMs:metroRemainingMs,holdCount:metroHoldCount,elapsedMs:metroElapsedMs}}
   function updateMetroCountdown(){const left=metroRunning?Math.max(0,metroEndsAt-Date.now()):metroRemainingMs,sec=Math.ceil(left/1000);$("#metroCountdown").textContent=String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0")}
   function startMetroClocks(){
    clearMetroClocks();
@@ -650,24 +669,28 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   }
   function startMetro(sync=true){
    if(metroRunning)return;if(!roomHasPartner){toast("请等待另一位参与者进入房间后再开始挑战");return}
-   if(!metroHasStarted||metroStopped||metroRemainingMs<=0)metroRemainingMs=(Number(els.metroDuration.value)||5)*60000;
+   if(!metroHasStarted||metroStopped||metroRemainingMs<=0){metroRemainingMs=(Number(els.metroDuration.value)||5)*60000;metroHoldCount=0;metroElapsedMs=0;}
    metroModeValue=els.metroMode.value||metroModeValue;metroDifficultyValue=els.metroDifficulty.value||metroDifficultyValue;metroDurationMinutes=Number(els.metroDuration.value)||metroDurationMinutes;
    metroHasStarted=true;metroStopped=false;metroRunning=true;metroEndsAt=Date.now()+metroRemainingMs;metroBeat=0;stopMetroTimer();tick();metroTimer=setInterval(tick,60000/Number(els.bpm.value));startMetroClocks();renderMetroState();
    if(sync&&!metroSyncGuard)out(metroPayload());
   }
   function pauseMetro(sync=true){
    if(metroRunning&&metroEndsAt)metroRemainingMs=Math.max(0,metroEndsAt-Date.now());
+   if(metroHasStarted)metroElapsedMs=Math.max(metroElapsedMs,metroDurationMinutes*60000-metroRemainingMs);
    metroHasStarted=metroHasStarted||metroRunning;metroStopped=false;metroRunning=false;stopMetroTimer();clearMetroClocks();$("#beatNumber").textContent="Ⅱ";updateMetroCountdown();renderMetroState();
    if(sync&&!metroSyncGuard)out(metroPayload(false,false));
   }
   function stopMetro(sync=true){
+   if(metroRunning&&metroEndsAt)metroRemainingMs=Math.max(0,metroEndsAt-Date.now());
+   metroElapsedMs=Math.max(metroElapsedMs,metroDurationMinutes*60000-metroRemainingMs);
    metroHasStarted=true;metroStopped=true;metroRunning=false;metroRemainingMs=0;metroEndsAt=0;stopMetroTimer();clearMetroClocks();metroBeat=0;$("#beatNumber").textContent="—";updateMetroCountdown();renderMetroState();els.metroStatus.textContent="挑战已结束";
+   $("#metroEndDuration").textContent=String(Math.floor(metroElapsedMs/60000)).padStart(2,"0")+":"+String(Math.floor(metroElapsedMs/1000)%60).padStart(2,"0");$("#metroEndHoldCount").textContent=String(metroHoldCount);$("#metroEndReason").textContent="本轮共寸止 "+metroHoldCount+" 次。";
    if(sync&&!metroSyncGuard)out(metroPayload(false,true));
   }
   function applyMetroRemote(m){
    metroSyncGuard=true;metroHasStarted=Boolean(m.started||m.running||m.stopped);metroStopped=Boolean(m.stopped);
    metroModeValue=m.mode==="random"?"random":"steady";metroDurationMinutes=Math.max(1,Math.min(15,Number(m.durationMinutes)||5));els.metroMode.value=metroModeValue;metroDifficultyValue=["easy","normal","hard"].includes(m.difficulty)?m.difficulty:"normal";els.metroDifficulty.value=metroDifficultyValue;els.metroDuration.value=String(metroDurationMinutes);
-   metroEndsAt=Math.max(0,Number(m.endsAt)||0);metroRemainingMs=Math.max(0,Math.min(900000,Number(m.remainingMs)||0));
+   metroEndsAt=Math.max(0,Number(m.endsAt)||0);metroRemainingMs=Math.max(0,Math.min(900000,Number(m.remainingMs)||0));metroHoldCount=Math.max(0,Math.min(1000,Number(m.holdCount)||0));metroElapsedMs=Math.max(0,Math.min(900000,Number(m.elapsedMs)||0));
    els.bpm.value=String(Math.max(40,Math.min(220,Number(m.bpm)||80)));els.intensity.value=String(Math.max(1,Math.min(5,Number(m.intensity)||3)));updateMetroLabels();
    if(watching){
     metroRunning=Boolean(m.running);metroStopped=Boolean(m.stopped);metroHasStarted=Boolean(m.started||m.running||m.stopped);
@@ -922,7 +945,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
     reset("已退出观战");
    }else if(m.type==="joined"){
     watching=false;document.body.classList.remove("watch-mode");watchConsent=Boolean(m.watchConsent);watchAllowed=Boolean(m.watchAllowed);joining=false;const fresh=!m.resumed||!me||me.id!==m.you.id;
-    if(fresh){closeVoice(false);els.log.innerHTML="";seen=new Set();lastId=0;stopMetroTimer();clearMetroClocks();metroRunning=false;metroHasStarted=false;metroStopped=false;metroEndsAt=0;metroRemainingMs=(Number(els.metroDuration.value)||5)*60000;metroBeat=0;$("#beatNumber").textContent="—";renderQuickPhrases()}
+    if(fresh){closeVoice(false);els.log.innerHTML="";seen=new Set();lastId=0;stopMetroTimer();clearMetroClocks();metroRunning=false;metroHasStarted=false;metroStopped=false;metroEndsAt=0;metroRemainingMs=(Number(els.metroDuration.value)||5)*60000;metroHoldCount=0;metroElapsedMs=0;$("#metroLivePanel").hidden=false;$("#metroEndScreen").hidden=true;metroBeat=0;$("#beatNumber").textContent="—";renderQuickPhrases()}
     me=m.you;myRole=m.you.role||"controller";matchedRole=null;renderQuickPhrases();room=m.room;iceConfigCache=null;localStorage.setItem(seatKey(room),m.token);localStorage.setItem("np_nick",me.nickname);
     const publishedNow=pendingPublish&&Boolean(m.isPublic);pendingPublish=false;pendingPublishName="";els.label.textContent=(m.roomName?m.roomName+" · ":"")+room;showRoom(true);if(publishedNow)toast("公开房间已发布，其他玩家现在可以加入");setState("on","已连接");setVoiceState("","语音未开启 · 双方需分别授权");renderWatchUI();els.watcherCount.textContent="旁观 "+(m.watchers||0);
     const u=new URL(location.href);u.searchParams.set("room",room);u.hash="room";history.replaceState(null,"",u);
@@ -1061,7 +1084,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   els.intensity.onchange=syncMetroSettings;
   const setCueBpm=value=>{if(myRole!=="controller"||!me)return;els.bpm.value=String(value);updateMetroLabels();restartMetroInterval();syncMetroSettings()};
   els.metroSlow.onclick=()=>setCueBpm(55);els.metroNormal.onclick=()=>setCueBpm(75);els.metroFast.onclick=()=>setCueBpm(110);
-  els.metroHold.onclick=()=>{if(myRole==="controller")pauseMetro(true)};
+  els.metroHold.onclick=()=>{if(myRole==="controller"&&metroRunning){metroHoldCount++;pauseMetro(true)}};
   els.metroResume.onclick=()=>{if(myRole==="controller")startMetro(true)};
   els.metroMode.onchange=()=>{metroModeValue=els.metroMode.value;syncMetroSettings();if(metroRunning)startMetroClocks()};
   els.metroDifficulty.onchange=()=>{metroDifficultyValue=els.metroDifficulty.value;syncMetroSettings();if(metroRunning)startMetroClocks()};
@@ -1069,7 +1092,8 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   els.metroStart.onclick=()=>{if(!me){toast("请先进入双人房间");return}if(myRole!=="controller"){toast("只有控制方可以开始挑战");return}startMetro(true)};
   els.metroPause.onclick=()=>{if(myRole==="controller")pauseMetro(true)};
   els.metroStop.onclick=()=>{if(myRole==="controller")stopMetro(true)};
-  els.metroEmergency.onclick=()=>{if(!me)return;metroRunning=false;metroRemainingMs=0;metroEndsAt=0;stopMetroTimer();clearMetroClocks();renderMetroState();out({type:"metronome_emergency_stop"});};
+  els.metroEmergency.onclick=()=>{if(!me)return;if(metroRunning&&metroEndsAt)metroRemainingMs=Math.max(0,metroEndsAt-Date.now());metroElapsedMs=Math.max(metroElapsedMs,metroDurationMinutes*60000-metroRemainingMs);metroRunning=false;metroRemainingMs=0;metroEndsAt=0;stopMetroTimer();clearMetroClocks();stopMetro(false);out({type:"metronome_emergency_stop"});};
+  $("#metroRestartBtn").onclick=()=>{metroStopped=false;metroHasStarted=false;metroRunning=false;metroHoldCount=0;metroElapsedMs=0;metroRemainingMs=(Number(els.metroDuration.value)||5)*60000;metroEndsAt=0;$("#metroLivePanel").hidden=false;$("#metroEndScreen").hidden=true;$("#beatNumber").textContent="—";renderMetroState()};
   updateMetroLabels();renderMetroState();
   els.voiceStart.onclick=startMic;
   els.voiceMute.onclick=()=>{if(!localStream)return;const tracks=localStream.getAudioTracks();const next=tracks.some(t=>t.enabled);tracks.forEach(t=>t.enabled=!next);updateMicControls();setVoiceState("on",next?"麦克风已静音":"麦克风已开启")};
