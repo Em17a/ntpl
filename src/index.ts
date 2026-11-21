@@ -94,6 +94,8 @@ export class NightplayRoom extends DurableObject<Env> {
     if(!allowed) await this.closeWatchers(m.room);
   }
   private async watchJoin(ws: WebSocket, msg: ClientMessage) {
+    const existing=this.meta(ws);
+    if(existing&&!existing.watcher)return this.send(ws,{type:'error',code:'watch_self',message:'请先退出当前参与者房间，再使用旁观功能。'});
     const room=String(msg.room??'').trim().toUpperCase(), nickname=String(msg.nickname??'').trim().replace(/\s+/g,' ').slice(0,24);
     const guestId=typeof msg.guestId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.guestId)?msg.guestId:null;
     if(!CODE_RE.test(room)||!nickname) return this.send(ws,{type:'error',code:'bad_watch_request',message:'请检查房间代码和昵称。'});
