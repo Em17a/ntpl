@@ -17,7 +17,9 @@ async function repairLegacyRoomCode(db: D1Database, oldRoom: string, timestamp: 
   if (validRoomCode.test(oldRoom)) return oldRoom;
   const members = await db.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=?')
     .bind(oldRoom).first<any>();
-  if (Number(members?.count) > 0) return null;
+  const queueRows = await db.prepare("SELECT COUNT(*) AS count FROM matchmaking_queue WHERE status='matched' AND room_code=?")
+    .bind(oldRoom).first<any>();
+  if (Number(members?.count) > 0 || Number(queueRows?.count) !== 2) return null;
 
   const previous = await db.prepare('SELECT created_at,last_active_at,expires_at FROM rooms WHERE code=?')
     .bind(oldRoom).first<any>();
@@ -34,7 +36,13 @@ async function repairLegacyRoomCode(db: D1Database, oldRoom: string, timestamp: 
     db.prepare('DELETE FROM rooms WHERE code=?').bind(oldRoom),
   ]);
   if (Number(results[1]?.meta?.changes) !== 2) {
-    await db.prepare('DELETE FROM rooms WHERE code=?').bind(room).run();
+    await db.batch([
+      db.prepare('INSERT OR IGNORE INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)')
+        .bind(oldRoom, createdAt, lastActiveAt, expiresAt),
+      db.prepare("UPDATE matchmaking_queue SET room_code=? WHERE status='matched' AND room_code=?")
+        .bind(oldRoom, room),
+      db.prepare('DELETE FROM rooms WHERE code=?').bind(room),
+    ]);
     return null;
   }
   return room;
