@@ -3,7 +3,7 @@ on:
   pull_request:
     branches: [cloudflare-migration]
   push:
-    branches: [matchmaking-rewrite]
+    branches: [matchmaking-rewrite, rewrite-v2-clean]
 permissions:
   contents: read
 jobs:
