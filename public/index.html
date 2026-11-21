@@ -127,7 +127,7 @@ body.room-active .topbar nav{display:none}
 .quick-phrase-head{display:flex;justify-content:space-between;gap:8px;margin-bottom:8px;font-size:10px;color:var(--muted)}
 .quick-phrase-head strong{color:var(--accent);font-size:11px}
 .quick-phrases{display:flex;gap:6px;overflow-x:auto;padding-bottom:3px;scrollbar-width:thin}
-.quick-phrases .qa{flex:0 0 auto;white-space:nowrap;font-size:10px;padding:7px 10px}
+.quick-phrases .qa{flex:0 0 auto;white-space:nowrap;font-size:10px;padding:7px 10px}.quick-phrase-display{margin-top:8px;padding:9px 10px;border-radius:6px;background:#211d2b;border:1px solid #51405f;color:#f4eaff;font-size:12px;line-height:1.5;min-height:36px;overflow-wrap:anywhere}.quick-phrase-display:before{content:"最近快捷语";display:block;margin-bottom:3px;color:var(--accent);font-size:9px;font-weight:700;letter-spacing:.04em}
 .metro-extra-controls{display:flex;align-items:end;gap:12px;flex-wrap:wrap;padding:13px 0}
 .metro-extra-controls label{display:flex;flex-direction:column;gap:5px;min-width:130px;font-size:10px;color:var(--muted)}
 .metro-extra-controls select{padding:9px;font-size:11px}
@@ -326,7 +326,7 @@ body.watch-mode #watchStatus{color:#d2c4e6}
           <span id="metroStatus" class="pill">尚未开始</span><span class="metro-chevron">⌄</span>
         </summary>
         <div class="metro-content">
-          <div class="quick-phrase-wrap"><div class="quick-phrase-head"><strong id="quickPhraseRole">角色快捷语</strong><span>点击即可发送</span></div><div id="quickPhrases" class="quick-phrases" aria-label="角色聊天快捷语"></div></div>
+          <div class="quick-phrase-wrap"><div class="quick-phrase-head"><strong id="quickPhraseRole">角色快捷语</strong><span>点击即可发送</span></div><div id="quickPhrases" class="quick-phrases" aria-label="角色聊天快捷语"></div><div id="quickPhraseDisplay" class="quick-phrase-display" aria-live="polite">快捷语发送后会在这里同步显示</div></div>
           <div class="beat-display"><div id="beatPulse" class="beat-pulse"><span id="beatNumber">—</span></div><div class="beat-readout"><strong><span id="bpmValue">80</span> <small>BPM</small></strong><span id="intensityText">力度 3 / 5</span></div></div>
           <div class="metro-extra-controls"><label>挑战模式<select id="metroMode"><option value="steady">固定节奏</option><option value="random">随机变速</option></select></label><label>挑战难度<select id="metroDifficulty"><option value="easy">轻松</option><option value="normal" selected>标准</option><option value="hard">进阶</option></select></label><label>挑战时长<select id="metroDuration"><option value="1">1 分钟</option><option value="3">3 分钟</option><option value="5" selected>5 分钟</option><option value="10">10 分钟</option><option value="15">15 分钟</option></select></label><span class="metro-countdown">剩余 <b id="metroCountdown">05:00</b></span></div>
           <div class="metro-cues"><button type="button" id="metroSlow" class="ghost">慢拍 55</button><button type="button" id="metroNormal" class="ghost">均速 75</button><button type="button" id="metroFast" class="ghost">快拍 110</button><button type="button" id="metroHold" class="ghost danger-text">寸止</button><button type="button" id="metroResume" class="ghost">恢复节奏</button></div>
@@ -602,6 +602,10 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
     meta.appendChild(document.createTextNode(fmt(m.createdAt)));
     const bub=document.createElement("div");bub.className="bubble";bub.textContent=m.body;
     d.append(meta,bub);
+   }
+   if(m.kind!=="system"&&rolePhrases&&(rolePhrases.controller.includes(m.body)||rolePhrases.receiver.includes(m.body))){
+    const phraseDisplay=$("#quickPhraseDisplay");
+    if(phraseDisplay)phraseDisplay.textContent=(m.nickname||"参与者")+"："+m.body;
    }
    const atBottom=els.log.scrollHeight-els.log.scrollTop-els.log.clientHeight<60;
    els.log.appendChild(d);
