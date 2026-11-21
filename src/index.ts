@@ -3,7 +3,7 @@ import { handleMatchmakingApi } from './matchmaking-api.js';
 import { ensureFriendProfile, handleSocialApi } from './social-api.js';
 import { handleDirectoryApi } from './directory-api.js';
 import { handleRtcConfig } from './rtc-api.js';
-import { containsContactInfo, inspectChatForContact, isContactMuted, recordContactViolation, type ContactModerationState } from './contact-protection.js';
+import { inspectChatForContact, isContactMuted, recordContactViolation, type ContactModerationState } from './contact-protection.js';
 
 interface Env {
   DB: D1Database;
