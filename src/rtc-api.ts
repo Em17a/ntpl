@@ -21,7 +21,7 @@ export async function handleRtcConfig(
   if (request.method !== 'GET' || url.pathname !== '/api/rtc-config') return null;
 
   const room = String(url.searchParams.get('room') ?? '').trim().toUpperCase();
-  const member = String(request.headers.get('authorization') ?? '').replace(/^Bearer\\s+/i, '').trim();
+  const member = String(request.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
   if (!/^[A-Z0-9]{4,12}$/.test(room) || !/^[0-9a-f-]{36}$/i.test(member)) {
     return json({ error: 'bad_request' }, 400);
   }
