@@ -441,7 +441,7 @@ export class NightplayRoom extends DurableObject<Env> {
     if(!clientId||!['join','poll','cancel'].includes(action))return json({error:'bad_matchmaking_request'},400);
 
     if(action==='join'){
-      const nickname=String(input.nickname??'').trim().replace(/\\s+/g,' ').slice(0,24);
+      const nickname=String(input.nickname??'').trim().replace(/\s+/g,' ').slice(0,24);
       const gender=String(input.gender??''),preference=String(input.preference??'');
       const rolePreference=String(input.rolePreference??'any'),voicePreference=String(input.voicePreference??'any');
       if(!nickname||!MATCH_GENDERS.has(gender)||!MATCH_PREFS.has(preference)||!ROLE_PREFS.has(rolePreference)||
@@ -481,7 +481,7 @@ export class NightplayRoom extends DurableObject<Env> {
       }
 
       const timestamp=now();
-      const nickname=String(input.nickname).trim().replace(/\\s+/g,' ').slice(0,24);
+      const nickname=String(input.nickname).trim().replace(/\s+/g,' ').slice(0,24);
       await this.env.DB.prepare("INSERT OR IGNORE INTO matchmaking_queue(client_id,nickname,gender,preference,role_preference,voice_preference,status,created_at,last_seen_at) VALUES(?,?,?,?,?,?,'waiting',?,?)")
         .bind(clientId,nickname,String(input.gender),String(input.preference),String(input.rolePreference??'any'),String(input.voicePreference??'any'),timestamp,timestamp).run();
       await this.env.DB.prepare("UPDATE matchmaking_queue SET nickname=?,gender=?,preference=?,role_preference=?,voice_preference=?,last_seen_at=? WHERE client_id=? AND status='waiting'")
