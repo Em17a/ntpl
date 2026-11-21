@@ -2,6 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { handleMatchmakingApi } from './matchmaking-api.js';
 import { ensureFriendProfile, handleSocialApi } from './social-api.js';
 import { handleDirectoryApi } from './directory-api.js';
+import { handleRtcConfig } from './rtc-api.js';
 
 interface Env {
   DB: D1Database;
@@ -337,14 +338,7 @@ export class NightplayRoom extends DurableObject<Env> {
     if(request.method==='POST'&&url.pathname==='/api/matchmaking')return handleMatchmakingApi(request,this.env.DB,()=>this.ctx.waitUntil(this.scheduleNextAlarm().catch(()=>{})));
     const socialResponse=await handleSocialApi(request,this.env.DB);if(socialResponse)return socialResponse;
     const directoryResponse=await handleDirectoryApi(request,this.env.DB,this.ctx.storage,room=>this.presence(room),room=>this.watcherCount(room));if(directoryResponse)return directoryResponse;
-    if(request.method==='GET'&&url.pathname==='/api/rtc-config'){
-      const room=String(url.searchParams.get('room')??'').trim().toUpperCase(),member=String(request.headers.get('authorization')??'').replace(/^Bearer\s+/i,'').trim();
-      if(!CODE_RE.test(room)||!/^[0-9a-f-]{36}$/i.test(member))return json({error:'bad_request'},400);
-      const found=await this.env.DB.prepare('SELECT id FROM room_members WHERE id=? AND room_code=? AND left_at IS NULL').bind(member,room).first();if(!found)return json({error:'not_a_room_member'},403);
-      const iceServers:any[]=[{urls:'stun:stun.l.google.com:19302'}];const urls=String(this.env.NIGHTPLAY_TURN_URLS??'').split(',').map(s=>s.trim()).filter(Boolean),secret=this.env.NIGHTPLAY_TURN_SHARED_SECRET??'';let turnEnabled=false,expiresAt:number|null=null;
-      if(urls.length&&secret){const requested=Number(this.env.NIGHTPLAY_TURN_TTL_SECONDS??3600),ttl=Math.min(86400,Math.max(300,Number.isFinite(requested)?requested:3600));expiresAt=Math.floor(now()/1000)+ttl;const username=`${expiresAt}:${member}`;const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-1'},false,['sign']);const sig=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(username));const credential=btoa(String.fromCharCode(...new Uint8Array(sig)));iceServers.push({urls,username,credential});turnEnabled=true;}
-      return json({iceServers,turnEnabled,expiresAt});
-    }
+    const rtcResponse=await handleRtcConfig(request,this.env.DB,this.env);if(rtcResponse)return rtcResponse;
     if(url.pathname==='/api/health')return json({ok:true,platform:'cloudflare'});
     return json({error:'not_found'},404);
   }
