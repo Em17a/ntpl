@@ -664,7 +664,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
     matching=true;els.matchStart.disabled=true;els.matchCancel.disabled=false;els.connect.disabled=true;els.matchStatus.textContent=m.message||"正在寻找匹配对象…";
    }else if(m.type==="match_found"){
     if(!matching)return;
-    matching=false;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;els.matchStatus.textContent="匹配成功，正在进入房间…";
+    watching=false;document.body.classList.remove("watch-mode");matching=false;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;els.matchStatus.textContent="匹配成功，正在进入房间…";
     els.code.value=m.room;room=m.room;matchedRole=m.role||"any";lastId=0;seen=new Set();want=true;sendJoin();
    }else if(m.type==="matchmaking_cancelled"){
     matching=false;want=!!me;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;els.matchStatus.textContent="已取消匹配";
@@ -725,6 +725,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   }
   function reset(msg){stopMetro(false);closeVoice(false);watching=false;watchConsent=false;watchAllowed=false;document.body.classList.remove("watch-mode");want=false;joining=false;matching=false;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;clearInterval(hb);hb=null;clearTimeout(retryTimer);me=null;myRole=null;matchedRole=null;showRoom(false);els.connect.disabled=false;if(ws){ws.onclose=null;try{ws.close()}catch{}ws=null}setState("off","未连接");if(msg)toast(msg);const u=new URL(location.href);u.searchParams.delete("room");history.replaceState(null,"",u)}
   function startMatching(){
+   watching=false;document.body.classList.remove("watch-mode");
    const nick=els.nick.value.trim();
    if(!nick){toast("请先填写昵称");els.nick.focus();return}
    matchClientId=crypto.randomUUID();matching=true;want=true;els.matchStart.disabled=true;els.matchCancel.disabled=false;els.connect.disabled=true;els.matchStatus.textContent="正在寻找性别、角色和语音偏好都符合的参与者…";
