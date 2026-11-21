@@ -309,6 +309,7 @@ body.watch-mode #watchStatus{color:#d2c4e6}
           <div class="public-room-create"><label>你的昵称<input id="publicRoomNickname" maxlength="24" placeholder="输入聊天昵称" autocomplete="nickname"></label>
             <label>自定义房间名称<input id="publicRoomName" maxlength="20" placeholder="例如：S来求调" autocomplete="off"></label>
             <label>你希望担任的角色<select id="publicRoomRole"><option value="controller">控制方（S）</option><option value="receiver">受控方（M）</option></select></label>
+            <label>房间有效期（5–120 分钟）<input id="publicRoomLifetime" type="number" min="5" max="120" step="5" value="30" inputmode="numeric"></label>
             <button id="publicRoomPublishBtn" type="button" class="primary">发布房间</button>
           </div>
           <div class="public-room-heading"><h3>正在招募的房间</h3><button id="publicRoomRefreshBtn" type="button" class="ghost">刷新列表</button></div>
@@ -340,6 +341,7 @@ body.watch-mode #watchStatus{color:#d2c4e6}
           <form id="joinForm" class="room-controls">
             <div class="code-field"><input id="roomCode" maxlength="12" placeholder="房间代码（4–12 位字母或数字）" autocomplete="off" required><button type="button" id="randomCodeBtn" class="ghost" title="生成随机代码">↻ 随机</button></div>
             <label class="role-picker">进入房间后担任<select id="roomRole"><option value="controller">控制方</option><option value="receiver">受控方</option><option value="any">由系统自动分配</option></select></label>
+            <label style="grid-column:1/-1">新建房间有效期（5–120 分钟）<input id="roomLifetime" type="number" min="5" max="120" step="5" value="30" inputmode="numeric"><small class="chat-note">仅创建新房间时生效，加入已有房间不会改变有效期。</small></label>
             <button id="connectBtn" class="primary" type="submit">加入 / 创建房间</button>
           </form>
           <p id="roomPeek" class="chat-note"></p>
@@ -651,7 +653,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   let makingOffer=false,ignoreOffer=false,settingRemoteAnswerPending=false,voiceGeneration=0,iceConfigCache=null;
   const seatKey=r=>"np_seat_"+r;
   // 节拍器由双方浏览器本地发声，房间服务端只同步参数和运行状态。
-  let metroTimer=null,metroBeat=0,metroRunning=false,metroHasStarted=false,metroStopped=false,audioCtx=null,metroSyncGuard=false,roomHasPartner=false,metroChallengeTimer=null,metroRandomTimer=null,metroEndsAt=0,metroRemainingMs=300000,metroModeValue="steady",metroDifficultyValue="normal",metroDurationMinutes=5,metroHoldCount=0,metroElapsedMs=0;
+  let metroTimer=null,metroBeat=0,metroRunning=false,metroHasStarted=false,metroStopped=false,audioCtx=null,metroSyncGuard=false,roomHasPartner=false,metroChallengeTimer=null,metroRandomTimer=null,metroEndsAt=0,metroRemainingMs=300000,metroModeValue="steady",metroDifficultyValue="normal",metroDurationMinutes=5,metroHoldCount=0,metroElapsedMs=0,metroEndReason="";
   const metroIntensity=()=>Number(els.intensity.value);
   function updateMetroLabels(){const bpm=Number(els.bpm.value),level=metroIntensity();$("#bpmValue").textContent=bpm;$("#bpmLabel").textContent=bpm;$("#metroSummaryBpm").textContent=bpm;$("#intensityLabel").textContent=level;$("#intensityText").textContent="力度 "+level+" / 5";$("#beatPulse").style.setProperty("--pulse-scale",String(1+level*.035));}
   function stopMetroTimer(){if(metroTimer){clearInterval(metroTimer);metroTimer=null}}
@@ -661,7 +663,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   function tick(){if(!metroRunning)return;metroBeat=(metroBeat%4)+1;const level=metroIntensity(),accent=metroBeat===1;const pulse=$("#beatPulse");pulse.classList.remove("active");void pulse.offsetWidth;pulse.classList.add("active");$("#beatNumber").textContent=String(metroBeat);setTimeout(()=>pulse.classList.remove("active"),180);playMetroTone(accent,level)}
   function renderMetroState(){updateMetroLabels();updateMetroCountdown();$("#metroHoldCountLive").textContent=String(metroHoldCount);$("#metroLivePanel").hidden=metroStopped;$("#metroEndScreen").hidden=!metroStopped;els.metroStatus.textContent=metroRunning?"挑战进行中":metroStopped?"挑战已结束":metroHasStarted?"已暂停":roomHasPartner?"准备就绪":"等待另一位参与者加入";const controller=myRole==="controller";els.bpm.disabled=!controller;els.intensity.disabled=!controller;els.metroMode.disabled=!controller;els.metroDifficulty.disabled=!controller;els.metroDuration.disabled=!controller;[els.metroSlow,els.metroNormal,els.metroFast,els.metroHold,els.metroResume].forEach(b=>b.disabled=!controller||!roomHasPartner);els.metroStart.disabled=!controller||metroRunning;$("#metroRestartBtn").disabled=!controller;els.metroPause.disabled=!controller||!metroRunning;els.metroStop.disabled=!controller||!metroHasStarted||metroStopped;els.metroEmergency.disabled=!me;els.roleStatus.textContent=!myRole?"进入房间后显示你的挑战角色。":controller?"你的角色：控制方（S）· 可调整节奏与挑战时长。":"你的角色：受控方（M）· 跟随节拍，可随时紧急停止或在聊天中表达感受。";}
   function clearMetroClocks(){if(metroChallengeTimer)clearInterval(metroChallengeTimer);if(metroRandomTimer)clearInterval(metroRandomTimer);metroChallengeTimer=metroRandomTimer=null}
-  function metroPayload(running=metroRunning,stopped=metroStopped){return {type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running,started:metroHasStarted,stopped,mode:metroModeValue,difficulty:metroDifficultyValue,durationMinutes:metroDurationMinutes,endsAt:metroEndsAt,remainingMs:metroRemainingMs,holdCount:metroHoldCount,elapsedMs:metroElapsedMs}}
+  function metroPayload(running=metroRunning,stopped=metroStopped){return {type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running,started:metroHasStarted,stopped,mode:metroModeValue,difficulty:metroDifficultyValue,durationMinutes:metroDurationMinutes,endsAt:metroEndsAt,remainingMs:metroRemainingMs,holdCount:metroHoldCount,elapsedMs:metroElapsedMs,endReason:metroEndReason}}
   function updateMetroCountdown(){const left=metroRunning?Math.max(0,metroEndsAt-Date.now()):metroRemainingMs,sec=Math.ceil(left/1000);$("#metroCountdown").textContent=String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0")}
   function startMetroClocks(){
    clearMetroClocks();
@@ -670,7 +672,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   }
   function startMetro(sync=true){
    if(metroRunning)return;if(!roomHasPartner){toast("请等待另一位参与者进入房间后再开始挑战");return}
-   if(!metroHasStarted||metroStopped||metroRemainingMs<=0){metroRemainingMs=(Number(els.metroDuration.value)||5)*60000;metroHoldCount=0;metroElapsedMs=0;}
+   if(!metroHasStarted||metroStopped||metroRemainingMs<=0){metroRemainingMs=(Number(els.metroDuration.value)||5)*60000;metroHoldCount=0;metroElapsedMs=0;metroEndReason="";}
    metroModeValue=els.metroMode.value||metroModeValue;metroDifficultyValue=els.metroDifficulty.value||metroDifficultyValue;metroDurationMinutes=Number(els.metroDuration.value)||metroDurationMinutes;
    metroHasStarted=true;metroStopped=false;metroRunning=true;metroEndsAt=Date.now()+metroRemainingMs;metroBeat=0;stopMetroTimer();tick();metroTimer=setInterval(tick,60000/Number(els.bpm.value));startMetroClocks();renderMetroState();
    if(sync&&!metroSyncGuard)out(metroPayload());
@@ -682,18 +684,20 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    if(sync&&!metroSyncGuard)out(metroPayload(false,false));
   }
   function stopMetro(sync=true){
+   const reachedTime=metroRunning&&metroEndsAt>0&&Date.now()>=metroEndsAt;
    if(!metroStopped){
     if(metroRunning&&metroEndsAt)metroRemainingMs=Math.max(0,metroEndsAt-Date.now());
     metroElapsedMs=Math.max(metroElapsedMs,metroDurationMinutes*60000-metroRemainingMs);
    }
+   if(!metroEndReason)metroEndReason=reachedTime?"挑战时间已到，本轮自动结束。":"本轮共寸止 "+metroHoldCount+" 次。";
    metroHasStarted=true;metroStopped=true;metroRunning=false;metroRemainingMs=0;metroEndsAt=0;stopMetroTimer();clearMetroClocks();metroBeat=0;$("#beatNumber").textContent="—";updateMetroCountdown();renderMetroState();els.metroStatus.textContent="挑战已结束";
-   $("#metroEndDuration").textContent=String(Math.floor(metroElapsedMs/60000)).padStart(2,"0")+":"+String(Math.floor(metroElapsedMs/1000)%60).padStart(2,"0");$("#metroEndHoldCount").textContent=String(metroHoldCount);$("#metroEndReason").textContent="本轮共寸止 "+metroHoldCount+" 次。";
+   $("#metroEndDuration").textContent=String(Math.floor(metroElapsedMs/60000)).padStart(2,"0")+":"+String(Math.floor(metroElapsedMs/1000)%60).padStart(2,"0");$("#metroEndHoldCount").textContent=String(metroHoldCount);$("#metroEndReason").textContent=metroEndReason;
    if(sync&&!metroSyncGuard)out(metroPayload(false,true));
   }
   function applyMetroRemote(m){
    metroSyncGuard=true;metroHasStarted=Boolean(m.started||m.running||m.stopped);metroStopped=Boolean(m.stopped);
    metroModeValue=m.mode==="random"?"random":"steady";metroDurationMinutes=Math.max(1,Math.min(15,Number(m.durationMinutes)||5));els.metroMode.value=metroModeValue;metroDifficultyValue=["easy","normal","hard"].includes(m.difficulty)?m.difficulty:"normal";els.metroDifficulty.value=metroDifficultyValue;els.metroDuration.value=String(metroDurationMinutes);
-   metroEndsAt=Math.max(0,Number(m.endsAt)||0);metroRemainingMs=Math.max(0,Math.min(900000,Number(m.remainingMs)||0));metroHoldCount=Math.max(0,Math.min(1000,Number(m.holdCount)||0));metroElapsedMs=Math.max(0,Math.min(900000,Number(m.elapsedMs)||0));
+   metroEndsAt=Math.max(0,Number(m.endsAt)||0);metroRemainingMs=Math.max(0,Math.min(900000,Number(m.remainingMs)||0));metroHoldCount=Math.max(0,Math.min(1000,Number(m.holdCount)||0));metroElapsedMs=Math.max(0,Math.min(900000,Number(m.elapsedMs)||0));metroEndReason=typeof m.endReason==="string"?m.endReason.slice(0,120):"";
    els.bpm.value=String(Math.max(40,Math.min(220,Number(m.bpm)||80)));els.intensity.value=String(Math.max(1,Math.min(5,Number(m.intensity)||3)));updateMetroLabels();
    if(watching){
     metroRunning=Boolean(m.running);metroStopped=Boolean(m.stopped);metroHasStarted=Boolean(m.started||m.running||m.stopped);
@@ -768,7 +772,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    ws.onerror=()=>{};
   }
   const out=o=>{if(ws&&ws.readyState===1){ws.send(JSON.stringify(o));return true}return false};
-  function sendJoin(){joining=true;out({type:"join",room,nickname:els.nick.value.trim(),token:localStorage.getItem(seatKey(room)),guestId,lastId,role:matchedRole||els.roomRole.value,publish:pendingPublish,roomName:pendingPublishName})}
+  function sendJoin(){joining=true;const lifetimeField=pendingPublish?$("#publicRoomLifetime"):$("#roomLifetime");const rawLifetime=Number(lifetimeField?.value)||30;const roomLifetimeMinutes=Math.max(5,Math.min(120,Math.round(rawLifetime/5)*5));out({type:"join",room,nickname:els.nick.value.trim(),token:localStorage.getItem(seatKey(room)),guestId,lastId,role:matchedRole||els.roomRole.value,publish:pendingPublish,roomName:pendingPublishName,roomLifetimeMinutes})}
   function sendWatchJoin(){out({type:"watch_join",room,nickname:els.nick.value.trim(),guestId})}
   function joinAsWatcher(codeValue){
    const nick=els.nick.value.trim(),code=String(codeValue||els.code.value).trim().toUpperCase();
@@ -948,7 +952,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
     reset("已退出观战");
    }else if(m.type==="joined"){
     watching=false;document.body.classList.remove("watch-mode");watchConsent=Boolean(m.watchConsent);watchAllowed=Boolean(m.watchAllowed);joining=false;const fresh=!m.resumed||!me||me.id!==m.you.id;
-    if(fresh){closeVoice(false);els.log.innerHTML="";seen=new Set();lastId=0;stopMetroTimer();clearMetroClocks();metroRunning=false;metroHasStarted=false;metroStopped=false;metroEndsAt=0;metroRemainingMs=(Number(els.metroDuration.value)||5)*60000;metroHoldCount=0;metroElapsedMs=0;$("#metroLivePanel").hidden=false;$("#metroEndScreen").hidden=true;metroBeat=0;$("#beatNumber").textContent="—";renderQuickPhrases()}
+    if(fresh){closeVoice(false);els.log.innerHTML="";seen=new Set();lastId=0;stopMetroTimer();clearMetroClocks();metroRunning=false;metroHasStarted=false;metroStopped=false;metroEndsAt=0;metroRemainingMs=(Number(els.metroDuration.value)||5)*60000;metroHoldCount=0;metroElapsedMs=0;metroEndReason="";$("#metroLivePanel").hidden=false;$("#metroEndScreen").hidden=true;metroBeat=0;$("#beatNumber").textContent="—";renderQuickPhrases()}
     me=m.you;myRole=m.you.role||"controller";matchedRole=null;renderQuickPhrases();room=m.room;iceConfigCache=null;localStorage.setItem(seatKey(room),m.token);localStorage.setItem("np_nick",me.nickname);
     const publishedNow=pendingPublish&&Boolean(m.isPublic);pendingPublish=false;pendingPublishName="";els.label.textContent=(m.roomName?m.roomName+" · ":"")+room;showRoom(true);if(publishedNow)toast("公开房间已发布，其他玩家现在可以加入");setState("on","已连接");setVoiceState("","语音未开启 · 双方需分别授权");renderWatchUI();els.watcherCount.textContent="旁观 "+(m.watchers||0);
     const u=new URL(location.href);u.searchParams.set("room",room);u.hash="room";history.replaceState(null,"",u);
@@ -973,9 +977,10 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    else if(m.type==="voice_notice"){setVoiceState("wait",m.message||"等待另一位参与者上线");toast(m.message||"另一位参与者当前不在线")}
    else if(m.type==="left"){reset("已离开房间")}
    else if(m.type==="error"){
-    if(["room_full","seat_lost","bad_room","bad_nickname","publish_room_exists","bad_room_name"].includes(m.code)){
+    if(["room_full","seat_lost","bad_room","bad_nickname","publish_room_exists","bad_room_name","room_expired"].includes(m.code)){
      if(m.code==="seat_lost"&&room)localStorage.removeItem(seatKey(room));
      if(m.code==="room_full"&&room)localStorage.removeItem(seatKey(room));
+      if(m.code==="room_expired"&&room)localStorage.removeItem(seatKey(room));
      pendingPublish=false;pendingPublishName="";reset();
     }
     if(String(m.code||"").startsWith("watch_"))els.watchConsent.disabled=false;
