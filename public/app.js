@@ -429,7 +429,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    try{return await pcPromise}finally{pcPromise=null}
   }
   async function prepareLocalSpeechRecognition(){
-   const Speech=window.SpeechRecognition;
+   const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
    if(!Speech||typeof Speech.available!=="function"||typeof Speech.install!=="function")
     throw new Error("当前浏览器不支持中文设备端语音识别，已阻止开启麦克风。请更新浏览器后重试。");
    const options={langs:["zh-CN"],processLocally:true};
@@ -830,7 +830,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    tracks.forEach(t=>t.enabled=!next);
    if(voiceGate&&voiceAudioContext)voiceGate.gain.setTargetAtTime(next?0:1,voiceAudioContext.currentTime,0.02);
    if(next)stopLocalRecognition();
-   else if(localSpeechReady){try{startLocalRecognition(window.SpeechRecognition,voiceGeneration)}catch(e){closeVoice(false,"无法恢复设备端语音识别，麦克风已关闭。");toast("无法恢复设备端语音识别，麦克风已关闭。")}}
+   else if(localSpeechReady){try{startLocalRecognition(window.SpeechRecognition||window.webkitSpeechRecognition,voiceGeneration)}catch(e){closeVoice(false,"无法恢复设备端语音识别，麦克风已关闭。");toast("无法恢复设备端语音识别，麦克风已关闭。")}}
    updateMicControls();setVoiceState("on",next?"麦克风已静音":"麦克风已开启");
   };
   els.voiceHangup.onclick=()=>{closeVoice(true,"语音已结束")};
