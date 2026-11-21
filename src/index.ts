@@ -12,7 +12,7 @@ interface Env {
 type Role = 'controller' | 'receiver';
 type Meta = {
   memberId: string; room: string; nickname: string; role: Role;
-  bucket: number; bucketAt: number; lastTypingAt: number;
+  bucket: number; bucketAt: number; lastTypingAt: number; watcher?: boolean;
 };
 type Attachment = { meta?: Meta; matchmakingClientId?: string };
 type ClientMessage = Record<string, any> & { type: string };
@@ -76,7 +76,37 @@ export class NightplayRoom extends DurableObject<Env> {
     const connected = new Set(this.sockets().map(ws => this.meta(ws)?.memberId).filter(Boolean));
     return rows.results.map((r: any) => ({ id:r.id, nickname:r.nickname, role:r.role, online:connected.has(r.id) || Number(r.last_seen_at) > now() - ONLINE_WINDOW_S*1000 }));
   }
-  private async pushPresence(room: string) { this.broadcast(room, { type:'presence', members:await this.presence(room), seats:MAX_SEATS }); }
+  private async watcherCount(room: string) { return this.sockets().filter(ws => { const m=this.meta(ws); return m?.room===room && m.watcher===true; }).length; }
+  private async pushPresence(room: string) { this.broadcast(room, { type:'presence', members:await this.presence(room), seats:MAX_SEATS, watchers:await this.watcherCount(room) }); }
+  private async closeWatchers(room: string, message = '房间已关闭观战，旁观连接已结束。') {
+    for (const peer of this.sockets()) { const m=this.meta(peer); if(m?.room===room && m.watcher){this.send(peer,{type:'watch_closed',message});this.detach(peer);} }
+    this.broadcast(room,{type:'watch_count',count:0});
+  }
+  private async setWatchConsent(ws: WebSocket, m: Meta, open: boolean) {
+    const active=await this.env.DB.prepare('SELECT id FROM room_members WHERE room_code=? AND left_at IS NULL ORDER BY joined_at').bind(m.room).all<any>();
+    if(active.results.length!==2 || !active.results.some((x:any)=>x.id===m.memberId)) return this.send(ws,{type:'error',code:'watch_unavailable',message:'需要两位参与者都在房间内才能开启观战。'});
+    const key='watch-consent:'+m.room, current=await this.ctx.storage.get<string[]>(key)??[];
+    const next=open?[...new Set([...current,m.memberId])]:current.filter(id=>id!==m.memberId);
+    await this.ctx.storage.put(key,next);
+    const allowed=active.results.every((x:any)=>next.includes(x.id));
+    this.broadcast(m.room,{type:'watch_state',allowed,consented:next.filter(id=>active.results.some((x:any)=>x.id===id)).length});
+    if(!allowed) await this.closeWatchers(m.room);
+  }
+  private async watchJoin(ws: WebSocket, msg: ClientMessage) {
+    const room=String(msg.room??'').trim().toUpperCase(), nickname=String(msg.nickname??'').trim().replace(/\\s+/g,' ').slice(0,24);
+    const guestId=typeof msg.guestId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.guestId)?msg.guestId:null;
+    if(!CODE_RE.test(room)||!nickname) return this.send(ws,{type:'error',code:'bad_watch_request',message:'请检查房间代码和昵称。'});
+    const active=await this.env.DB.prepare('SELECT id,nickname,role,guest_id FROM room_members WHERE room_code=? AND left_at IS NULL ORDER BY joined_at').bind(room).all<any>();
+    const consents=await this.ctx.storage.get<string[]>('watch-consent:'+room)??[];
+    if(active.results.length!==2||!active.results.every((x:any)=>consents.includes(x.id))) return this.send(ws,{type:'error',code:'watch_not_open',message:'双方尚未同时允许观战，暂时无法进入。'});
+    if(guestId&&active.results.some((x:any)=>x.guest_id===guestId)) return this.send(ws,{type:'error',code:'watch_self',message:'正在参与对局的设备不能同时旁观。'});
+    if(await this.watcherCount(room)>=12) return this.send(ws,{type:'error',code:'watch_full',message:'旁观人数已满，请稍后再试。'});
+    const t=now(),id=uuid(),a=this.attachment(ws);
+    a.meta={memberId:'watch-'+id,room,nickname,role:'receiver',bucket:8,bucketAt:t,lastTypingAt:0,watcher:true};this.save(ws,a);
+    this.send(ws,{type:'watch_joined',room,watcherId:id,you:{nickname},members:await this.presence(room),seats:MAX_SEATS,watchers:await this.watcherCount(room)});
+    const metro=await this.metro(room);if(metro)this.send(ws,{type:'metronome_state',...metro});
+    this.broadcast(room,{type:'watch_count',count:await this.watcherCount(room)});
+  }
   private async history(room: string, lastId = 0) {
     const rows = lastId > 0
       ? await this.env.DB.prepare('SELECT * FROM messages WHERE room_code=? AND id>? ORDER BY id LIMIT 200').bind(room,lastId).all<any>()
@@ -197,14 +227,24 @@ export class NightplayRoom extends DurableObject<Env> {
       }
       const a=this.attachment(ws);delete a.matchmakingClientId;this.save(ws,a);return this.send(ws,{type:'matchmaking_cancelled'});
     }
+    if(msg.type==='watch_join')return this.watchJoin(ws,msg);
     if(msg.type==='join')return this.join(ws,msg);
     const m=this.meta(ws);
+    if(msg.type==='watch_consent'){
+      if(!m||m.watcher)return this.send(ws,{type:'error',code:'not_a_player',message:'只有房间参与者可以设置观战权限。'});
+      return this.setWatchConsent(ws,m,msg.open===true);
+    }
     if(msg.type==='ping'){
       if(!m){await this.pollMatchmaking(ws);return this.send(ws,{type:'pong'});}
+      if(m.watcher)return this.send(ws,{type:'pong',members:await this.presence(m.room),seats:MAX_SEATS,watchers:await this.watcherCount(m.room)});
       if(!(await this.touch(m)))return this.seatLost(ws);
       return this.send(ws,{type:'pong',missed:await this.history(m.room,Number(msg.lastId)||0),members:await this.presence(m.room),seats:MAX_SEATS});
     }
     if(!m)return this.send(ws,{type:'error',code:'not_joined',message:'请先加入房间。'});
+    if(m.watcher){
+      if(msg.type==='watch_leave'){this.detach(ws);this.send(ws,{type:'watch_left'});this.broadcast(m.room,{type:'watch_count',count:await this.watcherCount(m.room)});return;}
+      return this.send(ws,{type:'error',code:'watch_read_only',message:'观战模式为只读，不能发送消息或控制节拍器。'});
+    }
     if(msg.type==='metronome_emergency_stop'){
       if(!(await this.touch(m)))return this.seatLost(ws);
       const previous=await this.metro(m.room)??{bpm:80,intensity:3,running:false,started:false};const state={...previous,running:false,started:true,stopped:true,endsAt:0,remainingMs:0,nickname:m.nickname};await this.setMetro(m.room,state);this.broadcast(m.room,{type:'metronome_state',...state},ws);this.send(ws,{type:'metronome_state',...state});return;
@@ -248,7 +288,9 @@ export class NightplayRoom extends DurableObject<Env> {
     }
     if(msg.type==='leave'){
       const {room,memberId,nickname}=m;await this.saveGameHistory(room,memberId);const metro=await this.metro(room);if(metro?.running){const state={...metro,running:false,stopped:true,nickname};await this.setMetro(room,state);this.broadcast(room,{type:'metronome_state',...state},ws);}
-      this.detach(ws);const r=await this.env.DB.prepare('UPDATE room_members SET left_at=? WHERE id=? AND left_at IS NULL').bind(now(),memberId).run();this.send(ws,{type:'left'});if(r.meta.changes)await this.addMessage(room,'system',`${nickname} 离开了房间`);return this.pushPresence(room);
+      this.detach(ws);const r=await this.env.DB.prepare('UPDATE room_members SET left_at=? WHERE id=? AND left_at IS NULL').bind(now(),memberId).run();
+      const consentKey='watch-consent:'+room,consents=await this.ctx.storage.get<string[]>(consentKey)??[];await this.ctx.storage.put(consentKey,consents.filter(id=>id!==memberId));
+      await this.closeWatchers(room);this.send(ws,{type:'left'});if(r.meta.changes)await this.addMessage(room,'system',`${nickname} 离开了房间`);return this.pushPresence(room);
     }
   }
   async fetch(request:Request):Promise<Response> {
@@ -286,6 +328,9 @@ export class NightplayRoom extends DurableObject<Env> {
   async webSocketClose(ws:WebSocket) {
     await this.queue(async()=>{
       const m=this.meta(ws);if(!m)return;this.detach(ws);
+      if(m.watcher){this.broadcast(m.room,{type:'watch_count',count:await this.watcherCount(m.room)});return;}
+      await this.closeWatchers(m.room,'参与者离线，观战已自动关闭。');
+      const consentKey='watch-consent:'+m.room,consents=await this.ctx.storage.get<string[]>(consentKey)??[];await this.ctx.storage.put(consentKey,consents.filter(id=>id!==m.memberId));
       const metro=await this.metro(m.room);if(metro?.running){const state={...metro,running:false,stopped:true,nickname:m.nickname};await this.setMetro(m.room,state);this.broadcast(m.room,{type:'metronome_state',...state});}
       await this.env.DB.prepare('UPDATE room_members SET last_seen_at=? WHERE id=? AND left_at IS NULL').bind(now()-(ONLINE_WINDOW_S+1)*1000,m.memberId).run();await this.pushPresence(m.room);
     });
