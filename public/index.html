@@ -198,6 +198,17 @@ body.watch-mode #watchStatus{color:#d2c4e6}
 .watch-directory-head h2{margin:0;font-size:19px}
 .watch-directory-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;color:#c3bfce;font-size:12px}
 .watch-room-card{display:grid;gap:8px;padding:14px;border:1px solid #494553;border-radius:9px;background:#211f2b}
+.public-room-list{display:grid;gap:10px;margin-top:12px}
+.public-room-card{display:grid;gap:8px;padding:14px;border:1px solid var(--line);border-radius:10px;background:#211f2b}
+.public-room-card strong{color:#fff;font-size:14px}
+.public-room-card p{margin:0;color:var(--muted);font-size:11px;line-height:1.6}
+.public-room-card .room-card-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#c7c1d0;font-size:10px}
+.public-room-card button{width:100%;min-height:38px}
+.public-room-create{display:grid;gap:12px;margin:14px 0;padding:14px;border:1px solid var(--line);border-radius:10px;background:#17151f}
+.public-room-create label{display:grid;gap:6px;color:var(--muted);font-size:11px}
+.public-room-create input,.public-room-create select{width:100%}
+.public-room-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px}
+.public-room-heading h3{margin:0;font-size:14px}
 .watch-room-card strong{color:#fff;font-size:14px}
 .watch-room-card p{margin:0;color:#d0ccda;line-height:1.6}
 .watch-room-card small{color:#c3bfce}
@@ -282,7 +293,7 @@ body.watch-mode #watchStatus{color:#d2c4e6}
       <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal-head"><div><p class="eyebrow">NIGHTPLAY · PRIVATE ROOM</p><h2 id="modalTitle">开始你的双人体验</h2></div><button type="button" class="modal-close" aria-label="关闭" data-close-modal>×</button></div>
         <label class="field-label">你的昵称<input id="nickname" maxlength="24" placeholder="输入聊天昵称" autocomplete="nickname" required></label>
-        <div class="modal-tabs"><button type="button" class="modal-tab active" data-modal-tab="match">偏好匹配</button><button type="button" class="modal-tab" data-modal-tab="join">邀请 / 加入</button><button type="button" class="modal-tab" data-modal-tab="history">对局历史</button><button type="button" class="modal-tab" data-modal-tab="friends">好友</button></div>
+        <div class="modal-tabs"><button type="button" class="modal-tab active" data-modal-tab="match">偏好匹配</button><button type="button" class="modal-tab" data-modal-tab="join">邀请 / 加入</button><button type="button" class="modal-tab" data-modal-tab="public">公开房间</button><button type="button" class="modal-tab" data-modal-tab="history">对局历史</button><button type="button" class="modal-tab" data-modal-tab="friends">好友</button></div>
         <section id="matchPanel" class="modal-panel">
           <p class="muted">设置你的性别、希望匹配的对象和挑战角色。只有双方偏好互相符合时才会配对。</p>
           <div class="match-grid">
@@ -302,6 +313,16 @@ body.watch-mode #watchStatus{color:#d2c4e6}
           </form>
           <p id="roomPeek" class="chat-note"></p>
           <button id="watchJoinBtn" type="button" class="ghost">以观战身份加入（需双方允许）</button>
+        </section>
+        <section id="publicPanel" class="modal-panel" hidden>
+          <p class="muted">发布一个公开房间，让其他玩家通过房间名称快速找到你。公开房间只允许一位玩家加入；双方都同意后才能开启观战。</p>
+          <div class="public-room-create">
+            <label>自定义房间名称<input id="publicRoomName" maxlength="20" placeholder="例如：S来求调" autocomplete="off"></label>
+            <label>你希望担任的角色<select id="publicRoomRole"><option value="controller">控制方（S）</option><option value="receiver">受控方（M）</option></select></label>
+            <button id="publicRoomPublishBtn" type="button" class="primary">发布房间</button>
+          </div>
+          <div class="public-room-heading"><h3>正在招募的房间</h3><button id="publicRoomRefreshBtn" type="button" class="ghost">刷新列表</button></div>
+          <div id="publicRoomList" class="public-room-list" aria-live="polite">正在加载公开房间…</div>
         </section>
         <section id="historyPanel" class="modal-panel" hidden>
           <p class="muted">使用本设备的随机游客 ID 保存最近 30 条对局记录，无需注册。记录会在你主动离开房间或结束对局时生成。</p>
@@ -436,13 +457,14 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
 
  // 首页弹窗：匹配与邀请共用昵称，避免重复表单。
  function setModalTab(tab){
-  const panels={match:$("#matchPanel"),join:$("#joinPanel"),history:$("#historyPanel"),friends:$("#friendsPanel")};
+  const panels={match:$("#matchPanel"),join:$("#joinPanel"),public:$("#publicPanel"),history:$("#historyPanel"),friends:$("#friendsPanel")};
   if(!panels[tab])tab="match";
   Object.entries(panels).forEach(([key,panel])=>panel.hidden=key!==tab);
   document.querySelectorAll("[data-modal-tab]").forEach(b=>b.classList.toggle("active",b.dataset.modalTab===tab));
-  $("#modalTitle").textContent=tab==="match"?"按偏好寻找搭档":tab==="join"?"邀请 / 加入双人房间":tab==="friends"?"好友与私信":"我的对局历史";
+  $("#modalTitle").textContent=tab==="match"?"按偏好寻找搭档":tab==="join"?"邀请 / 加入双人房间":tab==="public"?"公开房间大厅":tab==="friends"?"好友与私信":"我的对局历史";
   if(tab==="history")loadGameHistory();
   if(tab==="friends")loadFriends();
+  if(tab==="public")loadPublicRoomDirectory();
  }
  function openActionModal(tab){
   setModalTab(["match","history","friends"].includes(tab)?tab:"join");
@@ -590,7 +612,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
  // ===== 双人房间：WebSocket + WebRTC 双人语音 =====
  const Room=(()=>{
   const els={lobby:$("#lobby"),view:$("#roomView"),state:$("#connState"),log:$("#chatLog"),members:$("#members"),seat:$("#seatLabel"),label:$("#roomLabel"),typing:$("#typing"),input:$("#chatInput"),nick:$("#nickname"),code:$("#roomCode"),connect:$("#connectBtn"),peek:$("#roomPeek"),voiceStatus:$("#voiceStatus"),voiceStart:$("#voiceStartBtn"),voiceMute:$("#voiceMuteBtn"),voiceHangup:$("#voiceHangupBtn"),voiceListen:$("#voiceListenBtn"),remoteAudio:$("#remoteAudio"),matchGender:$("#matchGender"),matchPreference:$("#matchPreference"),matchRole:$("#matchRole"),matchVoicePreference:$("#matchVoicePreference"),roomRole:$("#roomRole"),roleStatus:$("#roleStatus"),metroEmergency:$("#metroEmergency"),matchStart:$("#matchStartBtn"),matchCancel:$("#matchCancelBtn"),matchStatus:$("#matchStatus"),bpm:$("#bpmRange"),intensity:$("#intensityRange"),metroStart:$("#metroStart"),metroPause:$("#metroPause"),metroStop:$("#metroStop"),metroStatus:$("#metroStatus"),metroMode:$("#metroMode"),metroDifficulty:$("#metroDifficulty"),metroDuration:$("#metroDuration"),metroSlow:$("#metroSlow"),metroNormal:$("#metroNormal"),metroFast:$("#metroFast"),metroHold:$("#metroHold"),metroResume:$("#metroResume"),watchConsent:$("#watchConsentBtn"),watcherCount:$("#watcherCount"),watchStatus:$("#watchStatus")};
-  let ws=null,room=null,me=null,myRole=null,matchedRole=null,want=false,watching=false,watchConsent=false,watchAllowed=false,lastId=0,seen=new Set(),retry=0,retryTimer=null,hb=null,typingTimer=null,joining=false,matching=false,matchClientId=null,matchPoll=null,matchStartedAt=0,matchClock=null;
+  let ws=null,room=null,me=null,myRole=null,matchedRole=null,want=false,watching=false,watchConsent=false,watchAllowed=false,lastId=0,seen=new Set(),retry=0,retryTimer=null,hb=null,typingTimer=null,joining=false,matching=false,matchClientId=null,matchPoll=null,matchStartedAt=0,matchClock=null,pendingPublish=false,pendingPublishName="";
   // WebRTC 状态：麦克风只会在用户主动点击后申请，不会自动开启。
   let pc=null,pcPromise=null,localStream=null,remoteStream=null,pendingCandidates=[];
   let makingOffer=false,ignoreOffer=false,settingRemoteAnswerPending=false,voiceGeneration=0,iceConfigCache=null;
@@ -706,7 +728,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    ws.onerror=()=>{};
   }
   const out=o=>{if(ws&&ws.readyState===1){ws.send(JSON.stringify(o));return true}return false};
-  function sendJoin(){joining=true;out({type:"join",room,nickname:els.nick.value.trim(),token:localStorage.getItem(seatKey(room)),guestId,lastId,role:matchedRole||els.roomRole.value})}
+  function sendJoin(){joining=true;out({type:"join",room,nickname:els.nick.value.trim(),token:localStorage.getItem(seatKey(room)),guestId,lastId,role:matchedRole||els.roomRole.value,publish:pendingPublish,roomName:pendingPublishName})}
   function sendWatchJoin(){out({type:"watch_join",room,nickname:els.nick.value.trim(),guestId})}
   function joinAsWatcher(codeValue){
    const nick=els.nick.value.trim(),code=String(codeValue||els.code.value).trim().toUpperCase();
@@ -888,7 +910,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
     watching=false;document.body.classList.remove("watch-mode");watchConsent=Boolean(m.watchConsent);watchAllowed=Boolean(m.watchAllowed);joining=false;const fresh=!m.resumed||!me||me.id!==m.you.id;
     if(fresh){closeVoice(false);els.log.innerHTML="";seen=new Set();lastId=0;stopMetroTimer();clearMetroClocks();metroRunning=false;metroHasStarted=false;metroStopped=false;metroEndsAt=0;metroRemainingMs=(Number(els.metroDuration.value)||5)*60000;metroBeat=0;$("#beatNumber").textContent="—";renderQuickPhrases()}
     me=m.you;myRole=m.you.role||"controller";matchedRole=null;renderQuickPhrases();room=m.room;iceConfigCache=null;localStorage.setItem(seatKey(room),m.token);localStorage.setItem("np_nick",me.nickname);
-    els.label.textContent=room;showRoom(true);setState("on","已连接");setVoiceState("","语音未开启 · 双方需分别授权");renderWatchUI();els.watcherCount.textContent="旁观 "+(m.watchers||0);
+    const publishedNow=pendingPublish&&Boolean(m.isPublic);pendingPublish=false;pendingPublishName="";els.label.textContent=(m.roomName?m.roomName+" · ":"")+room;showRoom(true);if(publishedNow)toast("公开房间已发布，其他玩家现在可以加入");setState("on","已连接");setVoiceState("","语音未开启 · 双方需分别授权");renderWatchUI();els.watcherCount.textContent="旁观 "+(m.watchers||0);
     const u=new URL(location.href);u.searchParams.set("room",room);u.hash="room";history.replaceState(null,"",u);
     if(fresh&&!m.history.length)note("房间已就绪。把邀请链接发给另一位参与者吧。");
     m.history.forEach(render);renderMembers(m.members,m.seats);
@@ -936,6 +958,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    matching=false;want=!!me;stopMatchClock();clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;$("#matchingCancelBtn").disabled=false;$("#matchingCancelBtn").textContent="取消匹配";els.matchStatus.textContent="已取消匹配";showMatchingScreen(false);openActionModal("match");
   }
   function join(){
+   pendingPublish=false;pendingPublishName="";
    watching=false;document.body.classList.remove("watch-mode");
    const nick=els.nick.value.trim(),code=els.code.value.trim().toUpperCase();
    if(!nick){toast("请先填写昵称");els.nick.focus();return}
@@ -945,7 +968,36 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    if(ws&&ws.readyState===1)sendJoin();else open();
   }
   function leave(){if(watching){out({type:"watch_leave"});reset("已退出观战");return}if(metroRunning)stopMetro(true);closeVoice(true,"语音已结束");if(!out({type:"leave"})){if(room)localStorage.removeItem(seatKey(room));reset("已离开房间")}else if(room)localStorage.removeItem(seatKey(room))}
-  function randomCode(){const a="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";const r=crypto.getRandomValues(new Uint8Array(6));r.forEach(x=>s+=a[x%a.length]);els.code.value=s;peek()}
+  function generateRoomCode(){const a="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";const r=crypto.getRandomValues(new Uint8Array(6));r.forEach(x=>s+=a[x%a.length]);return s}
+  function randomCode(){els.code.value=generateRoomCode();peek()}
+  function publishPublicRoom(){
+   const nick=els.nick.value.trim(),name=$("#publicRoomName").value.trim().replace(/\s+/g," ").slice(0,20);
+   if(!nick){toast("请先填写昵称");els.nick.focus();return}
+   if(!name){toast("请先填写房间名称");$("#publicRoomName").focus();return}
+   pendingPublish=true;pendingPublishName=name;matchedRole=null;els.roomRole.value=$("#publicRoomRole").value;els.code.value=generateRoomCode();
+   closeVoice(false);lastId=0;seen=new Set();me=null;room=els.code.value;want=true;watching=false;joining=false;closeActionModal();
+   if(ws&&ws.readyState===1)sendJoin();else open();
+  }
+  async function loadPublicRoomDirectory(){
+   const list=$("#publicRoomList");if(!list)return;list.textContent="正在加载公开房间…";
+   try{
+    const response=await fetch("/api/public-rooms",{cache:"no-store"});if(!response.ok)throw new Error("request failed");
+    const data=await response.json(),items=Array.isArray(data.rooms)?data.rooms:[];
+    list.replaceChildren();
+    if(!items.length){list.textContent="目前没有正在招募的公开房间。你可以发布一个房间等待其他玩家加入。";return}
+    items.forEach(item=>{
+     const card=document.createElement("article");card.className="public-room-card";
+     const title=document.createElement("strong");title.textContent=item.name||"未命名房间";
+     const host=document.createElement("p");host.textContent="房主："+(item.hostNickname||"访客")+" · "+(item.hostRole==="controller"?"控制方 S":"受控方 M");
+     const meta=document.createElement("div");meta.className="room-card-meta";
+     const code=document.createElement("span");code.textContent="房间 "+item.room;
+     const status=document.createElement("span");status.textContent="等待加入 · 1 / 2";meta.append(code,status);
+     const button=document.createElement("button");button.type="button";button.className="primary";button.textContent="加入房间";
+     button.addEventListener("click",()=>{els.code.value=item.room;els.roomRole.value=item.hostRole==="controller"?"receiver":"controller";closeActionModal();join()});
+     card.append(title,host,meta,button);list.appendChild(card);
+    });
+   }catch(e){list.textContent="公开房间暂时无法加载，请稍后重试。"}
+  }
   let peekTimer;function peek(){clearTimeout(peekTimer);const c=els.code.value.trim().toUpperCase();if(!/^[A-Z0-9]{4,12}$/.test(c)){els.peek.textContent="";return}
    peekTimer=setTimeout(()=>fetch("/api/rooms/"+c).then(r=>r.ok?r.json():null).then(d=>{if(!d)return;els.peek.textContent=d.taken===0?"房间 "+c+" 空闲，加入后即创建。":d.full?"房间 "+c+" 已满（2/2）。如果你之前在这个房间，可直接重新加入。":"房间 "+c+" 有 1 位参与者在等你。"}).catch(()=>{}),350)}
   async function loadWatchDirectory(){
@@ -969,6 +1021,8 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   $("#watchDirectoryBtn").onclick=()=>{loadWatchDirectory();$("#watchDirectory").scrollIntoView({behavior:"smooth",block:"center"})};
   $("#watchRefreshBtn").onclick=loadWatchDirectory;
   loadWatchDirectory();
+  $("#publicRoomPublishBtn").onclick=publishPublicRoom;
+  $("#publicRoomRefreshBtn").onclick=loadPublicRoomDirectory;
   $("#joinForm").onsubmit=e=>{e.preventDefault();join()};
   els.matchStart.onclick=startMatching;
   els.matchCancel.onclick=cancelMatching;
