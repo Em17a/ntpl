@@ -1,4 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
+import { assignMatchRoles, chooseMatchPartner } from './matchmaking-core.js';
 
 interface Env {
   DB: D1Database;
@@ -14,7 +15,7 @@ type Meta = {
   memberId: string; room: string; nickname: string; role: Role;
   bucket: number; bucketAt: number; lastTypingAt: number; watcher?: boolean;
 };
-type Attachment = { meta?: Meta; matchmakingClientId?: string; matchmakingGuestId?: string | null };
+type Attachment = { meta?: Meta; matchmakingClientId?: string };
 type ClientMessage = Record<string, any> & { type: string };
 
 const MAX_SEATS = 2, ONLINE_WINDOW_S = 45, SEAT_TTL_S = 300, ROOM_RETENTION_DAYS = 7, HISTORY_LIMIT = 60;
@@ -57,6 +58,7 @@ export default {
 export class NightplayRoom extends DurableObject<Env> {
   private chain: Promise<unknown> = Promise.resolve();
   private matchmakingChain: Promise<unknown> = Promise.resolve();
+  private alarmInitialized = false;
   constructor(ctx: DurableObjectState, env: Env) { super(ctx, env); }
 
   private queue<T>(fn: () => Promise<T>): Promise<T> {
@@ -178,81 +180,132 @@ export class NightplayRoom extends DurableObject<Env> {
     if(nextAt>0)await this.ctx.storage.setAlarm(Math.max(now()+1000,nextAt));
     else await this.ctx.storage.deleteAlarm();
   }
-  private compatible(a:any,b:any) {
-    const genderOk=(a.preference==='any'||a.preference===b.gender)&&(b.preference==='any'||b.preference===a.gender);
-    const roleOk=a.role_preference==='any'||b.role_preference==='any'||a.role_preference!==b.role_preference;
-    return genderOk&&roleOk;
-  }
-  private voiceMatchScore(a:any,b:any) {
-    const av=a.voice_preference||'any',bv=b.voice_preference||'any';
-    if(av==='any'||bv==='any')return 1;
-    if((av==='off'&&bv==='off')||(av==='both'&&bv==='both')||(av==='self'&&bv==='peer')||(av==='peer'&&bv==='self'))return 2;
-    return 0;
+  private async ensureAlarmScheduled() {
+    if(this.alarmInitialized)return;
+    this.alarmInitialized=true;
+    try { await this.scheduleNextAlarm(); }
+    catch(error) { this.alarmInitialized=false; throw error; }
   }
   private async findOrCreateMatch(clientId:string) {
-    // Matchmaking calls are serialized separately from ordinary WebSocket traffic.
     const db=this.env.DB,t=now();
     await db.prepare("DELETE FROM matchmaking_queue WHERE status='waiting' AND last_seen_at<?").bind(t-45000).run();
     await db.prepare('DELETE FROM matchmaking_queue WHERE created_at<?').bind(t-86400000).run();
+
     const self=await db.prepare("SELECT * FROM matchmaking_queue WHERE client_id=? AND status='waiting'").bind(clientId).first<any>();
-    if(!self){const existing=await db.prepare('SELECT * FROM matchmaking_queue WHERE client_id=?').bind(clientId).first<any>();return existing?.status==='matched'?{status:'matched',room:existing.room_code,role:existing.matched_role}:{status:'missing'};}
+    if(!self){
+      const existing=await db.prepare('SELECT * FROM matchmaking_queue WHERE client_id=?').bind(clientId).first<any>();
+      if(existing?.status==='matched'&&existing.room_code&&['controller','receiver'].includes(existing.matched_role))
+        return {status:'matched' as const,room:String(existing.room_code),role:existing.matched_role as Role};
+      return {status:'missing' as const};
+    }
+
     const waiting=await db.prepare("SELECT * FROM matchmaking_queue WHERE status='waiting' AND client_id<>? ORDER BY created_at LIMIT 100").bind(clientId).all<any>();
-    const candidates=waiting.results.filter((x:any)=>this.compatible(self,x));
-    candidates.sort((a:any,b:any)=>this.voiceMatchScore(self,b)-this.voiceMatchScore(self,a)||Number(a.created_at)-Number(b.created_at));
-    const partner=candidates[0];if(!partner)return {status:'waiting'};
+    const partner=chooseMatchPartner(self,waiting.results);
+    if(!partner)return {status:'waiting' as const};
+
+    const {selfRole,partnerRole}=assignMatchRoles(self,partner);
     const room=crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase();
-    let selfRole:Role,partnerRole:Role;
-    if(self.role_preference==='any'&&partner.role_preference==='any'){selfRole='controller';partnerRole='receiver';}
-    else if(self.role_preference==='any'){partnerRole=partner.role_preference;selfRole=partnerRole==='controller'?'receiver':'controller';}
-    else if(partner.role_preference==='any'){selfRole=self.role_preference;partnerRole=selfRole==='controller'?'receiver':'controller';}
-    else{selfRole=self.role_preference;partnerRole=partner.role_preference;}
-    await db.batch([
+    const results=await db.batch([
       db.prepare('INSERT INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)').bind(room,t,t,t+120*60000),
       db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,selfRole,clientId),
       db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,partnerRole,partner.client_id),
     ]);
-    // Join both connected participants immediately. Matchmaking requests are serialized,
-    // so both sockets have already saved their matchmaking client IDs before this runs.
-    const matchedRows=await db.prepare("SELECT client_id,matched_role FROM matchmaking_queue WHERE status='matched' AND room_code=?").bind(room).all<any>();
-    for(const peer of this.sockets()){
-      const peerId=this.attachment(peer).matchmakingClientId;
-      const peerRow=matchedRows.results.find((x:any)=>x.client_id===peerId);
-      if(peerRow)await this.enterMatchedRoom(peer,room,peerRow.matched_role as Role);
+
+    const matched=await db.prepare("SELECT client_id,matched_role FROM matchmaking_queue WHERE status='matched' AND room_code=?").bind(room).all<any>();
+    const updatesSucceeded=Number(results[1]?.meta?.changes)===1&&Number(results[2]?.meta?.changes)===1;
+    if(!updatesSucceeded||matched.results.length!==2){
+      await db.batch([
+        db.prepare("UPDATE matchmaking_queue SET status='waiting',room_code=NULL,matched_role=NULL WHERE status='matched' AND room_code=?").bind(room),
+        db.prepare('DELETE FROM rooms WHERE code=?').bind(room),
+      ]);
+      return {status:'waiting' as const};
     }
+
     await this.scheduleNextAlarm();
-    return {status:'matched',room,role:selfRole};
+    return {status:'matched' as const,room,role:selfRole};
   }
-  private async enterMatchedRoom(ws:WebSocket,room:string,role:Role) {
-    const attachment=this.attachment(ws),clientId=attachment.matchmakingClientId;
-    if(!clientId||this.meta(ws)?.room===room)return;
-    const row=await this.env.DB.prepare('SELECT nickname FROM matchmaking_queue WHERE client_id=? AND status=\'matched\' AND room_code=?').bind(clientId,room).first<any>();
-    if(!row)return;
-    await this.join(ws,{type:'join',room,nickname:row.nickname,role,token:uuid(),guestId:attachment.matchmakingGuestId||null,lastId:0});
+
+  private async notifyMatchedParticipants(room:string) {
+    const rows=await this.env.DB.prepare("SELECT client_id,matched_role FROM matchmaking_queue WHERE status='matched' AND room_code=?").bind(room).all<any>();
+    const byClient=new Map<string,any>(rows.results.map((row:any)=>[String(row.client_id),row]));
+    for(const peer of this.sockets()){
+      const clientId=this.attachment(peer).matchmakingClientId;
+      const row=clientId?byClient.get(clientId):null;
+      if(row&&(row.matched_role==='controller'||row.matched_role==='receiver'))
+        this.send(peer,{type:'match_found',clientId,room,role:row.matched_role});
+    }
   }
+
   private matchmakingJoin(ws:WebSocket,msg:ClientMessage) {
     return this.queueMatchmaking(()=>this.matchmakingJoinNow(ws,msg));
   }
   private async matchmakingJoinNow(ws:WebSocket,msg:ClientMessage) {
     const clientId=typeof msg.clientId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.clientId)?msg.clientId:'';
-    const nickname=String(msg.nickname??'').trim().replace(/\s+/g,' ').slice(0,24),gender=String(msg.gender??''),preference=String(msg.preference??''),rolePreference=String(msg.rolePreference??'any'),voicePreference=String(msg.voicePreference??'any');
-    if(!clientId||!nickname||!MATCH_GENDERS.has(gender)||!MATCH_PREFS.has(preference)||!ROLE_PREFS.has(rolePreference)||!new Set(['any','off','both','self','peer']).has(voicePreference))return this.send(ws,{type:'error',code:'bad_matchmaking',message:'请检查昵称和匹配偏好设置。'});
+    const nickname=String(msg.nickname??'').trim().replace(/\s+/g,' ').slice(0,24);
+    const gender=String(msg.gender??''),preference=String(msg.preference??''),rolePreference=String(msg.rolePreference??'any'),voicePreference=String(msg.voicePreference??'any');
+    if(!clientId||!nickname||!MATCH_GENDERS.has(gender)||!MATCH_PREFS.has(preference)||!ROLE_PREFS.has(rolePreference)||!new Set(['any','off','both','self','peer']).has(voicePreference))
+      return this.send(ws,{type:'error',code:'bad_matchmaking',message:'请检查昵称和匹配偏好设置。'});
+
     const t=now();
-    await this.env.DB.prepare("INSERT OR IGNORE INTO matchmaking_queue(client_id,nickname,gender,preference,role_preference,voice_preference,status,created_at,last_seen_at) VALUES(?,?,?,?,?,?,'waiting',?,?)").bind(clientId,nickname,gender,preference,rolePreference,voicePreference,t,t).run();
-    await this.env.DB.prepare('UPDATE matchmaking_queue SET last_seen_at=? WHERE client_id=?').bind(t,clientId).run();
-    const a=this.attachment(ws);a.matchmakingClientId=clientId;a.matchmakingGuestId=typeof msg.guestId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.guestId)?msg.guestId:null;this.save(ws,a);
+    await this.env.DB.prepare("INSERT OR IGNORE INTO matchmaking_queue(client_id,nickname,gender,preference,role_preference,voice_preference,status,created_at,last_seen_at) VALUES(?,?,?,?,?,?,'waiting',?,?)")
+      .bind(clientId,nickname,gender,preference,rolePreference,voicePreference,t,t).run();
+    await this.env.DB.prepare("UPDATE matchmaking_queue SET last_seen_at=? WHERE client_id=? AND status='waiting'").bind(t,clientId).run();
+
+    const attachment=this.attachment(ws);
+    attachment.matchmakingClientId=clientId;
+    this.save(ws,attachment);
+
     const result=await this.findOrCreateMatch(clientId);
-    if(result.status==='matched')await this.enterMatchedRoom(ws,result.room,result.role);
-    else this.send(ws,{type:'match_waiting',message:'正在寻找符合双方偏好的参与者…'});
+    if(result.status==='matched')await this.notifyMatchedParticipants(result.room);
+    else if(result.status==='waiting')this.send(ws,{type:'match_waiting',message:'正在寻找符合双方偏好的参与者…'});
+    else this.send(ws,{type:'error',code:'match_expired',message:'匹配请求已失效，请重新开始匹配。'});
   }
+
   private pollMatchmaking(ws:WebSocket) {
     return this.queueMatchmaking(()=>this.pollMatchmakingNow(ws));
   }
   private async pollMatchmakingNow(ws:WebSocket) {
-    const id=this.attachment(ws).matchmakingClientId;if(!id)return;
-    const r=await this.env.DB.prepare('UPDATE matchmaking_queue SET last_seen_at=? WHERE client_id=?').bind(now(),id).run();
-    if(!r.meta.changes){const a=this.attachment(ws);delete a.matchmakingClientId;this.save(ws,a);this.send(ws,{type:'match_expired',message:'匹配等待已超时，请重新开始匹配。'});return;}
-    const result=await this.findOrCreateMatch(id);if(result.status==='matched')await this.enterMatchedRoom(ws,result.room,result.role);
+    const clientId=this.attachment(ws).matchmakingClientId;
+    if(!clientId)return;
+    await this.env.DB.prepare("UPDATE matchmaking_queue SET last_seen_at=? WHERE client_id=? AND status='waiting'").bind(now(),clientId).run();
+    const row=await this.env.DB.prepare('SELECT status,room_code,matched_role FROM matchmaking_queue WHERE client_id=?').bind(clientId).first<any>();
+    if(!row){
+      const attachment=this.attachment(ws);delete attachment.matchmakingClientId;this.save(ws,attachment);
+      this.send(ws,{type:'match_expired',message:'匹配等待已超时，请重新开始匹配。'});
+      return;
+    }
+    if(row.status==='matched'&&row.room_code&&(row.matched_role==='controller'||row.matched_role==='receiver'))
+      this.send(ws,{type:'match_found',clientId,room:row.room_code,role:row.matched_role});
   }
+
+  private matchmakingCancel(ws:WebSocket,msg:ClientMessage) {
+    return this.queueMatchmaking(()=>this.matchmakingCancelNow(ws,msg));
+  }
+  private async matchmakingCancelNow(ws:WebSocket,msg:ClientMessage) {
+    const clientId=typeof msg.clientId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.clientId)?msg.clientId:'';
+    const row=clientId?await this.env.DB.prepare('SELECT status,room_code,matched_role FROM matchmaking_queue WHERE client_id=?').bind(clientId).first<any>():null;
+    if(row?.status==='matched'&&row.room_code){
+      this.send(ws,{type:'match_found',clientId,room:row.room_code,role:row.matched_role});
+      return;
+    }
+    if(clientId)await this.env.DB.prepare("DELETE FROM matchmaking_queue WHERE client_id=? AND status='waiting'").bind(clientId).run();
+    const attachment=this.attachment(ws);
+    if(!clientId||attachment.matchmakingClientId===clientId)delete attachment.matchmakingClientId;
+    this.save(ws,attachment);
+    this.send(ws,{type:'matchmaking_cancelled'});
+  }
+
+  private async joinMatchedRoom(ws:WebSocket,msg:ClientMessage) {
+    const clientId=typeof msg.matchClientId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.matchClientId)?msg.matchClientId:'';
+    const room=String(msg.room??'').trim().toUpperCase();
+    if(!clientId||!CODE_RE.test(room))
+      return this.send(ws,{type:'error',code:'match_invalid',message:'匹配信息无效，请重新开始匹配。'});
+    const row=await this.env.DB.prepare("SELECT nickname,room_code,matched_role FROM matchmaking_queue WHERE client_id=? AND status='matched'").bind(clientId).first<any>();
+    if(!row||row.room_code!==room||(row.matched_role!=='controller'&&row.matched_role!=='receiver'))
+      return this.send(ws,{type:'error',code:'match_invalid',message:'匹配记录已失效，请重新开始匹配。'});
+    return this.join(ws,{type:'join',room,nickname:row.nickname,role:row.matched_role,token:clientId,guestId:msg.guestId,lastId:msg.lastId});
+  }
+
   private async join(ws:WebSocket,msg:ClientMessage) {
     const room=String(msg.room??'').trim().toUpperCase(),nickname=String(msg.nickname??'').trim().replace(/\s+/g,' ').slice(0,24);
     const token=typeof msg.token==='string'&&/^[0-9a-f-]{36}$/i.test(msg.token)?msg.token:null,requestedRole=String(msg.role??'any'),guestId=typeof msg.guestId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.guestId)?msg.guestId:null;
@@ -302,16 +355,9 @@ export class NightplayRoom extends DurableObject<Env> {
   }
   private async handle(ws:WebSocket,msg:ClientMessage) {
     if(msg.type==='matchmaking_join')return this.matchmakingJoin(ws,msg);
-    if(msg.type==='matchmaking_cancel'){
-      const id=typeof msg.clientId==='string'?msg.clientId:'';
-      if(id&&/^[0-9a-f-]{36}$/i.test(id)){
-        const entry=await this.env.DB.prepare('SELECT * FROM matchmaking_queue WHERE client_id=?').bind(id).first<any>();
-        if(entry?.status==='matched'&&entry.room_code)return this.send(ws,{type:'match_found',room:entry.room_code,role:entry.matched_role});
-        await this.env.DB.prepare("DELETE FROM matchmaking_queue WHERE client_id=? AND status='waiting'").bind(id).run();
-      }
-      const a=this.attachment(ws);delete a.matchmakingClientId;this.save(ws,a);return this.send(ws,{type:'matchmaking_cancelled'});
-    }
+    if(msg.type==='matchmaking_cancel')return this.matchmakingCancel(ws,msg);
     if(msg.type==='watch_join')return this.watchJoin(ws,msg);
+    if(msg.type==='join'&&typeof msg.matchClientId==='string')return this.joinMatchedRoom(ws,msg);
     if(msg.type==='join')return this.join(ws,msg);
     const m=this.meta(ws);
     if(msg.type==='watch_consent'){
@@ -415,7 +461,7 @@ export class NightplayRoom extends DurableObject<Env> {
     });
   }
   async fetch(request:Request):Promise<Response> {
-    await this.scheduleNextAlarm();
+    await this.ensureAlarmScheduled();
     const url=new URL(request.url);
     if(url.pathname==='/ws'&&request.headers.get('Upgrade')?.toLowerCase()==='websocket'){
       const pair=new WebSocketPair(),client=pair[0],server=pair[1];this.ctx.acceptWebSocket(server);this.save(server,{});
