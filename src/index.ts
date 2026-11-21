@@ -83,7 +83,7 @@ export class NightplayRoom extends DurableObject<Env> {
     this.broadcast(room,{type:'watch_count',count:0});
   }
   private async setWatchConsent(ws: WebSocket, m: Meta, open: boolean) {
-    const active=await this.env.DB.prepare('SELECT id FROM room_members WHERE room_code=? AND left_at IS NULL ORDER BY joined_at').bind(m.room).all<any>();
+    const active=await this.env.DB.prepare('SELECT id FROM room_members WHERE room_code=? AND left_at IS NULL AND last_seen_at>? ORDER BY joined_at').bind(m.room,now()-ONLINE_WINDOW_S*1000).all<any>();
     if(active.results.length!==2 || !active.results.some((x:any)=>x.id===m.memberId)) return this.send(ws,{type:'error',code:'watch_unavailable',message:'需要两位参与者都在房间内才能开启观战。'});
     const key='watch-consent:'+m.room, current=await this.ctx.storage.get<string[]>(key)??[];
     const next=open?[...new Set([...current,m.memberId])]:current.filter(id=>id!==m.memberId);
@@ -97,7 +97,7 @@ export class NightplayRoom extends DurableObject<Env> {
     const room=String(msg.room??'').trim().toUpperCase(), nickname=String(msg.nickname??'').trim().replace(/\s+/g,' ').slice(0,24);
     const guestId=typeof msg.guestId==='string'&&/^[0-9a-f-]{36}$/i.test(msg.guestId)?msg.guestId:null;
     if(!CODE_RE.test(room)||!nickname) return this.send(ws,{type:'error',code:'bad_watch_request',message:'请检查房间代码和昵称。'});
-    const active=await this.env.DB.prepare('SELECT id,nickname,role,guest_id FROM room_members WHERE room_code=? AND left_at IS NULL ORDER BY joined_at').bind(room).all<any>();
+    const active=await this.env.DB.prepare('SELECT id,nickname,role,guest_id FROM room_members WHERE room_code=? AND left_at IS NULL AND last_seen_at>? ORDER BY joined_at').bind(room,now()-ONLINE_WINDOW_S*1000).all<any>();
     const consents=await this.ctx.storage.get<string[]>('watch-consent:'+room)??[];
     if(active.results.length!==2||!active.results.every((x:any)=>consents.includes(x.id))) return this.send(ws,{type:'error',code:'watch_not_open',message:'双方尚未同时允许观战，暂时无法进入。'});
     if(guestId&&active.results.some((x:any)=>x.guest_id===guestId)) return this.send(ws,{type:'error',code:'watch_self',message:'正在参与对局的设备不能同时旁观。'});
@@ -351,5 +351,12 @@ export class NightplayRoom extends DurableObject<Env> {
       await this.env.DB.prepare('UPDATE room_members SET last_seen_at=? WHERE id=? AND left_at IS NULL').bind(now()-(ONLINE_WINDOW_S+1)*1000,m.memberId).run();await this.pushPresence(m.room);
     });
   }
-  async webSocketError(ws:WebSocket) { this.detach(ws); }
+  async webSocketError(ws:WebSocket) {
+    await this.queue(async()=>{
+      const m=this.meta(ws);if(!m)return;this.detach(ws);
+      if(m.watcher){this.broadcast(m.room,{type:'watch_count',count:await this.watcherCount(m.room)});return;}
+      await this.closeWatchers(m.room,'参与者连接异常，观战已自动关闭。');
+      const key='watch-consent:'+m.room,consents=await this.ctx.storage.get<string[]>(key)??[];await this.ctx.storage.put(key,consents.filter(id=>id!==m.memberId));
+    });
+  }
 }
