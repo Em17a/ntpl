@@ -247,10 +247,13 @@ test('simultaneous polls cannot create two rooms for the same pair', async t => 
     pollMatchmaking(db, a, 3_000),
     pollMatchmaking(db, b, 3_000),
   ]);
-  assert.ok(results.every(result => result.status === 'matched'));
-  assert.equal(results[0].room, results[1].room);
+  assert.equal(results.filter(result => result.status === 'matched').length, 1);
+  assert.ok(results.some(result => result.status === 'waiting'));
+  const room = db.raw.prepare('SELECT code FROM rooms').get().code;
+  const recovered = await pollMatchmaking(db, b, 3_500);
+  assert.deepEqual(recovered, { status: 'matched', room, role: 'receiver' });
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM rooms').get().count, 1);
-  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=?').get(results[0].room).count, 2);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=?').get(room).count, 2);
 });
 
 
