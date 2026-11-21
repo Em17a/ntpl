@@ -7,7 +7,7 @@ export type MatchStatus =
   | { status: 'repair_failed' }
   | { status: 'cancelled' };
 
-const validRoomCode = /^[A-HJ-NP-Z2-9]{8}$/;
+const validRoomCode = /^[A-Z0-9]{8}$/;
 const roomAlphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 function newRoomCode(): string {
