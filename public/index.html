@@ -121,6 +121,27 @@ body.room-active .topbar nav{display:none}
  body{padding-bottom:0}
 }
 
+
+/* Role quick phrases, richer rhythm controls and local solo practice */
+.quick-phrase-wrap{margin:8px 0 12px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:#101017}
+.quick-phrase-head{display:flex;justify-content:space-between;gap:8px;margin-bottom:8px;font-size:10px;color:var(--muted)}
+.quick-phrase-head strong{color:var(--accent);font-size:11px}
+.quick-phrases{display:flex;gap:6px;overflow-x:auto;padding-bottom:3px;scrollbar-width:thin}
+.quick-phrases .qa{flex:0 0 auto;white-space:nowrap;font-size:10px;padding:7px 10px}
+.metro-extra-controls{display:flex;align-items:end;gap:12px;flex-wrap:wrap;padding:13px 0}
+.metro-extra-controls label{display:flex;flex-direction:column;gap:5px;min-width:130px;font-size:10px;color:var(--muted)}
+.metro-extra-controls select{padding:9px;font-size:11px}
+.metro-countdown{margin-left:auto;font-size:10px;color:var(--muted)}
+.metro-countdown b{font:600 17px 'DM Mono';color:var(--accent);margin-left:5px}
+.metro-cues{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.metro-cues button{min-height:34px;padding:6px 11px;font-size:10px}
+.solo-readout{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:18px 0;padding:16px;background:#0d0d13;border:1px solid var(--line);border-radius:9px}
+.solo-readout strong{font-size:14px;color:var(--accent);flex:1}
+.solo-readout span{font-size:11px;color:var(--muted)}
+.solo-readout b{font:600 18px 'DM Mono';color:var(--text)}
+.modal-tabs{grid-template-columns:repeat(3,1fr)}
+@media(max-width:760px){.metro-extra-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metro-extra-controls label{min-width:0}.metro-countdown{margin:0;grid-column:1/-1}.metro-cues{display:grid;grid-template-columns:repeat(3,1fr)}.metro-cues button{padding:6px 4px}.solo-readout{gap:10px}.solo-readout strong{flex-basis:100%}.quick-phrase-wrap{margin:7px 0 10px}.quick-phrase-head{font-size:9px}}
+
 </style>
 </head>
 <body>
@@ -143,7 +164,7 @@ body.room-active .topbar nav{display:none}
     <section class="quick-actions" aria-label="快速进入功能">
       <button class="quick-action" type="button" data-open-modal="match"><span class="quick-icon">♡</span><span><strong>偏好匹配</strong><small>按偏好寻找搭档</small></span></button>
       <button class="quick-action" type="button" data-open-modal="join"><span class="quick-icon">↗</span><span><strong>邀请 / 加入</strong><small>使用房间码快速进入</small></span></button>
-      <button class="quick-action" type="button" data-open-modal="join"><span class="quick-icon">◉</span><span><strong>节拍器挑战</strong><small>进入房间后开启</small></span></button>
+      <button class="quick-action" type="button" data-open-modal="solo"><span class="quick-icon">◉</span><span><strong>单人练习</strong><small>无需等待搭档</small></span></button>
     </section>
     <section class="announcement" aria-labelledby="announcementTitle"><p class="eyebrow">PLATFORM NOTICE · 18+</p><h2 id="announcementTitle">平台公告与免责声明</h2><p>Nightplay 仅供年满 18 周岁的成年人自愿使用。平台不保证其他用户身份、陈述或行为的真实性。请勿分享真实姓名、住址、财务资料等敏感信息。任何互动均需双方明确自愿，任何一方都可以随时暂停、结束或离开。用户应遵守所在地法律法规，并对自己的言论与行为负责。</p></section>
     <div id="actionModal" class="modal" hidden>
@@ -151,13 +172,13 @@ body.room-active .topbar nav{display:none}
       <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal-head"><div><p class="eyebrow">NIGHTPLAY · PRIVATE ROOM</p><h2 id="modalTitle">开始你的双人体验</h2></div><button type="button" class="modal-close" aria-label="关闭" data-close-modal>×</button></div>
         <label class="field-label">你的昵称<input id="nickname" maxlength="24" placeholder="输入聊天昵称" autocomplete="nickname" required></label>
-        <div class="modal-tabs"><button type="button" class="modal-tab active" data-modal-tab="match">偏好匹配</button><button type="button" class="modal-tab" data-modal-tab="join">邀请 / 加入</button></div>
+        <div class="modal-tabs"><button type="button" class="modal-tab active" data-modal-tab="match">偏好匹配</button><button type="button" class="modal-tab" data-modal-tab="join">邀请 / 加入</button><button type="button" class="modal-tab" data-modal-tab="solo">单人练习</button></div>
         <section id="matchPanel" class="modal-panel">
           <p class="muted">设置你的性别、希望匹配的对象和挑战角色。只有双方偏好互相符合时才会配对。</p>
           <div class="match-grid">
             <label>你的性别<select id="matchGender"><option value="male">男性</option><option value="female">女性</option><option value="other">其他 / 不便透露</option></select></label>
             <label>希望匹配的性别<select id="matchPreference"><option value="female">女性</option><option value="male">男性</option><option value="any">不限</option></select></label>
-            <label>希望自己担任的角色<select id="matchRole"><option value="controller">控制方</option><option value="receiver">受控方</option><option value="any" selected>不限（自动分配）</option></select></label>
+            <label>希望自己担任的角色<select id="matchRole"><option value="controller">控制方（S）</option><option value="receiver">受控方（M）</option><option value="any" selected>不限（自动分配）</option></select></label><label>语音偏好<select id="matchVoicePreference"><option value="any">不限</option><option value="off">双方都不开麦</option><option value="both">双方都开麦</option><option value="self">我开麦，对方不开</option><option value="peer">对方开麦，我不开</option></select></label>
           </div>
           <div class="match-actions"><button id="matchStartBtn" type="button" class="primary">开始匹配</button><button id="matchCancelBtn" type="button" class="ghost" disabled>取消匹配</button></div>
           <p id="matchStatus" class="chat-note" aria-live="polite">尚未开始匹配</p>
@@ -170,6 +191,17 @@ body.room-active .topbar nav{display:none}
             <button id="connectBtn" class="primary" type="submit">加入 / 创建房间</button>
           </form>
           <p id="roomPeek" class="chat-note"></p>
+        </section>
+      </section>
+        <section id="soloPanel" class="modal-panel" hidden>
+          <p class="muted">无需匹配对象，独自熟悉节奏。随机模式会在快拍、慢拍和短暂停拍之间切换。声音仅在你点击开始后播放。</p>
+          <div class="match-grid">
+            <label>练习难度<select id="soloDifficulty"><option value="easy">轻松</option><option value="normal" selected>标准</option><option value="hard">进阶</option></select></label>
+            <label>练习时长<select id="soloDuration"><option value="1">1 分钟</option><option value="3" selected>3 分钟</option><option value="5">5 分钟</option><option value="10">10 分钟</option></select></label>
+          </div>
+          <div class="solo-readout"><strong id="soloCue">准备开始</strong><span><b id="soloBpm">75</b> BPM</span><span>剩余 <b id="soloCountdown">03:00</b></span></div>
+          <div class="match-actions"><button id="soloStart" type="button" class="primary">开始练习</button><button id="soloStop" type="button" class="ghost" disabled>结束练习</button></div>
+          <p id="soloStatus" class="chat-note" aria-live="polite">练习不会上传或保存记录。</p>
         </section>
       </section>
     </div>
@@ -189,6 +221,7 @@ body.room-active .topbar nav{display:none}
         <audio id="remoteAudio" autoplay playsinline></audio>
       </div>
       <div id="chatLog" class="chat-log" aria-live="polite"></div>
+      <div class="quick-phrase-wrap"><div class="quick-phrase-head"><strong id="quickPhraseRole">角色快捷语</strong><span>点击即可发送</span></div><div id="quickPhrases" class="quick-phrases" aria-label="角色聊天快捷语"></div></div>
       <div class="typing" id="typing"></div>
       <form id="chatForm" class="send-row"><input id="chatInput" maxlength="500" placeholder="输入消息…（Enter 发送）" autocomplete="off"><button class="primary" id="sendBtn">发送</button></form>
       <p class="chat-note">双方自愿参与；任何一方都可以随时静音、暂停或离开。</p>
@@ -203,6 +236,8 @@ body.room-active .topbar nav{display:none}
         </summary>
         <div class="metro-content">
           <div class="beat-display"><div id="beatPulse" class="beat-pulse"><span id="beatNumber">—</span></div><div class="beat-readout"><strong><span id="bpmValue">80</span> <small>BPM</small></strong><span id="intensityText">力度 3 / 5</span></div></div>
+          <div class="metro-extra-controls"><label>挑战模式<select id="metroMode"><option value="steady">固定节奏</option><option value="random">随机变速</option></select></label><label>挑战时长<select id="metroDuration"><option value="1">1 分钟</option><option value="3">3 分钟</option><option value="5" selected>5 分钟</option><option value="10">10 分钟</option><option value="15">15 分钟</option></select></label><span class="metro-countdown">剩余 <b id="metroCountdown">05:00</b></span></div>
+          <div class="metro-cues"><button type="button" id="metroSlow" class="ghost">慢拍 55</button><button type="button" id="metroNormal" class="ghost">均速 75</button><button type="button" id="metroFast" class="ghost">快拍 110</button><button type="button" id="metroHold" class="ghost danger-text">停拍</button><button type="button" id="metroResume" class="ghost">恢复节奏</button></div>
           <div class="metro-controls">
             <div class="metro-control"><div class="control-title"><label for="bpmRange">节奏速度</label><strong><span id="bpmLabel">80</span> BPM</strong></div><input id="bpmRange" type="range" min="40" max="220" step="1" value="80"><div class="range-ends"><span>慢 40</span><span>快 220</span></div></div>
             <div class="metro-control"><div class="control-title"><label for="intensityRange">节拍力度</label><strong><span id="intensityLabel">3</span> / 5</strong></div><input id="intensityRange" type="range" min="1" max="5" step="1" value="3"><div class="range-ends"><span>轻柔</span><span>强烈</span></div></div>
@@ -225,10 +260,11 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
 
  // 首页弹窗：匹配与邀请共用昵称，避免重复表单。
  function setModalTab(tab){
-  const match=tab==="match";
-  $("#matchPanel").hidden=!match;$("#joinPanel").hidden=match;
+  const panels={match:$("#matchPanel"),join:$("#joinPanel"),solo:$("#soloPanel")};
+  if(!panels[tab])tab="match";
+  Object.entries(panels).forEach(([key,panel])=>panel.hidden=key!==tab);
   document.querySelectorAll("[data-modal-tab]").forEach(b=>b.classList.toggle("active",b.dataset.modalTab===tab));
-  $("#modalTitle").textContent=match?"按偏好寻找搭档":"邀请 / 加入双人房间";
+  $("#modalTitle").textContent=tab==="match"?"按偏好寻找搭档":tab==="join"?"邀请 / 加入双人房间":"单人节奏练习";
  }
  function openActionModal(tab){
   setModalTab(tab==="match"?"match":"join");
@@ -244,23 +280,67 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
  document.querySelectorAll("[data-close-modal]").forEach(b=>b.addEventListener("click",closeActionModal));
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#actionModal").hidden)closeActionModal()});
 
+ 
+ // 单人节奏练习：本地运行，不创建房间，也不上传练习数据。
+ let soloBeatTimer=null,soloPatternTimer=null,soloClockTimer=null,soloPauseTimer=null,soloEndsAt=0,soloAudio=null,soloActive=false;
+ function soloTone(){
+  try{
+   soloAudio=soloAudio||new (window.AudioContext||window.webkitAudioContext)();
+   if(soloAudio.state==="suspended")soloAudio.resume();
+   const osc=soloAudio.createOscillator(),gain=soloAudio.createGain();
+   osc.type="sine";osc.frequency.value=soloCue==="停拍"?420:soloAccent?1050:760;
+   gain.gain.setValueAtTime(.13,soloAudio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,soloAudio.currentTime+.08);
+   osc.connect(gain);gain.connect(soloAudio.destination);osc.start();osc.stop(soloAudio.currentTime+.085);
+  }catch(e){console.warn("单人练习提示音不可用",e)}
+ }
+ let soloCue="准备开始",soloAccent=false,soloTempo=75;
+ function soloSetTempo(value,label){
+  soloTempo=value;$("#soloBpm").textContent=String(value);$("#soloCue").textContent=label;
+  if(soloBeatTimer){clearInterval(soloBeatTimer);soloBeatTimer=setInterval(soloTick,60000/soloTempo)}
+ }
+ function soloTick(){if(!soloActive)return;soloAccent=!soloAccent;soloTone()}
+ function soloStop(message="练习已结束"){
+  soloActive=false;[soloBeatTimer,soloPatternTimer,soloClockTimer,soloPauseTimer].forEach(x=>{if(x)clearInterval(x)});soloBeatTimer=soloPatternTimer=soloClockTimer=soloPauseTimer=null;
+  $("#soloStart").disabled=false;$("#soloStop").disabled=true;$("#soloStatus").textContent=message;$("#soloCue").textContent="练习结束";$("#soloCountdown").textContent="00:00";
+ }
+ function soloStart(){
+  if(soloActive)return;
+  const duration=Number($("#soloDuration").value)||3,difficulty=$("#soloDifficulty").value;
+  const ranges={easy:[55,85],normal:[60,115],hard:[80,145]},range=ranges[difficulty]||ranges.normal;
+  soloActive=true;soloEndsAt=Date.now()+duration*60000;$("#soloStart").disabled=true;$("#soloStop").disabled=false;$("#soloStatus").textContent="练习进行中 · 仅在本设备运行";
+  soloSetTempo(Math.round((range[0]+range[1])/2),"稳定节拍");
+  soloTick();soloBeatTimer=setInterval(soloTick,60000/soloTempo);
+  soloPatternTimer=setInterval(()=>{
+   if(!soloActive)return;
+   if(Math.random()<.2){
+    if(soloBeatTimer){clearInterval(soloBeatTimer);soloBeatTimer=null}
+    $("#soloCue").textContent="停拍 · 放松呼吸";$("#soloBpm").textContent="—";
+    if(soloPauseTimer)clearTimeout(soloPauseTimer);
+    soloPauseTimer=setTimeout(()=>{if(!soloActive)return;soloPauseTimer=null;soloSetTempo(Math.floor(range[0]+Math.random()*(range[1]-range[0]+1)),"随机节奏");soloBeatTimer=setInterval(soloTick,60000/soloTempo)},2200);
+   }else soloSetTempo(Math.floor(range[0]+Math.random()*(range[1]-range[0]+1)),"随机变速");
+  },9000);
+  soloClockTimer=setInterval(()=>{const left=Math.max(0,soloEndsAt-Date.now()),sec=Math.ceil(left/1000);$("#soloCountdown").textContent=String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");if(left<=0)soloStop("练习时间已完成");},250);
+ }
+ $("#soloStart").addEventListener("click",soloStart);
+ $("#soloStop").addEventListener("click",()=>soloStop("你结束了本次练习"));
+
  // ===== 双人房间：WebSocket + WebRTC 双人语音 =====
  const Room=(()=>{
-  const els={lobby:$("#lobby"),view:$("#roomView"),state:$("#connState"),log:$("#chatLog"),members:$("#members"),seat:$("#seatLabel"),label:$("#roomLabel"),typing:$("#typing"),input:$("#chatInput"),nick:$("#nickname"),code:$("#roomCode"),connect:$("#connectBtn"),peek:$("#roomPeek"),voiceStatus:$("#voiceStatus"),voiceStart:$("#voiceStartBtn"),voiceMute:$("#voiceMuteBtn"),voiceHangup:$("#voiceHangupBtn"),voiceListen:$("#voiceListenBtn"),remoteAudio:$("#remoteAudio"),matchGender:$("#matchGender"),matchPreference:$("#matchPreference"),matchRole:$("#matchRole"),roomRole:$("#roomRole"),roleStatus:$("#roleStatus"),metroEmergency:$("#metroEmergency"),matchStart:$("#matchStartBtn"),matchCancel:$("#matchCancelBtn"),matchStatus:$("#matchStatus"),bpm:$("#bpmRange"),intensity:$("#intensityRange"),metroStart:$("#metroStart"),metroPause:$("#metroPause"),metroStop:$("#metroStop"),metroStatus:$("#metroStatus")};
+  const els={lobby:$("#lobby"),view:$("#roomView"),state:$("#connState"),log:$("#chatLog"),members:$("#members"),seat:$("#seatLabel"),label:$("#roomLabel"),typing:$("#typing"),input:$("#chatInput"),nick:$("#nickname"),code:$("#roomCode"),connect:$("#connectBtn"),peek:$("#roomPeek"),voiceStatus:$("#voiceStatus"),voiceStart:$("#voiceStartBtn"),voiceMute:$("#voiceMuteBtn"),voiceHangup:$("#voiceHangupBtn"),voiceListen:$("#voiceListenBtn"),remoteAudio:$("#remoteAudio"),matchGender:$("#matchGender"),matchPreference:$("#matchPreference"),matchRole:$("#matchRole"),matchVoicePreference:$("#matchVoicePreference"),roomRole:$("#roomRole"),roleStatus:$("#roleStatus"),metroEmergency:$("#metroEmergency"),matchStart:$("#matchStartBtn"),matchCancel:$("#matchCancelBtn"),matchStatus:$("#matchStatus"),bpm:$("#bpmRange"),intensity:$("#intensityRange"),metroStart:$("#metroStart"),metroPause:$("#metroPause"),metroStop:$("#metroStop"),metroStatus:$("#metroStatus"),metroMode:$("#metroMode"),metroDuration:$("#metroDuration"),metroSlow:$("#metroSlow"),metroNormal:$("#metroNormal"),metroFast:$("#metroFast"),metroHold:$("#metroHold"),metroResume:$("#metroResume")};
   let ws=null,room=null,me=null,myRole=null,matchedRole=null,want=false,lastId=0,seen=new Set(),retry=0,retryTimer=null,hb=null,typingTimer=null,joining=false,matching=false,matchClientId=null,matchPoll=null;
   // WebRTC 状态：麦克风只会在用户主动点击后申请，不会自动开启。
   let pc=null,pcPromise=null,localStream=null,remoteStream=null,pendingCandidates=[];
   let makingOffer=false,ignoreOffer=false,settingRemoteAnswerPending=false,voiceGeneration=0,iceConfigCache=null;
   const seatKey=r=>"np_seat_"+r;
   // 节拍器由双方浏览器本地发声，房间服务端只同步参数和运行状态。
-  let metroTimer=null,metroBeat=0,metroRunning=false,metroHasStarted=false,metroStopped=false,audioCtx=null,metroSyncGuard=false,roomHasPartner=false;
+  let metroTimer=null,metroBeat=0,metroRunning=false,metroHasStarted=false,metroStopped=false,audioCtx=null,metroSyncGuard=false,roomHasPartner=false,metroChallengeTimer=null,metroRandomTimer=null,metroEndsAt=0,metroRemainingMs=0,metroModeValue="steady",metroDurationMinutes=5;
   const metroIntensity=()=>Number(els.intensity.value);
   function updateMetroLabels(){const bpm=Number(els.bpm.value),level=metroIntensity();$("#bpmValue").textContent=bpm;$("#bpmLabel").textContent=bpm;$("#metroSummaryBpm").textContent=bpm;$("#intensityLabel").textContent=level;$("#intensityText").textContent="力度 "+level+" / 5";$("#beatPulse").style.setProperty("--pulse-scale",String(1+level*.035));}
   function stopMetroTimer(){if(metroTimer){clearInterval(metroTimer);metroTimer=null}}
   function tick(){if(!metroRunning)return;metroBeat=(metroBeat%4)+1;const level=metroIntensity(),accent=metroBeat===1;const pulse=$("#beatPulse");pulse.classList.remove("active");void pulse.offsetWidth;pulse.classList.add("active");$("#beatNumber").textContent=String(metroBeat);setTimeout(()=>pulse.classList.remove("active"),110);
    try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume();const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type="sine";osc.frequency.value=accent?1050:760;gain.gain.setValueAtTime(Math.min(.32,.035+level*.045),audioCtx.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.075);osc.connect(gain);gain.connect(audioCtx.destination);osc.start();osc.stop(audioCtx.currentTime+.08)}catch(e){console.warn("节拍提示音不可用",e)}
   }
-  function renderMetroState(){updateMetroLabels();els.metroStatus.textContent=metroRunning?"挑战进行中":metroStopped?"挑战已结束":metroHasStarted?"已暂停":roomHasPartner?"准备就绪":"等待另一位参与者加入";const controller=myRole==="controller";els.bpm.disabled=!controller;els.intensity.disabled=!controller;els.metroStart.disabled=!controller||metroRunning||!roomHasPartner;els.metroPause.disabled=!controller||!metroRunning;els.metroStop.disabled=!controller||!metroHasStarted||metroStopped;els.metroEmergency.disabled=!me;els.roleStatus.textContent=!myRole?"进入房间后显示你的挑战角色。":controller?"你的角色：控制方 · 你可以调整节拍速度、力度并控制挑战。":"你的角色：受控方 · 跟随控制方节拍，可随时紧急停止。";}
+  function renderMetroState(){updateMetroLabels();updateMetroCountdown();els.metroStatus.textContent=metroRunning?"挑战进行中":metroStopped?"挑战已结束":metroHasStarted?"已暂停":roomHasPartner?"准备就绪":"等待另一位参与者加入";const controller=myRole==="controller";els.bpm.disabled=!controller;els.intensity.disabled=!controller;els.metroMode.disabled=!controller;els.metroDuration.disabled=!controller;[els.metroSlow,els.metroNormal,els.metroFast,els.metroHold,els.metroResume].forEach(b=>b.disabled=!controller||!roomHasPartner);els.metroStart.disabled=!controller||metroRunning||!roomHasPartner;els.metroPause.disabled=!controller||!metroRunning;els.metroStop.disabled=!controller||!metroHasStarted||metroStopped;els.metroEmergency.disabled=!me;els.roleStatus.textContent=!myRole?"进入房间后显示你的挑战角色。":controller?"你的角色：控制方（S）· 可调整节奏与挑战时长。":"你的角色：受控方（M）· 跟随节拍，可随时紧急停止或在聊天中表达感受。";}
   function startMetro(sync=true){if(metroRunning)return;if(!roomHasPartner){toast("请等待另一位参与者进入房间后再开始挑战");return}metroHasStarted=true;metroStopped=false;metroRunning=true;metroBeat=0;stopMetroTimer();tick();metroTimer=setInterval(tick,60000/Number(els.bpm.value));renderMetroState();if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:true,started:true});}
   function pauseMetro(sync=true){if(!metroRunning){stopMetroTimer();renderMetroState();if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:false,started:metroHasStarted});return}metroHasStarted=true;metroStopped=false;metroRunning=false;stopMetroTimer();$("#beatNumber").textContent="Ⅱ";renderMetroState();if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:false,started:true});}
   function stopMetro(sync=true){metroHasStarted=true;metroStopped=true;metroRunning=false;stopMetroTimer();metroBeat=0;$("#beatNumber").textContent="—";renderMetroState();els.metroStatus.textContent="挑战已结束";if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:false,stopped:true});}
@@ -294,13 +374,26 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    els.seat.textContent=list.length+" / "+seats;
    renderMetroState();
   }
+  const rolePhrases={
+   controller:["准备好了吗？","我们按你的舒适节奏来。","要继续、放慢还是暂停？","告诉我你的感受。","这一轮先停一下。","做得很好，辛苦了。"],
+   receiver:["我准备好了。","请慢一点。","这个节奏可以。","我想换个节奏。","我需要休息。","暂停，我现在不舒服。"]
+  };
+  function renderQuickPhrases(){
+   if(!me)return;const controller=myRole==="controller";$("#quickPhraseRole").textContent=controller?"控制方 · S 快捷语":"受控方 · M 快捷语";
+   const box=$("#quickPhrases");box.replaceChildren();
+   (controller?rolePhrases.controller:rolePhrases.receiver).forEach(phrase=>{const button=document.createElement("button");button.type="button";button.className="qa";button.textContent=phrase;button.addEventListener("click",()=>sendChat(phrase));box.appendChild(button)});
+  }
+  function sendChat(value){
+   const text=String(value||"").trim().slice(0,500);if(!text)return;if(!me){toast("尚未连接");return}
+   if(out({type:"chat",text})){els.input.value="";els.input.focus({preventScroll:true})}else toast("连接中断，正在重连…");
+  }
   function showRoom(on){els.lobby.hidden=on;els.view.hidden=!on;document.body.classList.toggle("room-active",on);if(on)closeActionModal();els.voiceStart.disabled=!on||!me}
   function socketUrl(){return (location.protocol==="https:"?"wss://":"ws://")+location.host+"/ws"}
   function open(){
    if(ws&&(ws.readyState===0||ws.readyState===1))return;
    setState("wait",retry?"重连中…":"连接中…");
    ws=new WebSocket(socketUrl());
-   ws.onopen=()=>{retry=0;if(matching&&matchClientId){out({type:"matchmaking_join",clientId:matchClientId,nickname:els.nick.value.trim(),gender:els.matchGender.value,preference:els.matchPreference.value,rolePreference:els.matchRole.value})}else if(want&&room)sendJoin()};
+   ws.onopen=()=>{retry=0;if(matching&&matchClientId){out({type:"matchmaking_join",clientId:matchClientId,nickname:els.nick.value.trim(),gender:els.matchGender.value,preference:els.matchPreference.value,rolePreference:els.matchRole.value,voicePreference:els.matchVoicePreference.value})}else if(want&&room)sendJoin()};
    ws.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return}handle(m)};
    ws.onclose=()=>{clearInterval(hb);hb=null;closeVoice(false,"语音已断开，请重新开启");els.voiceStart.disabled=true;if(!want){setState("off","未连接");return}
     setState("wait","重连中…");const delay=Math.min(15000,1000*2**retry)+Math.random()*500;retry++;clearTimeout(retryTimer);retryTimer=setTimeout(open,delay)};
@@ -464,7 +557,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    }else if(m.type==="joined"){
     joining=false;const fresh=!m.resumed||!me||me.id!==m.you.id;
     if(fresh){closeVoice(false);els.log.innerHTML="";seen=new Set();lastId=0;stopMetroTimer();metroRunning=false;metroHasStarted=false;metroStopped=false;metroBeat=0;$("#beatNumber").textContent="—"}
-    me=m.you;myRole=m.you.role||"controller";matchedRole=null;room=m.room;iceConfigCache=null;localStorage.setItem(seatKey(room),m.token);localStorage.setItem("np_nick",me.nickname);
+    me=m.you;myRole=m.you.role||"controller";matchedRole=null;renderQuickPhrases();room=m.room;iceConfigCache=null;localStorage.setItem(seatKey(room),m.token);localStorage.setItem("np_nick",me.nickname);
     els.label.textContent=room;showRoom(true);setState("on","已连接");setVoiceState("","语音未开启 · 双方需分别授权");
     const u=new URL(location.href);u.searchParams.set("room",room);u.hash="room";history.replaceState(null,"",u);
     if(fresh&&!m.history.length)note("房间已就绪。把邀请链接发给另一位参与者吧。");
@@ -500,9 +593,9 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   function startMatching(){
    const nick=els.nick.value.trim();
    if(!nick){toast("请先填写昵称");els.nick.focus();return}
-   matchClientId=crypto.randomUUID();matching=true;want=true;els.matchStart.disabled=true;els.matchCancel.disabled=false;els.connect.disabled=true;els.matchStatus.textContent="正在寻找性别与角色偏好都符合的参与者…";
+   matchClientId=crypto.randomUUID();matching=true;want=true;els.matchStart.disabled=true;els.matchCancel.disabled=false;els.connect.disabled=true;els.matchStatus.textContent="正在寻找性别、角色和语音偏好都符合的参与者…";
    clearInterval(matchPoll);matchPoll=setInterval(()=>out({type:"ping",lastId:0}),2500);
-   if(ws&&ws.readyState===1)out({type:"matchmaking_join",clientId:matchClientId,nickname:nick,gender:els.matchGender.value,preference:els.matchPreference.value,rolePreference:els.matchRole.value});
+   if(ws&&ws.readyState===1)out({type:"matchmaking_join",clientId:matchClientId,nickname:nick,gender:els.matchGender.value,preference:els.matchPreference.value,rolePreference:els.matchRole.value,voicePreference:els.matchVoicePreference.value});
    else open();
   }
   function cancelMatching(){
@@ -529,17 +622,23 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   els.code.oninput=peek;
   $("#disconnectBtn").onclick=leave;
   $("#copyLinkBtn").onclick=()=>{const u=new URL(location.origin+location.pathname);u.searchParams.set("room",room);u.hash="room";const t=u.toString();(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("邀请链接已复制"),()=>{prompt("复制邀请链接：",t)})};
-  $("#chatForm").onsubmit=e=>{e.preventDefault();const v=els.input.value.trim();if(!v)return;if(!me){toast("尚未连接");return}if(out({type:"chat",text:v}))els.input.value="";else toast("连接中断，正在重连…")};
+  $("#chatForm").onsubmit=e=>{e.preventDefault();sendChat(els.input.value)};
   els.input.oninput=()=>{if(me&&els.input.value)out({type:"typing"})};
-  const syncMetroSettings=()=>{if(me&&myRole==="controller")out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:metroRunning,started:metroHasStarted,stopped:metroStopped});};
+  const syncMetroSettings=()=>{if(me&&myRole==="controller")out(metroPayload());};
   els.bpm.oninput=()=>{if(myRole!=="controller")return;updateMetroLabels();restartMetroInterval()};
   els.bpm.onchange=syncMetroSettings;
   els.intensity.oninput=()=>{if(myRole==="controller")updateMetroLabels()};
   els.intensity.onchange=syncMetroSettings;
+  const setCueBpm=value=>{if(myRole!=="controller"||!me)return;els.bpm.value=String(value);updateMetroLabels();restartMetroInterval();syncMetroSettings()};
+  els.metroSlow.onclick=()=>setCueBpm(55);els.metroNormal.onclick=()=>setCueBpm(75);els.metroFast.onclick=()=>setCueBpm(110);
+  els.metroHold.onclick=()=>{if(myRole==="controller")pauseMetro(true)};
+  els.metroResume.onclick=()=>{if(myRole==="controller")startMetro(true)};
+  els.metroMode.onchange=()=>{metroModeValue=els.metroMode.value;syncMetroSettings();if(metroRunning)startMetroClocks()};
+  els.metroDuration.onchange=()=>{metroDurationMinutes=Number(els.metroDuration.value)||5;if(!metroHasStarted)metroRemainingMs=metroDurationMinutes*60000;updateMetroCountdown();syncMetroSettings()};
   els.metroStart.onclick=()=>{if(!me){toast("请先进入双人房间");return}if(myRole!=="controller"){toast("只有控制方可以开始挑战");return}startMetro(true)};
   els.metroPause.onclick=()=>{if(myRole==="controller")pauseMetro(true)};
   els.metroStop.onclick=()=>{if(myRole==="controller")stopMetro(true)};
-  els.metroEmergency.onclick=()=>{if(!me)return;metroRunning=false;stopMetroTimer();renderMetroState();out({type:"metronome_emergency_stop"});};
+  els.metroEmergency.onclick=()=>{if(!me)return;metroRunning=false;metroRemainingMs=0;metroEndsAt=0;stopMetroTimer();clearMetroClocks();renderMetroState();out({type:"metronome_emergency_stop"});};
   updateMetroLabels();renderMetroState();
   els.voiceStart.onclick=startMic;
   els.voiceMute.onclick=()=>{if(!localStream)return;const tracks=localStream.getAudioTracks();const next=tracks.some(t=>t.enabled);tracks.forEach(t=>t.enabled=!next);updateMicControls();setVoiceState("on",next?"麦克风已静音":"麦克风已开启")};
