@@ -307,6 +307,21 @@ export class NightplayRoom extends DurableObject<Env> {
     }
     const roomMatch=url.pathname.match(/^\/api\/rooms\/([A-Za-z0-9]{4,12})$/);
     if(request.method==='GET'&&roomMatch){const room=roomMatch[1].toUpperCase(),members=await this.presence(room);return json({room,seats:MAX_SEATS,taken:members.length,full:members.length>=MAX_SEATS});}
+    if(request.method==='POST'&&url.pathname==='/api/online/heartbeat'){
+      let body:any;try{body=await request.json()}catch{return json({error:'bad_json'},400)}
+      const visitorId=String(body?.visitorId??'');
+      if(!/^[0-9a-f-]{36}$/i.test(visitorId))return json({error:'bad_visitor_id'},400);
+      const timestamp=now(),key='site-online:'+visitorId;
+      await this.ctx.storage.put(key,timestamp);
+      const entries=await this.ctx.storage.list<number>({prefix:'site-online:'});
+      let count=0;const expired:string[]=[];
+      for(const [entryKey,lastSeen] of entries){
+        if(Number(lastSeen)>timestamp-60000)count++;
+        else expired.push(entryKey);
+      }
+      if(expired.length)await this.ctx.storage.delete(expired);
+      return json({online:count,updatedAt:timestamp});
+    }
     if(request.method==='GET'&&url.pathname==='/api/watchable'){
       const recent=await this.env.DB.prepare('SELECT code FROM rooms WHERE last_active_at>? ORDER BY last_active_at DESC LIMIT 60').bind(now()-ROOM_RETENTION_DAYS*86400000).all<any>();
       const rooms:any[]=[];
