@@ -211,6 +211,13 @@ export class NightplayRoom extends DurableObject<Env> {
       db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,selfRole,clientId),
       db.prepare("UPDATE matchmaking_queue SET status='matched',room_code=?,matched_role=? WHERE client_id=? AND status='waiting'").bind(room,partnerRole,partner.client_id),
     ]);
+    // Notify both connected clients immediately; do not rely on the next heartbeat
+    // to discover that the other participant has already been matched.
+    for (const peer of this.sockets()) {
+      const peerId=this.attachment(peer).matchmakingClientId;
+      if(peerId===clientId)this.send(peer,{type:'match_found',room,role:selfRole});
+      else if(peerId===partner.client_id)this.send(peer,{type:'match_found',room,role:partnerRole});
+    }
     await this.scheduleNextAlarm();
     return {status:'matched',room,role:selfRole};
   }
