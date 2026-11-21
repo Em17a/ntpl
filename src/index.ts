@@ -286,6 +286,10 @@ export class NightplayRoom extends DurableObject<Env> {
       const attachment=this.attachment(ws);attachment.meta=m;this.save(ws,attachment);
       return this.addMessage(m.room,'chat',text,{id:m.memberId,nickname:m.nickname});
     }
+    if(msg.type==='contact_text_violation'){
+      this.applyContactViolation(ws,m,'text');
+      return;
+    }
     if(msg.type==='contact_voice_violation'){
       this.applyContactViolation(ws,m,'voice');
       return;
