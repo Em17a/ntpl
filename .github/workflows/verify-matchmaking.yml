@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [cloudflare-migration]
   push:
-    branches: [rewrite-remote-multiplayer]
+    branches: [rewrite-remote-multiplayer, cloudflare-migration]
 
 permissions:
   contents: read
