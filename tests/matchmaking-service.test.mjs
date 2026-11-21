@@ -409,3 +409,34 @@ test('HTTP matchmaking rejects cross-origin requests before touching the queue',
   assert.equal(response.status, 403);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM matchmaking_queue').get().count, 0);
 });
+
+
+test('a cancel racing a poll either wins cleanly or returns the committed match', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const a = 'a8a8a8a8-8888-4888-8888-a8a8a8a8a8a8';
+  const b = 'b9b9b9b9-9999-4999-8999-b9b9b9b9b9b9';
+  queue(db, a, { gender: 'male', preference: 'female', role: 'controller' });
+  queue(db, b, { gender: 'female', preference: 'male', role: 'receiver', createdAt: 2_000 });
+
+  const [polled, cancelled] = await Promise.all([
+    pollMatchmaking(db, a, 3_000),
+    cancelMatchmaking(db, a, 3_000),
+  ]);
+  const self = db.raw.prepare('SELECT status,room_code,matched_role FROM matchmaking_queue WHERE client_id=?').get(a);
+  const partner = db.raw.prepare('SELECT status,room_code,matched_role FROM matchmaking_queue WHERE client_id=?').get(b);
+
+  if (self.status === 'matched') {
+    assert.equal(partner.status, 'matched');
+    assert.equal(self.room_code, partner.room_code);
+    assert.notEqual(self.matched_role, partner.matched_role);
+    assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=? AND left_at IS NULL').get(self.room_code).count, 2);
+    assert.ok(['matched'].includes(polled.status));
+    assert.ok(['matched'].includes(cancelled.status));
+  } else {
+    assert.equal(self.status, 'cancelled');
+    assert.equal(partner.status, 'waiting');
+    assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM rooms').get().count, 0);
+    assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members').get().count, 0);
+  }
+});
