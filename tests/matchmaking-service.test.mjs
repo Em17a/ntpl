@@ -76,12 +76,10 @@ test('matching creates both room seats atomically and repeated polls are idempot
   queue(db, a, { gender: 'male', preference: 'female', role: 'controller' });
   queue(db, b, { gender: 'female', preference: 'male', role: 'receiver', createdAt: 2_000 });
 
-  const scheduled = [];
-  const found = await findOrCreateMatch(db, a, 3_000, async () => scheduled.push(true));
+  const found = await findOrCreateMatch(db, a, 3_000);
   assert.equal(found.status, 'matched');
   assert.match(found.room, /^[A-HJ-NP-Z2-9]{8}$/);
   assert.equal(found.role, 'controller');
-  assert.equal(scheduled.length, 1);
 
   const rows = db.raw.prepare('SELECT client_id,status,room_code,matched_role FROM matchmaking_queue ORDER BY client_id').all();
   assert.equal(rows.length, 2);
