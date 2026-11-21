@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { findOrCreateMatch, joinMatchmaking, pollMatchmaking, cancelMatchmaking } from '../src/matchmaking-service.ts';
 import { isMatchCompatible, chooseMatchPartner, assignMatchRoles } from '../src/matchmaking-core.ts';
+import { handleMatchmakingApi } from '../src/matchmaking-api.ts';
 
 function createD1() {
   const sqlite = new DatabaseSync(':memory:');
@@ -346,4 +347,65 @@ test('a delayed join cannot resurrect a cancellation tombstone', async t => {
   assert.deepEqual(late, { status: 'missing' });
   assert.equal(db.raw.prepare('SELECT status FROM matchmaking_queue WHERE client_id=?').get(id).status, 'cancelled');
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM rooms').get().count, 0);
+});
+
+
+test('HTTP matchmaking contract joins, polls and hands off a matched room', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const a = 'd4d4d4d4-4444-4444-8444-d4d4d4d4d4d4';
+  const b = 'e5e5e5e5-5555-4555-8555-e5e5e5e5e5e5';
+  let alarmRequests = 0;
+  const request = (action, clientId, extra = {}) => new Request('https://nightplay.test/api/matchmaking', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ action, clientId, ...extra }),
+  });
+  const first = await handleMatchmakingApi(request('join', a, {
+    nickname: '甲', gender: 'male', preference: 'female',
+    rolePreference: 'controller', voicePreference: 'both',
+  }), db, () => { alarmRequests += 1; });
+  assert.deepEqual(await first.json(), { state: 'waiting' });
+
+  const second = await handleMatchmakingApi(request('join', b, {
+    nickname: '乙', gender: 'female', preference: 'male',
+    rolePreference: 'receiver', voicePreference: 'both',
+  }), db, () => { alarmRequests += 1; });
+  const matched = await second.json();
+  assert.equal(matched.state, 'matched');
+  assert.match(matched.room, /^[A-HJ-NP-Z2-9]{8}$/);
+  assert.equal(matched.role, 'receiver');
+  assert.equal(alarmRequests, 1);
+
+  const polled = await handleMatchmakingApi(request('poll', a), db);
+  assert.deepEqual(await polled.json(), { state: 'matched', room: matched.room, role: 'controller' });
+});
+
+test('HTTP cancellation acknowledges immediately and later polls cannot revive the search', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const id = 'f6f6f6f6-6666-4666-8666-f6f6f6f6f6f6';
+  const request = (action) => new Request('https://nightplay.test/api/matchmaking', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ action, clientId: id }),
+  });
+  const cancelled = await handleMatchmakingApi(request('cancel'), db);
+  assert.deepEqual(await cancelled.json(), { state: 'cancelled' });
+
+  const latePoll = await handleMatchmakingApi(request('poll'), db);
+  assert.equal(latePoll.status, 404);
+  assert.deepEqual(await latePoll.json(), { state: 'missing', message: '匹配请求已失效，请重新开始。' });
+});
+
+test('HTTP matchmaking rejects cross-origin requests before touching the queue', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const response = await handleMatchmakingApi(new Request('https://nightplay.test/api/matchmaking', {
+    method: 'POST',
+    headers: { origin: 'https://attacker.test', 'content-type': 'application/json' },
+    body: JSON.stringify({ action: 'cancel', clientId: 'a7a7a7a7-7777-4777-8777-a7a7a7a7a7a7' }),
+  }), db);
+  assert.equal(response.status, 403);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM matchmaking_queue').get().count, 0);
 });
