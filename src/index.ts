@@ -3,6 +3,7 @@ import { handleMatchmakingApi } from './matchmaking-api.js';
 import { ensureFriendProfile, handleSocialApi } from './social-api.js';
 import { handleDirectoryApi } from './directory-api.js';
 import { handleRtcConfig } from './rtc-api.js';
+import { containsContactInfo, inspectChatForContact, isContactMuted, recordContactViolation, type ContactModerationState } from './contact-protection.js';
 
 interface Env {
   DB: D1Database;
@@ -17,7 +18,7 @@ type Role = 'controller' | 'receiver';
 type Meta = {
   memberId: string; room: string; nickname: string; role: Role;
   bucket: number; bucketAt: number; lastTypingAt: number; watcher?: boolean;
-};
+} & ContactModerationState;
 type Attachment = { meta?: Meta };
 type ClientMessage = Record<string, any> & { type: string };
 
@@ -71,6 +72,21 @@ export class NightplayRoom extends DurableObject<Env> {
   private save(ws: WebSocket, a: Attachment) { ws.serializeAttachment(a); }
   private meta(ws: WebSocket) { return this.attachment(ws).meta; }
   private send(ws: WebSocket, data: unknown) { try { ws.send(JSON.stringify(data)); } catch {} }
+  private applyContactViolation(ws: WebSocket, meta: Meta, source: 'text' | 'voice') {
+    const payload = recordContactViolation(meta, source, now());
+    const attachment = this.attachment(ws);
+    attachment.meta = meta;
+    this.save(ws, attachment);
+    this.send(ws, payload);
+  }
+  private sendContactMuted(ws: WebSocket, meta: Meta, source: 'text' | 'voice') {
+    this.send(ws, {
+      type: 'contact_blocked', source,
+      count: Number(meta.contactViolations) || 0,
+      mutedUntil: Number(meta.contactMutedUntil) || 0,
+      message: source === 'voice' ? '你暂时无法开启语音，请等待限制结束。' : '你暂时无法发送消息，请等待限制结束。',
+    });
+  }
   private broadcast(room: string, data: unknown, except?: WebSocket) {
     for (const ws of this.sockets()) if (ws !== except && this.meta(ws)?.room === room) this.send(ws, data);
   }
@@ -206,7 +222,7 @@ export class NightplayRoom extends DurableObject<Env> {
     if(guestId){try{await ensureFriendProfile(this.env.DB,guestId,nickname)}catch(e){console.error('friend profile init failed',e)}}
     if(publishRequested)await this.env.DB.prepare('UPDATE rooms SET room_name=?,is_public=1,owner_member_id=? WHERE code=?').bind(roomName,member.id,room).run();
     await this.env.DB.prepare('UPDATE rooms SET last_active_at=? WHERE code=?').bind(t,room).run();
-    const a=this.attachment(ws);a.meta={memberId:member.id,room,nickname:member.nickname,role:member.role,bucket:8,bucketAt:t,lastTypingAt:0};this.save(ws,a);
+    const a=this.attachment(ws);a.meta={memberId:member.id,room,nickname:member.nickname,role:member.role,bucket:8,bucketAt:t,lastTypingAt:0,contactViolations:0,contactMutedUntil:0,recentChatText:'',recentChatAt:0};this.save(ws,a);
     const lastId=Number(msg.lastId)||0;
     const activeIds=(await this.env.DB.prepare('SELECT id FROM room_members WHERE room_code=? AND left_at IS NULL').bind(room).all<any>()).results.map((x:any)=>x.id);
     if(activeIds.length>=MAX_SEATS)await this.env.DB.prepare('UPDATE rooms SET is_public=0 WHERE code=?').bind(room).run();
@@ -259,9 +275,20 @@ export class NightplayRoom extends DurableObject<Env> {
     }
     if(msg.type==='chat'){
       const text=String(msg.text??'').trim().slice(0,500);if(!text)return;
+      const timestamp=now();
+      if(isContactMuted(m,timestamp))return this.sendContactMuted(ws,m,'text');
       if(this.rateLimited(ws,m))return this.send(ws,{type:'error',code:'rate_limited',message:'发送太快了，请稍等片刻。'});
       if(!(await this.touch(m)))return this.seatLost(ws);
+      if(inspectChatForContact(m,text,timestamp)){
+        this.applyContactViolation(ws,m,'text');
+        return;
+      }
+      const attachment=this.attachment(ws);attachment.meta=m;this.save(ws,attachment);
       return this.addMessage(m.room,'chat',text,{id:m.memberId,nickname:m.nickname});
+    }
+    if(msg.type==='contact_voice_violation'){
+      this.applyContactViolation(ws,m,'voice');
+      return;
     }
     if(msg.type==='action'){
       const actions:Record<string,(n:string)=>string>={next_scene:n=>`${n} 推进到下一幕：${pick(SCENES)}`,challenge:n=>`${n} 发起随机挑战：${pick(CHALLENGES)}`,pause:n=>`${n} 请求暂停。双方确认前请不要继续推进。`,resume:n=>`${n} 表示可以继续。`,stop:n=>`${n} 结束了本轮互动。`};
@@ -273,6 +300,7 @@ export class NightplayRoom extends DurableObject<Env> {
       }return;
     }
     if(msg.type==='voice_signal'){
+      if(isContactMuted(m,now()))return this.sendContactMuted(ws,m,'voice');
       const peer=this.sockets().find(p=>p!==ws&&this.meta(p)?.room===m.room&&this.meta(p)?.memberId!==m.memberId);
       if(!peer)return this.send(ws,{type:'voice_notice',message:'另一位参与者尚未在线，进入房间后即可接通语音。'});
       if(msg.kind==='description'){
