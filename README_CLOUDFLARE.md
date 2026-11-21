@@ -6,7 +6,7 @@
 
 - Cloudflare Workers Static Assets：同域名提供 `public/` 页面，并把 `/api/*`、`/ws` 交给 Worker。
 - Durable Objects：集中处理 WebSocket 房间、双人聊天、WebRTC 信令、节拍器状态、匹配排队与角色校验。WebSocket 使用 Hibernation API。
-- D1：保存房间、成员、消息和匹配队列。
+- D1：保存房间、成员、消息和匹配队列；匹配队列还会记录开麦偏好。
 - WebRTC 媒体仍由浏览器点对点传输；Worker 只转发 offer/answer/ICE 信令。
 
 ## 重要说明
@@ -15,7 +15,7 @@
 2. 当前采用一个全局 Durable Object 协调所有 Nightplay WebSocket，以避免 D1 缺少 PostgreSQL 行锁/ advisory lock 后出现重复匹配和抢座位问题。它适合当前双人房间规模的初期版本；用户量增长后应拆分为匹配协调器和按房间分片的 Durable Object。
 3. 原始 Netlify 数据库数据不会自动迁入 D1。此版本从新 D1 开始；如需迁移旧房间/聊天记录，需要单独导出导入。
 4. 原始 TURN 环境变量名称保持不变：`NIGHTPLAY_TURN_URLS`、`NIGHTPLAY_TURN_SHARED_SECRET`、`NIGHTPLAY_TURN_TTL_SECONDS`。不配置 TURN 时，某些网络下语音可能连不上。
-5. 语音联系方式保护仍是浏览器端设备本地识别的尽力而为方案，不保证零泄漏；不支持 `SpeechRecognition.processLocally` 的浏览器仍会按原页面逻辑阻止开启麦克风。语音不录音，识别文本不保存。
+5. 语音检测与联系方式自动识别已从当前版本移除。麦克风默认关闭，只有参与者主动点击开启并授权后才建立 WebRTC 音频连接；应用不录制或保存语音。请勿向陌生人分享敏感个人信息。
 6. D1 与 Durable Objects 免费额度有使用上限；免费不等于无限量。高并发、超额请求或 TURN 服务可能产生费用。
 
 ## 第一次部署步骤
