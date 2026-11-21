@@ -31,6 +31,8 @@ test('voice protection requires local Chinese recognition and an outbound audio 
   assert.match(source, /createDelay\(2\)/);
   assert.match(source, /voiceDelay\.delayTime\.value=1\.6/);
   assert.match(source, /contact_voice_violation/);
+  assert.match(source, /contact_text_violation/);
+  assert.match(source, /voiceAudioContext\.resume\(\)\.catch/);
   assert.match(source, /fetch\("\/api\/matchmaking"/);
   assert.doesNotMatch(source, /matchmaking_join|matchmaking_cancelled|match_waiting|match_found/);
   assert.match(source, /action===\"cancel\"\?8000:12000/);
