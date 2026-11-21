@@ -187,7 +187,11 @@ export class NightplayRoom extends DurableObject<Env> {
     catch(error) { this.alarmInitialized=false; throw error; }
   }
   private async findOrCreateMatch(clientId:string) {
-    return findOrCreateMatchInDb(this.env.DB,clientId,now(),()=>this.scheduleNextAlarm());
+    // Alarm scheduling is best-effort and deliberately detached from the match transaction.
+    return findOrCreateMatchInDb(this.env.DB,clientId,now(),()=>{
+      void this.scheduleNextAlarm().catch(()=>{});
+      return Promise.resolve();
+    });
   }
 
   private async notifyMatchedParticipants(room:string) {
@@ -445,39 +449,59 @@ export class NightplayRoom extends DurableObject<Env> {
         return json({error:'bad_matchmaking_preferences',message:'请检查昵称和匹配偏好设置。'},400);
     }
 
-    const result=await this.queueMatchmaking(async()=>{
+    try {
+      // Poll and cancel are independent operations. They must not wait behind a
+      // slow join/match request in a promise chain.
       if(action==='cancel'){
         const existing=await this.env.DB.prepare('SELECT status FROM matchmaking_queue WHERE client_id=?')
           .bind(clientId).first<any>();
-        if(existing?.status==='matched')return this.findOrCreateMatch(clientId);
+        if(existing?.status==='matched'){
+          const result=await this.findOrCreateMatch(clientId);
+          if(result.status==='matched')return json({state:'matched',room:result.room,role:result.role});
+          if(result.status==='repair_failed')return json({state:'repair_failed',message:'匹配房间正在恢复，请稍后重试。'},503);
+        }
         await this.env.DB.prepare("DELETE FROM matchmaking_queue WHERE client_id=? AND status='waiting'")
           .bind(clientId).run();
-        return {status:'cancelled' as const};
+        return json({state:'cancelled'});
+      }
+
+      if(action==='poll'){
+        await this.env.DB.prepare("UPDATE matchmaking_queue SET last_seen_at=? WHERE client_id=? AND status='waiting'")
+          .bind(now(),clientId).run();
+        const row=await this.env.DB.prepare('SELECT status,room_code,matched_role FROM matchmaking_queue WHERE client_id=?')
+          .bind(clientId).first<any>();
+        if(!row)return json({state:'missing',message:'匹配请求已失效，请重新开始。'},404);
+        if(row.status==='matched'){
+          const result=await this.findOrCreateMatch(clientId);
+          if(result.status==='matched')return json({state:'matched',room:result.room,role:result.role});
+          if(result.status==='repair_failed')return json({state:'repair_failed',message:'匹配房间正在恢复，请稍后重试。'},503);
+          return json({state:'missing',message:'匹配请求已失效，请重新开始。'},404);
+        }
+        return json({state:'waiting'});
       }
 
       const timestamp=now();
-      if(action==='join'){
-        const nickname=String(input.nickname).trim().replace(/\\s+/g,' ').slice(0,24);
-        await this.env.DB.prepare("INSERT OR IGNORE INTO matchmaking_queue(client_id,nickname,gender,preference,role_preference,voice_preference,status,created_at,last_seen_at) VALUES(?,?,?,?,?,?,'waiting',?,?)")
-          .bind(clientId,nickname,String(input.gender),String(input.preference),String(input.rolePreference??'any'),String(input.voicePreference??'any'),timestamp,timestamp).run();
-        await this.env.DB.prepare("UPDATE matchmaking_queue SET nickname=?,gender=?,preference=?,role_preference=?,voice_preference=?,last_seen_at=? WHERE client_id=? AND status='waiting'")
-          .bind(nickname,String(input.gender),String(input.preference),String(input.rolePreference??'any'),String(input.voicePreference??'any'),timestamp,clientId).run();
-      }else{
-        await this.env.DB.prepare("UPDATE matchmaking_queue SET last_seen_at=? WHERE client_id=? AND status='waiting'")
-          .bind(timestamp,clientId).run();
-      }
-      return this.findOrCreateMatch(clientId);
-    });
+      const nickname=String(input.nickname).trim().replace(/\\s+/g,' ').slice(0,24);
+      await this.env.DB.prepare("INSERT OR IGNORE INTO matchmaking_queue(client_id,nickname,gender,preference,role_preference,voice_preference,status,created_at,last_seen_at) VALUES(?,?,?,?,?,?,'waiting',?,?)")
+        .bind(clientId,nickname,String(input.gender),String(input.preference),String(input.rolePreference??'any'),String(input.voicePreference??'any'),timestamp,timestamp).run();
+      await this.env.DB.prepare("UPDATE matchmaking_queue SET nickname=?,gender=?,preference=?,role_preference=?,voice_preference=?,last_seen_at=? WHERE client_id=? AND status='waiting'")
+        .bind(nickname,String(input.gender),String(input.preference),String(input.rolePreference??'any'),String(input.voicePreference??'any'),timestamp,clientId).run();
 
-    if(result.status==='matched')return json({state:'matched',room:result.room,role:result.role});
-    if(result.status==='waiting')return json({state:'waiting'});
-    if(result.status==='cancelled')return json({state:'cancelled'});
-    if(result.status==='repair_failed')return json({state:'repair_failed',message:'匹配房间正在恢复，请稍后重试。'},503);
-    return json({state:'missing',message:'匹配请求已失效，请重新开始。'},404);
+      const result=await this.findOrCreateMatch(clientId);
+      if(result.status==='matched')return json({state:'matched',room:result.room,role:result.role});
+      if(result.status==='waiting')return json({state:'waiting'});
+      if(result.status==='repair_failed')return json({state:'repair_failed',message:'匹配房间正在恢复，请稍后重试。'},503);
+      return json({state:'missing',message:'匹配请求已失效，请重新开始。'},404);
+    } catch(error) {
+      // A failed request must return a response so the UI can recover instead
+      // of leaving the player indefinitely in "matching" or "cancelling".
+      return json({state:'error',error:'matchmaking_unavailable',message:'匹配服务暂时不可用，请重试。'},503);
+    }
   }
 
   async fetch(request:Request):Promise<Response> {
-    await this.ensureAlarmScheduled();
+    // Room-expiry alarm setup must never block matchmaking, polling, or cancellation.
+    void this.ensureAlarmScheduled().catch(()=>{ this.alarmInitialized=false; });
     const url=new URL(request.url);
     if(url.pathname==='/ws'&&request.headers.get('Upgrade')?.toLowerCase()==='websocket'){
       const pair=new WebSocketPair(),client=pair[0],server=pair[1];this.ctx.acceptWebSocket(server);this.save(server,{});
