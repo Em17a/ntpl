@@ -116,7 +116,7 @@ test('a previously matched room with missing seats is repaired from its queue re
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=? AND left_at IS NULL').get(room).count, 2);
 });
 
-test('legacy UUID-derived room codes containing 0 or 1 are remapped to valid codes', async t => {
+test('legacy UUID-derived room codes containing 0 or 1 remain valid for the room join protocol', async t => {
   const db = createD1();
   t.after(() => db.close());
   const a = '11111111-1111-4111-8111-111111111111';
@@ -131,9 +131,9 @@ test('legacy UUID-derived room codes containing 0 or 1 are remapped to valid cod
 
   const repaired = await findOrCreateMatch(db, a, 5_000);
   assert.equal(repaired.status, 'matched');
-  assert.notEqual(repaired.room, oldRoom);
-  assert.match(repaired.room, /^[A-HJ-NP-Z2-9]{8}$/);
-  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM rooms WHERE code=?').get(oldRoom).count, 0);
+  assert.equal(repaired.room, oldRoom);
+  assert.match(repaired.room, /^[A-Z0-9]{8}$/);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM rooms WHERE code=?').get(oldRoom).count, 1);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=? AND left_at IS NULL').get(repaired.room).count, 2);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM matchmaking_queue WHERE status=\'matched\' AND room_code=?').get(repaired.room).count, 2);
 });
