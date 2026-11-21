@@ -426,7 +426,10 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    metroModeValue=m.mode==="random"?"random":"steady";metroDurationMinutes=Math.max(1,Math.min(15,Number(m.durationMinutes)||5));els.metroMode.value=metroModeValue;metroDifficultyValue=["easy","normal","hard"].includes(m.difficulty)?m.difficulty:"normal";els.metroDifficulty.value=metroDifficultyValue;els.metroDuration.value=String(metroDurationMinutes);
    metroEndsAt=Math.max(0,Number(m.endsAt)||0);metroRemainingMs=Math.max(0,Math.min(900000,Number(m.remainingMs)||0));
    els.bpm.value=String(Math.max(40,Math.min(220,Number(m.bpm)||80)));els.intensity.value=String(Math.max(1,Math.min(5,Number(m.intensity)||3)));updateMetroLabels();
-   if(m.stopped)stopMetro(false);else if(m.running){metroRunning=false;metroRemainingMs=metroEndsAt?Math.max(0,metroEndsAt-Date.now()):metroRemainingMs;startMetro(false)}else pauseMetro(false);
+   if(watching){
+    metroRunning=Boolean(m.running);metroStopped=Boolean(m.stopped);metroHasStarted=Boolean(m.started||m.running||m.stopped);
+    stopMetroTimer();clearMetroClocks();if(metroRunning)metroChallengeTimer=setInterval(updateMetroCountdown,500);
+   }else if(m.stopped)stopMetro(false);else if(m.running){metroRunning=false;metroRemainingMs=metroEndsAt?Math.max(0,metroEndsAt-Date.now()):metroRemainingMs;startMetro(false)}else pauseMetro(false);
    renderMetroState();metroSyncGuard=false;
   }
   function restartMetroInterval(){if(!metroRunning)return;stopMetroTimer();metroTimer=setInterval(tick,60000/Number(els.bpm.value));}
@@ -654,7 +657,8 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
     reset(m.message||"本轮互动已结束，已自动退出房间");
    }else if(m.type==="watch_joined"){
     joining=false;watching=true;me=null;myRole=null;matchedRole=null;room=m.room;want=true;els.label.textContent=room;els.log.replaceChildren();seen=new Set();lastId=0;
-    showRoom(true);document.body.classList.add("watch-mode");setState("on","旁观中");els.roleStatus.textContent="观战模式：只读查看聊天与节拍状态，不能发送消息或控制挑战。";
+    metroRunning=false;metroHasStarted=false;metroStopped=false;metroEndsAt=0;metroRemainingMs=(Number(els.metroDuration.value)||5)*60000;stopMetroTimer();clearMetroClocks();renderMetroState();
+    showRoom(true);document.body.classList.add("watch-mode");setState("on","旁观中");els.roleStatus.textContent="观战模式：只读查看聊天与节拍状态，不能发送消息或控制挑战。";els.watchStatus.textContent="你正在旁观此房间；不会开启麦克风，也不能发送消息。";
     renderMembers(m.members,m.seats);els.watcherCount.textContent="旁观 "+(m.watchers||0);setVoiceState("","观战不包含语音旁听");
     const u=new URL(location.href);u.searchParams.set("room",room);u.hash="room";history.replaceState(null,"",u);
     clearInterval(hb);hb=setInterval(()=>out({type:"ping",lastId:0}),20000);
@@ -715,6 +719,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    matching=false;want=!!me;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;els.matchStatus.textContent="已取消匹配";
   }
   function join(){
+   watching=false;document.body.classList.remove("watch-mode");
    const nick=els.nick.value.trim(),code=els.code.value.trim().toUpperCase();
    if(!nick){toast("请先填写昵称");els.nick.focus();return}
    if(!/^[A-Z0-9]{4,12}$/.test(code)){toast("房间代码需为 4–12 位字母或数字");els.code.focus();return}
