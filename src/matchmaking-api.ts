@@ -2,7 +2,7 @@ import {
   cancelMatchmaking,
   joinMatchmaking,
   pollMatchmaking,
-} from './matchmaking-service.js';
+} from './matchmaking-service.ts';
 
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), {
   status,
