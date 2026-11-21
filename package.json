@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy": "npm run typecheck && wrangler d1 migrations apply nightplay-db --remote && wrangler deploy",
     "db:local": "wrangler d1 migrations apply nightplay-db --local",
     "db:remote": "wrangler d1 migrations apply nightplay-db --remote",
     "typecheck": "tsc --noEmit"
