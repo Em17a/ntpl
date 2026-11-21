@@ -117,18 +117,18 @@ function containsContactInfo(value){const t=normalizeContactText(value);if(!t)re
   let lastLocalChat="",lastLocalChatAt=0;
   const seatKey=r=>"np_seat_"+r;
   // 节拍器由双方浏览器本地发声，房间服务端只同步参数和运行状态。
-  let metroTimer=null,metroBeat=0,metroRunning=false,audioCtx=null,metroSyncGuard=false,roomHasPartner=false;
+  let metroTimer=null,metroBeat=0,metroRunning=false,metroHasStarted=false,metroStopped=false,audioCtx=null,metroSyncGuard=false,roomHasPartner=false;
   const metroIntensity=()=>Number(els.intensity.value);
   function updateMetroLabels(){const bpm=Number(els.bpm.value),level=metroIntensity();$("#bpmValue").textContent=bpm;$("#bpmLabel").textContent=bpm;$("#intensityLabel").textContent=level;$("#intensityText").textContent="力度 "+level+" / 5";$("#beatPulse").style.setProperty("--pulse-scale",String(1+level*.035));}
   function stopMetroTimer(){if(metroTimer){clearInterval(metroTimer);metroTimer=null}}
   function tick(){if(!metroRunning)return;metroBeat=(metroBeat%4)+1;const level=metroIntensity(),accent=metroBeat===1;const pulse=$("#beatPulse");pulse.classList.remove("active");void pulse.offsetWidth;pulse.classList.add("active");$("#beatNumber").textContent=String(metroBeat);setTimeout(()=>pulse.classList.remove("active"),110);
    try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume();const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type="sine";osc.frequency.value=accent?1050:760;gain.gain.setValueAtTime(Math.min(.32,.035+level*.045),audioCtx.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.075);osc.connect(gain);gain.connect(audioCtx.destination);osc.start();osc.stop(audioCtx.currentTime+.08)}catch(e){console.warn("节拍提示音不可用",e)}
   }
-  function renderMetroState(){updateMetroLabels();els.metroStatus.textContent=metroRunning?"挑战进行中":"已暂停";const controller=myRole==="controller";els.bpm.disabled=!controller;els.intensity.disabled=!controller;els.metroStart.disabled=!controller||metroRunning||!roomHasPartner;els.metroPause.disabled=!controller||!metroRunning;els.metroStop.disabled=!controller;els.metroEmergency.disabled=!me;els.roleStatus.textContent=!myRole?"进入房间后显示你的挑战角色。":controller?"你的角色：控制方 · 你可以调整节拍速度、力度并控制挑战。":"你的角色：受控方 · 跟随控制方节拍，可随时紧急停止。";}
-  function startMetro(sync=true){if(metroRunning)return;if(!roomHasPartner){toast("请等待另一位参与者进入房间后再开始挑战");return}metroRunning=true;metroBeat=0;stopMetroTimer();tick();metroTimer=setInterval(tick,60000/Number(els.bpm.value));renderMetroState();if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:true});}
-  function pauseMetro(sync=true){if(!metroRunning){stopMetroTimer();els.metroStatus.textContent="已暂停";renderMetroState();if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:false});return}metroRunning=false;stopMetroTimer();$("#beatNumber").textContent="Ⅱ";renderMetroState();if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:false});}
-  function stopMetro(sync=true){metroRunning=false;stopMetroTimer();metroBeat=0;$("#beatNumber").textContent="—";renderMetroState();els.metroStatus.textContent="挑战已结束";if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:false,stopped:true});}
-  function applyMetroRemote(m){metroSyncGuard=true;els.bpm.value=String(Math.max(40,Math.min(220,Number(m.bpm)||80)));els.intensity.value=String(Math.max(1,Math.min(5,Number(m.intensity)||3)));updateMetroLabels();if(m.stopped)stopMetro(false);else if(m.running)startMetro(false);else pauseMetro(false);renderMetroState();els.metroStatus.textContent=m.stopped?"挑战已结束":m.running?"挑战进行中":"已暂停";metroSyncGuard=false;}
+  function renderMetroState(){updateMetroLabels();els.metroStatus.textContent=metroRunning?"挑战进行中":metroStopped?"挑战已结束":metroHasStarted?"已暂停":roomHasPartner?"准备就绪":"等待另一位参与者加入";const controller=myRole==="controller";els.bpm.disabled=!controller;els.intensity.disabled=!controller;els.metroStart.disabled=!controller||metroRunning||!roomHasPartner;els.metroPause.disabled=!controller||!metroRunning;els.metroStop.disabled=!controller;els.metroEmergency.disabled=!me;els.roleStatus.textContent=!myRole?"进入房间后显示你的挑战角色。":controller?"你的角色：控制方 · 你可以调整节拍速度、力度并控制挑战。":"你的角色：受控方 · 跟随控制方节拍，可随时紧急停止。";}
+  function startMetro(sync=true){if(metroRunning)return;if(!roomHasPartner){toast("请等待另一位参与者进入房间后再开始挑战");return}metroHasStarted=true;metroStopped=false;metroRunning=true;metroBeat=0;stopMetroTimer();tick();metroTimer=setInterval(tick,60000/Number(els.bpm.value));renderMetroState();if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:true,started:true});}
+  function pauseMetro(sync=true){if(!metroRunning){stopMetroTimer();renderMetroState();if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:false,started:metroHasStarted});return}metroHasStarted=true;metroStopped=false;metroRunning=false;stopMetroTimer();$("#beatNumber").textContent="Ⅱ";renderMetroState();if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:false,started:true});}
+  function stopMetro(sync=true){metroHasStarted=true;metroStopped=true;metroRunning=false;stopMetroTimer();metroBeat=0;$("#beatNumber").textContent="—";renderMetroState();els.metroStatus.textContent="挑战已结束";if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:false,stopped:true});}
+  function applyMetroRemote(m){metroSyncGuard=true;metroHasStarted=Boolean(m.started||m.running||m.stopped);metroStopped=Boolean(m.stopped);els.bpm.value=String(Math.max(40,Math.min(220,Number(m.bpm)||80)));els.intensity.value=String(Math.max(1,Math.min(5,Number(m.intensity)||3)));updateMetroLabels();if(m.stopped)stopMetro(false);else if(m.running)startMetro(false);else pauseMetro(false);renderMetroState();metroSyncGuard=false;}
   function restartMetroInterval(){if(!metroRunning)return;stopMetroTimer();metroTimer=setInterval(tick,60000/Number(els.bpm.value));}
   const setState=(cls,txt)=>{els.state.className="conn-state "+cls;els.state.textContent=txt};
   const setVoiceState=(cls,txt)=>{els.voiceStatus.className="voice-status"+(cls?" "+cls:"");els.voiceStatus.textContent=txt};
@@ -253,7 +253,7 @@ function containsContactInfo(value){const t=normalizeContactText(value);if(!t)re
     try{availability=await SR.available({langs:["zh-CN"],processLocally:true})}catch{availability="unavailable"}
     if(availability==="downloadable"&&typeof SR.install==="function"){
      const installed=await SR.install({langs:["zh-CN"]});if(!installed)throw new Error("设备端中文语音模型安装失败，暂不能开启受保护语音。");
-    }else if(availability!=="available"&&availability!=="downloading")throw new Error("设备尚未准备好中文设备端语音模型，请更新浏览器或稍后重试。");
+    }else if(availability!=="available"&&availability!=="downloading")throw new Error("当前浏览器或设备尚无可用的中文本地语音模型。为保护隐私，Nightplay不会把语音发送到云端识别。");
    }
    const generation=++voiceGuardGeneration;voiceGuardBlocked=false;voiceRecognition=rec;
    let voiceTextBuffer="",voiceTextAt=0;
@@ -400,7 +400,7 @@ function containsContactInfo(value){const t=normalizeContactText(value);if(!t)re
     reset(m.message||"本轮互动已结束，已自动退出房间");
    }else if(m.type==="joined"){
     joining=false;const fresh=!m.resumed||!me||me.id!==m.you.id;
-    if(fresh){closeVoice(false);els.log.innerHTML="";seen=new Set();lastId=0}
+    if(fresh){closeVoice(false);els.log.innerHTML="";seen=new Set();lastId=0;stopMetroTimer();metroRunning=false;metroHasStarted=false;metroStopped=false;metroBeat=0;$("#beatNumber").textContent="—"}
     me=m.you;myRole=m.you.role||"controller";matchedRole=null;room=m.room;iceConfigCache=null;localStorage.setItem(seatKey(room),m.token);localStorage.setItem("np_nick",me.nickname);
     els.label.textContent=room;showRoom(true);setState("on","已连接");setVoiceState("","语音未开启 · 双方需分别授权");
     const u=new URL(location.href);u.searchParams.set("room",room);u.hash="room";history.replaceState(null,"",u);
@@ -474,7 +474,7 @@ function containsContactInfo(value){const t=normalizeContactText(value);if(!t)re
   $("#copyLinkBtn").onclick=()=>{const u=new URL(location.origin+location.pathname);u.searchParams.set("room",room);u.hash="room";const t=u.toString();(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("邀请链接已复制"),()=>{prompt("复制邀请链接：",t)})};
   $("#chatForm").onsubmit=e=>{e.preventDefault();const v=els.input.value.trim();if(!v)return;if(!me){toast("尚未连接");return}if(contactMutedUntil>Date.now()){toast("联系方式违规限制尚未解除，暂时不能发送消息");return}const now=Date.now(),combined=now-lastLocalChatAt<=12000?lastLocalChat+v:v;if(containsContactInfo(v)||containsContactInfo(combined)){toast("检测到疑似站外联系方式，消息已拦截");lastLocalChat="";lastLocalChatAt=0;return}if(out({type:"chat",text:v})){lastLocalChat=v.slice(-120);lastLocalChatAt=now;els.input.value=""}else toast("连接中断，正在重连…")};
   els.input.oninput=()=>{if(me&&els.input.value)out({type:"typing"})};
-  const syncMetroSettings=()=>{if(me&&myRole==="controller")out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:metroRunning});};
+  const syncMetroSettings=()=>{if(me&&myRole==="controller")out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:metroRunning,started:metroHasStarted});};
   els.bpm.oninput=()=>{if(myRole!=="controller")return;updateMetroLabels();restartMetroInterval()};
   els.bpm.onchange=syncMetroSettings;
   els.intensity.oninput=()=>{if(myRole==="controller")updateMetroLabels()};
