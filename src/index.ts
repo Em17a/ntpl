@@ -1,6 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { handleMatchmakingApi } from './matchmaking-api.js';
 import { ensureFriendProfile, handleSocialApi } from './social-api.js';
+import { handleDirectoryApi } from './directory-api.js';
 
 interface Env {
   DB: D1Database;
@@ -335,40 +336,7 @@ export class NightplayRoom extends DurableObject<Env> {
     }
     if(request.method==='POST'&&url.pathname==='/api/matchmaking')return handleMatchmakingApi(request,this.env.DB,()=>this.ctx.waitUntil(this.scheduleNextAlarm().catch(()=>{})));
     const socialResponse=await handleSocialApi(request,this.env.DB);if(socialResponse)return socialResponse;
-    if(request.method==='GET'&&url.pathname==='/api/public-rooms'){
-      const cutoff=now()-ONLINE_WINDOW_S*1000;
-      const result=await this.env.DB.prepare("SELECT r.code,r.room_name,r.created_at,m.nickname AS host_nickname,m.role AS host_role FROM rooms r JOIN room_members m ON m.id=r.owner_member_id AND m.room_code=r.code WHERE r.is_public=1 AND r.expires_at>? AND m.left_at IS NULL AND m.last_seen_at>? AND r.last_active_at>? AND (SELECT COUNT(*) FROM room_members p WHERE p.room_code=r.code AND p.left_at IS NULL AND p.last_seen_at>?)<2 ORDER BY r.created_at DESC LIMIT 50").bind(now(),cutoff,now()-ROOM_RETENTION_DAYS*86400000,cutoff).all<any>();
-      return json({rooms:result.results.map((r:any)=>({room:r.code,name:r.room_name,hostNickname:r.host_nickname,hostRole:r.host_role,createdAt:r.created_at,seats:1}))});
-    }
-    const roomMatch=url.pathname.match(/^\/api\/rooms\/([A-Za-z0-9]{4,12})$/);
-    if(request.method==='GET'&&roomMatch){const room=roomMatch[1].toUpperCase(),record=await this.env.DB.prepare('SELECT expires_at FROM rooms WHERE code=?').bind(room).first<any>();if(!record||Number(record.expires_at)<=now())return json({error:'room_expired'},410);const members=await this.presence(room);return json({room,seats:MAX_SEATS,taken:members.length,full:members.length>=MAX_SEATS,expiresAt:Number(record.expires_at)||0});}
-    if(request.method==='POST'&&url.pathname==='/api/online/heartbeat'){
-      let body:any;try{body=await request.json()}catch{return json({error:'bad_json'},400)}
-      const visitorId=String(body?.visitorId??'');
-      if(!/^[0-9a-f-]{36}$/i.test(visitorId))return json({error:'bad_visitor_id'},400);
-      const timestamp=now(),key='site-online:'+visitorId;
-      await this.ctx.storage.put(key,timestamp);
-      const entries=await this.ctx.storage.list<number>({prefix:'site-online:'});
-      let count=0;const expired:string[]=[];
-      for(const [entryKey,lastSeen] of entries){
-        if(Number(lastSeen)>timestamp-60000)count++;
-        else expired.push(entryKey);
-      }
-      if(expired.length)await this.ctx.storage.delete(expired);
-      return json({online:count,updatedAt:timestamp});
-    }
-    if(request.method==='GET'&&url.pathname==='/api/watchable'){
-      const recent=await this.env.DB.prepare('SELECT code FROM rooms WHERE expires_at>? AND last_active_at>? ORDER BY last_active_at DESC LIMIT 60').bind(now(),now()-ROOM_RETENTION_DAYS*86400000).all<any>();
-      const rooms:any[]=[];
-      for(const item of recent.results){
-        const members=await this.env.DB.prepare('SELECT id,nickname,role,last_seen_at FROM room_members WHERE room_code=? AND left_at IS NULL AND last_seen_at>? ORDER BY joined_at').bind(item.code,now()-ONLINE_WINDOW_S*1000).all<any>();
-        if(members.results.length!==2)continue;
-        const consents=await this.ctx.storage.get<string[]>('watch-consent:'+item.code)??[];
-        if(!members.results.every((member:any)=>consents.includes(member.id)))continue;
-        rooms.push({room:item.code,players:members.results.map((member:any)=>({nickname:member.nickname,role:member.role})),watchers:await this.watcherCount(item.code)});
-      }
-      return json({rooms});
-    }
+    const directoryResponse=await handleDirectoryApi(request,this.env.DB,this.ctx.storage,room=>this.presence(room),room=>this.watcherCount(room));if(directoryResponse)return directoryResponse;
     if(request.method==='GET'&&url.pathname==='/api/rtc-config'){
       const room=String(url.searchParams.get('room')??'').trim().toUpperCase(),member=String(request.headers.get('authorization')??'').replace(/^Bearer\s+/i,'').trim();
       if(!CODE_RE.test(room)||!/^[0-9a-f-]{36}$/i.test(member))return json({error:'bad_request'},400);
