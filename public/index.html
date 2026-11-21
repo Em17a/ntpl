@@ -142,12 +142,33 @@ body.room-active .topbar nav{display:none}
 .modal-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media(max-width:760px){.metro-extra-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metro-extra-controls label{min-width:0}.metro-countdown{margin:0;grid-column:1/-1}.metro-cues{display:grid;grid-template-columns:repeat(3,1fr)}.metro-cues button{padding:6px 4px}.solo-readout{gap:10px}.solo-readout strong{flex-basis:100%}.quick-phrase-wrap{margin:7px 0 10px}.quick-phrase-head{font-size:9px}}
 
+
+/* Match-first home and improved readability */
+:root{--muted:#b8b5c4;--line:#393744;--panel:#171620;--panel2:#211f2b;--text:#fbfaff}
+body{color:var(--text)}
+.topbar nav{color:#e0dce8}
+.topbar nav button{color:#e0dce8}
+.lead,.muted,.chat-note,.field-label,.match-grid label,.role-picker,.quick-action small,.announcement p:not(.eyebrow),.status{color:#c3bfce}
+.quick-action{background:linear-gradient(135deg,#211d2a,#181720);border-color:#454050}
+.quick-action strong{color:#fff}
+.quick-action.quick-match{border-color:#a77ce0;background:linear-gradient(120deg,#30233e,#1c1925);box-shadow:0 8px 28px #0005}
+.quick-action.quick-match .quick-icon{color:#e1c5ff}
+.match-card,.metronome-card{border-color:#665078}
+.match-grid label,.field-label{font-weight:600}
+input,textarea,select{background:#171620;border-color:#494553;color:#fff}
+input::placeholder,textarea::placeholder{color:#aaa6b6;opacity:1}
+.ghost{color:#f0edf5;border-color:#514d5b}
+.qa{color:#f0edf5;border-color:#494553}
+.chat-log,.voice-panel,.metro-control,.result{background:#15141d;color:#eeeaf4}
+.chat-line .meta,.range-ends,.control-title label,.beat-readout>span{color:#c0bccb}
+.announcement{background:#1a1722;border-color:#665078}
+@media(max-width:760px){.quick-action.quick-match{grid-column:span 3;min-height:62px;flex-direction:row;justify-content:flex-start;text-align:left;padding:10px 16px}.quick-action.quick-match .quick-icon{width:28px;font-size:23px}}
 </style>
 </head>
 <body>
 <header class="topbar">
   <a class="logo" href="/"><span class="logo-icon">N</span> NIGHTPLAY</a>
-  <nav><button type="button" data-open-modal="match">偏好匹配</button><button type="button" data-open-modal="join">加入房间</button></nav>
+  <nav><button type="button" data-open-modal="match">开始匹配</button><button type="button" data-open-modal="join">加入房间</button></nav>
   <span class="status"><i></i> 双人空间</span>
 </header>
 <main>
@@ -155,14 +176,14 @@ body.room-active .topbar nav{display:none}
     <section class="hero compact-hero">
       <div class="hero-copy">
         <p class="eyebrow">NIGHTPLAY · 18+</p>
-        <h1>双人互动<br><em>由你掌控节奏。</em></h1>
-        <p class="lead">创建私人双人房间，与对方实时聊天，并在双方同意下开启节拍器寸止挑战。</p>
-        <button class="primary link-button" type="button" data-open-modal="join">进入双人房间 <span>↗</span></button>
+        <h1>寻找搭档<br><em>开启双人互动。</em></h1>
+        <p class="lead">选择你的匹配偏好，寻找合适的双人搭档。匹配成功后即可聊天、语音，并体验同步节拍挑战。</p>
+        <button class="primary link-button" type="button" data-open-modal="match">立即开始匹配 <span>↗</span></button>
       </div>
       <div class="hero-art"><div class="orb orb-one"></div><div class="orb orb-two"></div><div class="art-card"><span>NIGHTPLAY CHALLENGE</span><strong>2 PLAYERS</strong><div class="art-line"></div><small>CHAT · RHYTHM · CONSENT</small></div></div>
     </section>
     <section class="quick-actions" aria-label="快速进入功能">
-      <button class="quick-action" type="button" data-open-modal="match"><span class="quick-icon">♡</span><span><strong>偏好匹配</strong><small>按偏好寻找搭档</small></span></button>
+      <button class="quick-action quick-match" type="button" data-open-modal="match"><span class="quick-icon">♡</span><span><strong>开始匹配</strong><small>按性别、角色和语音偏好寻找搭档</small></span></button>
       <button class="quick-action" type="button" data-open-modal="join"><span class="quick-icon">↗</span><span><strong>邀请 / 加入</strong><small>使用房间码快速进入</small></span></button>
       <button class="quick-action" type="button" data-open-modal="solo"><span class="quick-icon">◉</span><span><strong>单人练习</strong><small>无需等待搭档</small></span></button><button class="quick-action" type="button" data-open-modal="history"><span class="quick-icon">▤</span><span><strong>对局历史</strong><small>查看最近的双人记录</small></span></button>
     </section>
