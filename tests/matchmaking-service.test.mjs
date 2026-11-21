@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { findOrCreateMatch } from '../src/matchmaking-service.ts';
+import { findOrCreateMatch, pollMatchmaking, cancelMatchmaking } from '../src/matchmaking-service.ts';
 
 function createD1() {
   const sqlite = new DatabaseSync(':memory:');
@@ -171,4 +171,48 @@ test('incompatible candidates remain waiting and do not create a phantom room', 
   assert.deepEqual(await findOrCreateMatch(db, a, 3_000), { status: 'waiting' });
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM rooms').get().count, 0);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM room_members').get().count, 0);
+});
+
+
+test('poll actively pairs a waiting player with an already queued compatible player', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const a = '12121212-1212-4212-8212-121212121212';
+  const b = '34343434-3434-4434-8434-343434343434';
+  queue(db, a, { gender: 'male', preference: 'female', role: 'controller', lastSeenAt: 1_000 });
+  queue(db, b, { gender: 'female', preference: 'male', role: 'receiver', createdAt: 1_500, lastSeenAt: 1_500 });
+
+  const result = await pollMatchmaking(db, a, 3_000);
+  assert.equal(result.status, 'matched');
+  assert.equal(result.role, 'controller');
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS count FROM room_members WHERE room_code=? AND left_at IS NULL")
+    .get(result.room).count, 2);
+  assert.equal(db.raw.prepare('SELECT last_seen_at FROM matchmaking_queue WHERE client_id=?').get(a).last_seen_at, 3_000);
+});
+
+test('cancel removes a waiting player and returns immediately as cancelled', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const a = '56565656-5656-4656-8656-565656565656';
+  queue(db, a);
+  assert.deepEqual(await cancelMatchmaking(db, a, 2_000), { status: 'cancelled' });
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS count FROM matchmaking_queue WHERE client_id=?').get(a).count, 0);
+});
+
+test('cancel never deletes an already matched room or queue result', async t => {
+  const db = createD1();
+  t.after(() => db.close());
+  const a = '78787878-7878-4878-8878-787878787878';
+  const b = '90909090-9090-4090-8090-909090909090';
+  const room = 'AB234569';
+  db.raw.prepare('INSERT INTO rooms(code,created_at,last_active_at,expires_at) VALUES(?,?,?,?)').run(room, 1_000, 1_000, 7_201_000);
+  for (const [id, nickname, role] of [[a, '甲', 'controller'], [b, '乙', 'receiver']]) {
+    db.raw.prepare(`INSERT INTO matchmaking_queue
+      (client_id,nickname,gender,preference,role_preference,voice_preference,matched_role,status,room_code,created_at,last_seen_at)
+      VALUES(?,?, 'other','any','any','any',?,'matched',?,?,?)`).run(id, nickname, role, room, 1_000, 1_000);
+  }
+  const result = await cancelMatchmaking(db, a, 5_000);
+  assert.deepEqual(result, { status: 'matched', room, role: 'controller' });
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS count FROM matchmaking_queue WHERE status='matched' AND room_code=?").get(room).count, 2);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS count FROM room_members WHERE room_code=? AND left_at IS NULL").get(room).count, 2);
 });
