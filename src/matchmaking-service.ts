@@ -14,6 +14,40 @@ function newRoomCode(): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(8)), byte => roomAlphabet[byte & 31]).join('');
 }
 
+export interface MatchmakingJoinInput {
+  clientId: string;
+  nickname: string;
+  gender: string;
+  preference: string;
+  rolePreference: string;
+  voicePreference: string;
+}
+
+/**
+ * The only operation allowed to create or refresh a queue entry.
+ * INSERT OR IGNORE deliberately preserves a cancellation tombstone: a delayed
+ * join request with the same client id can never resurrect a cancelled search.
+ */
+export async function joinMatchmaking(
+  db: D1Database,
+  input: MatchmakingJoinInput,
+  timestamp: number,
+): Promise<MatchStatus> {
+  await db.prepare(`INSERT OR IGNORE INTO matchmaking_queue
+    (client_id,nickname,gender,preference,role_preference,voice_preference,status,created_at,last_seen_at)
+    VALUES(?,?,?,?,?,?,'waiting',?,?)`)
+    .bind(input.clientId, input.nickname, input.gender, input.preference,
+      input.rolePreference, input.voicePreference, timestamp, timestamp).run();
+
+  await db.prepare(`UPDATE matchmaking_queue
+    SET nickname=?,gender=?,preference=?,role_preference=?,voice_preference=?,last_seen_at=?
+    WHERE client_id=? AND status='waiting'`)
+    .bind(input.nickname, input.gender, input.preference, input.rolePreference,
+      input.voicePreference, timestamp, input.clientId).run();
+
+  return findOrCreateMatch(db, input.clientId, timestamp);
+}
+
 async function repairLegacyRoomCode(db: D1Database, oldRoom: string, timestamp: number): Promise<string | null> {
   if (validRoomCode.test(oldRoom)) return oldRoom;
   const members = await db.prepare('SELECT COUNT(*) AS count FROM room_members WHERE room_code=?')
