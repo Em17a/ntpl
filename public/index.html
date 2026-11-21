@@ -181,6 +181,11 @@ body.watch-mode #watchStatus{color:#d2c4e6}
 .watch-room-card small{color:#c3bfce}
 .watch-room-card button{justify-self:start;min-height:36px;padding:8px 13px}
 @media(max-width:760px){.watch-directory{margin:0 7vw 14px;padding:13px}.watch-directory-head{align-items:flex-start}.watch-directory-head h2{font-size:16px}.watch-directory-list{grid-template-columns:1fr}}
+
+.online-counter{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid #51485f;border-radius:999px;background:#211d2a;color:#d7d1e1;font-size:12px;white-space:nowrap}
+.online-counter>i{width:7px;height:7px;border-radius:50%;background:#67d69a;box-shadow:0 0 9px #67d69a;display:inline-block}
+.online-counter strong{color:#fff;font-size:13px;font-variant-numeric:tabular-nums}
+@media(max-width:760px){.online-counter{gap:5px;padding:6px 8px;font-size:11px}.topbar{gap:8px}.topbar .status{display:none}}
 </style>
 </head>
 <body>
@@ -188,6 +193,7 @@ body.watch-mode #watchStatus{color:#d2c4e6}
   <a class="logo" href="/"><span class="logo-icon">N</span> NIGHTPLAY</a>
   <nav><button type="button" data-open-modal="match">开始匹配</button><button type="button" data-open-modal="join">加入房间</button><button type="button" id="watchDirectoryBtn">观战大厅</button></nav>
   <span class="status"><i></i> 双人空间</span>
+  <span class="online-counter" aria-live="polite"><i></i><span>在线</span><strong id="onlineCount">--</strong></span>
 </header>
 <main>
   <div id="lobby" class="home-shell">
@@ -307,6 +313,18 @@ body.watch-mode #watchStatus{color:#d2c4e6}
 
 const $=s=>document.querySelector(s);
 const guestId=(()=>{const key="np_guest_id";let id=localStorage.getItem(key);if(!/^[0-9a-f-]{36}$/i.test(id||"")){id=crypto.randomUUID();localStorage.setItem(key,id)}return id})();
+const onlineVisitorId=(()=>{const key="np_online_visitor_id";let id=localStorage.getItem(key);if(!/^[0-9a-f-]{36}$/i.test(id||"")){id=crypto.randomUUID();localStorage.setItem(key,id)}return id})();
+async function refreshOnlineCount(){
+ try{
+  const response=await fetch("/api/online/heartbeat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({visitorId:onlineVisitorId}),cache:"no-store"});
+  if(!response.ok)throw new Error("online heartbeat failed");
+  const data=await response.json(),node=$("#onlineCount");
+  if(node)node.textContent=String(Number(data.online)||0);
+ }catch{const node=$("#onlineCount");if(node&&node.textContent==="--")node.textContent="暂不可用"}
+}
+refreshOnlineCount();setInterval(refreshOnlineCount,20000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshOnlineCount()});
+
 async function loadGameHistory(){
  const box=$("#historyList");if(!box)return;box.textContent="正在读取对局历史…";
  try{
