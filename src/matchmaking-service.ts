@@ -178,21 +178,24 @@ export async function cancelMatchmaking(
   clientId: string,
   timestamp: number,
 ): Promise<MatchStatus> {
+  // Keep a short-lived cancellation tombstone. This closes the race where the
+  // user taps Cancel while the first Join request is still in flight: a late
+  // INSERT OR IGNORE can no longer recreate a waiting queue entry.
+  await db.prepare(`INSERT OR IGNORE INTO matchmaking_queue
+    (client_id,nickname,gender,preference,role_preference,voice_preference,status,created_at,last_seen_at)
+    VALUES(?,'','other','any','any','any','cancelled',?,?)`)
+    .bind(clientId, timestamp, timestamp).run();
+
   const before = await db.prepare('SELECT status FROM matchmaking_queue WHERE client_id=?')
     .bind(clientId).first<any>();
-  if (!before) return { status: 'cancelled' };
-  if (before.status === 'matched') return findOrCreateMatch(db, clientId, timestamp);
-
-  await db.prepare("DELETE FROM matchmaking_queue WHERE client_id=? AND status='waiting'")
-    .bind(clientId).run();
+  if (before?.status === 'matched') return findOrCreateMatch(db, clientId, timestamp);
+  if (before?.status === 'waiting') {
+    await db.prepare("UPDATE matchmaking_queue SET status='cancelled',last_seen_at=? WHERE client_id=? AND status='waiting'")
+      .bind(timestamp, clientId).run();
+  }
 
   const after = await db.prepare('SELECT status FROM matchmaking_queue WHERE client_id=?')
     .bind(clientId).first<any>();
   if (after?.status === 'matched') return findOrCreateMatch(db, clientId, timestamp);
-  if (after?.status === 'waiting') {
-    // A concurrent join may have refreshed/reinserted this same client id.
-    await db.prepare("DELETE FROM matchmaking_queue WHERE client_id=? AND status='waiting'")
-      .bind(clientId).run();
-  }
   return { status: 'cancelled' };
 }
