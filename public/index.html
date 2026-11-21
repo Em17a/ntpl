@@ -648,7 +648,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
  // ===== 双人房间：WebSocket + WebRTC 双人语音 =====
  const Room=(()=>{
   const els={lobby:$("#lobby"),view:$("#roomView"),state:$("#connState"),log:$("#chatLog"),members:$("#members"),seat:$("#seatLabel"),label:$("#roomLabel"),typing:$("#typing"),input:$("#chatInput"),nick:$("#nickname"),code:$("#roomCode"),connect:$("#connectBtn"),peek:$("#roomPeek"),voiceStatus:$("#voiceStatus"),voiceStart:$("#voiceStartBtn"),voiceMute:$("#voiceMuteBtn"),voiceHangup:$("#voiceHangupBtn"),voiceListen:$("#voiceListenBtn"),remoteAudio:$("#remoteAudio"),matchGender:$("#matchGender"),matchPreference:$("#matchPreference"),matchRole:$("#matchRole"),matchVoicePreference:$("#matchVoicePreference"),roomRole:$("#roomRole"),roleStatus:$("#roleStatus"),metroEmergency:$("#metroEmergency"),matchStart:$("#matchStartBtn"),matchCancel:$("#matchCancelBtn"),matchStatus:$("#matchStatus"),bpm:$("#bpmRange"),intensity:$("#intensityRange"),metroStart:$("#metroStart"),metroPause:$("#metroPause"),metroStop:$("#metroStop"),metroStatus:$("#metroStatus"),metroMode:$("#metroMode"),metroDifficulty:$("#metroDifficulty"),metroDuration:$("#metroDuration"),metroSlow:$("#metroSlow"),metroNormal:$("#metroNormal"),metroFast:$("#metroFast"),metroHold:$("#metroHold"),metroResume:$("#metroResume"),watchConsent:$("#watchConsentBtn"),watcherCount:$("#watcherCount"),watchStatus:$("#watchStatus")};
-  let ws=null,room=null,me=null,myRole=null,matchedRole=null,currentOpponentFriendCode="",currentOpponentNickname="",want=false,watching=false,watchConsent=false,watchAllowed=false,lastId=0,seen=new Set(),retry=0,retryTimer=null,hb=null,typingTimer=null,joining=false,matching=false,matchClientId=null,matchPoll=null,matchStartedAt=0,matchClock=null,pendingPublish=false,pendingPublishName="";
+  let ws=null,room=null,me=null,myRole=null,matchedRole=null,currentOpponentFriendCode="",currentOpponentNickname="",want=false,watching=false,watchConsent=false,watchAllowed=false,lastId=0,seen=new Set(),retry=0,retryTimer=null,hb=null,typingTimer=null,joining=false,matching=false,matchClientId=null,matchPoll=null,joinRetry=null,matchStartedAt=0,matchClock=null,pendingPublish=false,pendingPublishName="";
   // WebRTC 状态：麦克风只会在用户主动点击后申请，不会自动开启。
   let pc=null,pcPromise=null,localStream=null,remoteStream=null,pendingCandidates=[];
   let makingOffer=false,ignoreOffer=false,settingRemoteAnswerPending=false,voiceGeneration=0,iceConfigCache=null;
@@ -773,7 +773,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    ws.onerror=()=>{};
   }
   const out=o=>{if(ws&&ws.readyState===1){ws.send(JSON.stringify(o));return true}return false};
-  function sendJoin(){joining=true;const lifetimeField=pendingPublish?$("#publicRoomLifetime"):$("#roomLifetime");const rawLifetime=Number(lifetimeField?.value)||30;const roomLifetimeMinutes=Math.max(5,Math.min(120,Math.round(rawLifetime)));out({type:"join",room,nickname:els.nick.value.trim(),token:localStorage.getItem(seatKey(room)),guestId,lastId,role:matchedRole||els.roomRole.value,publish:pendingPublish,roomName:pendingPublishName,roomLifetimeMinutes})}
+  function sendJoin(){joining=true;let token=localStorage.getItem(seatKey(room));if(!token){token=crypto.randomUUID();localStorage.setItem(seatKey(room),token)}const lifetimeField=pendingPublish?$("#publicRoomLifetime"):$("#roomLifetime");const rawLifetime=Number(lifetimeField?.value)||30;const roomLifetimeMinutes=Math.max(5,Math.min(120,Math.round(rawLifetime)));out({type:"join",room,nickname:els.nick.value.trim(),token,guestId,lastId,role:matchedRole||els.roomRole.value,publish:pendingPublish,roomName:pendingPublishName,roomLifetimeMinutes})}
   function sendWatchJoin(){out({type:"watch_join",room,nickname:els.nick.value.trim(),guestId})}
   function joinAsWatcher(codeValue){
    const nick=els.nick.value.trim(),code=String(codeValue||els.code.value).trim().toUpperCase();
@@ -929,7 +929,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    }else if(m.type==="match_found"){
     if(!matching)return;
     watching=false;document.body.classList.remove("watch-mode");matching=false;stopMatchClock();showMatchingScreen(false);$("#matchingCancelBtn").disabled=false;$("#matchingCancelBtn").textContent="取消匹配";clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;els.matchStatus.textContent="匹配成功，正在进入房间…";
-    els.code.value=m.room;room=m.room;matchedRole=m.role||"any";lastId=0;seen=new Set();want=true;sendJoin();
+    els.code.value=m.room;room=m.room;matchedRole=m.role||"any";lastId=0;seen=new Set();want=true;sendJoin();clearInterval(joinRetry);joinRetry=setInterval(()=>{if(joining&&want&&room){if(ws&&ws.readyState===1)sendJoin();else open()}else{clearInterval(joinRetry);joinRetry=null}},2500);
    }else if(m.type==="matchmaking_cancelled"){
     want=!!me;$("#matchingCancelBtn").disabled=false;$("#matchingCancelBtn").textContent="取消匹配";returnToMatchSettings("已取消匹配");
    }else if(m.type==="match_expired"){
@@ -952,7 +952,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    }else if(m.type==="watch_left"){
     reset("已退出观战");
    }else if(m.type==="joined"){
-    watching=false;document.body.classList.remove("watch-mode");watchConsent=Boolean(m.watchConsent);watchAllowed=Boolean(m.watchAllowed);joining=false;const fresh=!m.resumed||!me||me.id!==m.you.id;
+    watching=false;document.body.classList.remove("watch-mode");watchConsent=Boolean(m.watchConsent);watchAllowed=Boolean(m.watchAllowed);joining=false;clearInterval(joinRetry);joinRetry=null;const fresh=!m.resumed||!me||me.id!==m.you.id;
     if(fresh){closeVoice(false);els.log.innerHTML="";seen=new Set();lastId=0;stopMetroTimer();clearMetroClocks();metroRunning=false;metroHasStarted=false;metroStopped=false;metroEndsAt=0;metroRemainingMs=(Number(els.metroDuration.value)||5)*60000;metroHoldCount=0;metroElapsedMs=0;metroEndReason="";$("#metroLivePanel").hidden=false;$("#metroEndScreen").hidden=true;metroBeat=0;$("#beatNumber").textContent="—";renderQuickPhrases()}
     me=m.you;myRole=m.you.role||"controller";matchedRole=null;currentOpponentFriendCode=String(m.opponentFriendCode||"");currentOpponentNickname=String(m.opponentNickname||"");$("#metroAddFriendBtn").hidden=!currentOpponentFriendCode;$("#metroAddFriendBtn").textContent=currentOpponentNickname?"添加 "+currentOpponentNickname+" 为好友":"添加对方为好友";renderQuickPhrases();room=m.room;iceConfigCache=null;localStorage.setItem(seatKey(room),m.token);localStorage.setItem("np_nick",me.nickname);
     const publishedNow=pendingPublish&&Boolean(m.isPublic);pendingPublish=false;pendingPublishName="";els.label.textContent=(m.roomName?m.roomName+" · ":"")+room;showRoom(true);if(publishedNow)toast("公开房间已发布，其他玩家现在可以加入");setState("on","已连接");setVoiceState("","语音未开启 · 双方需分别授权");renderWatchUI();els.watcherCount.textContent="旁观 "+(m.watchers||0);
@@ -979,6 +979,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    else if(m.type==="voice_notice"){setVoiceState("wait",m.message||"等待另一位参与者上线");toast(m.message||"另一位参与者当前不在线")}
    else if(m.type==="left"){reset("已离开房间")}
    else if(m.type==="error"){
+    clearInterval(joinRetry);joinRetry=null;joining=false;
     if(["room_full","seat_lost","bad_room","bad_nickname","publish_room_exists","bad_room_name","room_expired"].includes(m.code)){
      if(m.code==="seat_lost"&&room)localStorage.removeItem(seatKey(room));
      if(m.code==="room_full"&&room)localStorage.removeItem(seatKey(room));
@@ -989,7 +990,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
     toast(m.message||"出错了");
    }
   }
-  function reset(msg){stopMetro(false);closeVoice(false);currentOpponentFriendCode="";currentOpponentNickname="";$("#metroAddFriendBtn").hidden=true;watching=false;watchConsent=false;watchAllowed=false;document.body.classList.remove("watch-mode");showMatchingScreen(false);stopMatchClock();want=false;joining=false;matching=false;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;clearInterval(hb);hb=null;clearTimeout(retryTimer);me=null;myRole=null;matchedRole=null;showRoom(false);els.connect.disabled=false;if(ws){ws.onclose=null;try{ws.close()}catch{}ws=null}setState("off","未连接");if(msg)toast(msg);const u=new URL(location.href);u.searchParams.delete("room");history.replaceState(null,"",u)}
+  function reset(msg){clearInterval(joinRetry);joinRetry=null;stopMetro(false);closeVoice(false);currentOpponentFriendCode="";currentOpponentNickname="";$("#metroAddFriendBtn").hidden=true;watching=false;watchConsent=false;watchAllowed=false;document.body.classList.remove("watch-mode");showMatchingScreen(false);stopMatchClock();want=false;joining=false;matching=false;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;clearInterval(hb);hb=null;clearTimeout(retryTimer);me=null;myRole=null;matchedRole=null;showRoom(false);els.connect.disabled=false;if(ws){ws.onclose=null;try{ws.close()}catch{}ws=null}setState("off","未连接");if(msg)toast(msg);const u=new URL(location.href);u.searchParams.delete("room");history.replaceState(null,"",u)}
   function startMatching(){
    watching=false;document.body.classList.remove("watch-mode");
    const nick=els.nick.value.trim();
