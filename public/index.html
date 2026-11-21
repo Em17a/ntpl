@@ -309,7 +309,7 @@ body.watch-mode #watchStatus{color:#d2c4e6}
           <div class="public-room-create"><label>你的昵称<input id="publicRoomNickname" maxlength="24" placeholder="输入聊天昵称" autocomplete="nickname"></label>
             <label>自定义房间名称<input id="publicRoomName" maxlength="20" placeholder="例如：S来求调" autocomplete="off"></label>
             <label>你希望担任的角色<select id="publicRoomRole"><option value="controller">控制方（S）</option><option value="receiver">受控方（M）</option></select></label>
-            <label>房间有效期（5–120 分钟）<input id="publicRoomLifetime" type="number" min="5" max="120" step="5" value="30" inputmode="numeric"></label>
+            <label>房间有效期（5–120 分钟）<input id="publicRoomLifetime" type="number" min="5" max="120" step="1" value="30" inputmode="numeric"></label>
             <button id="publicRoomPublishBtn" type="button" class="primary">发布房间</button>
           </div>
           <div class="public-room-heading"><h3>正在招募的房间</h3><button id="publicRoomRefreshBtn" type="button" class="ghost">刷新列表</button></div>
@@ -341,7 +341,7 @@ body.watch-mode #watchStatus{color:#d2c4e6}
           <form id="joinForm" class="room-controls">
             <div class="code-field"><input id="roomCode" maxlength="12" placeholder="房间代码（4–12 位字母或数字）" autocomplete="off" required><button type="button" id="randomCodeBtn" class="ghost" title="生成随机代码">↻ 随机</button></div>
             <label class="role-picker">进入房间后担任<select id="roomRole"><option value="controller">控制方</option><option value="receiver">受控方</option><option value="any">由系统自动分配</option></select></label>
-            <label style="grid-column:1/-1">新建房间有效期（5–120 分钟）<input id="roomLifetime" type="number" min="5" max="120" step="5" value="30" inputmode="numeric"><small class="chat-note">仅创建新房间时生效，加入已有房间不会改变有效期。</small></label>
+            <label style="grid-column:1/-1">新建房间有效期（5–120 分钟）<input id="roomLifetime" type="number" min="5" max="120" step="1" value="30" inputmode="numeric"><small class="chat-note">仅创建新房间时生效，加入已有房间不会改变有效期。</small></label>
             <button id="connectBtn" class="primary" type="submit">加入 / 创建房间</button>
           </form>
           <p id="roomPeek" class="chat-note"></p>
@@ -772,7 +772,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    ws.onerror=()=>{};
   }
   const out=o=>{if(ws&&ws.readyState===1){ws.send(JSON.stringify(o));return true}return false};
-  function sendJoin(){joining=true;const lifetimeField=pendingPublish?$("#publicRoomLifetime"):$("#roomLifetime");const rawLifetime=Number(lifetimeField?.value)||30;const roomLifetimeMinutes=Math.max(5,Math.min(120,Math.round(rawLifetime/5)*5));out({type:"join",room,nickname:els.nick.value.trim(),token:localStorage.getItem(seatKey(room)),guestId,lastId,role:matchedRole||els.roomRole.value,publish:pendingPublish,roomName:pendingPublishName,roomLifetimeMinutes})}
+  function sendJoin(){joining=true;const lifetimeField=pendingPublish?$("#publicRoomLifetime"):$("#roomLifetime");const rawLifetime=Number(lifetimeField?.value)||30;const roomLifetimeMinutes=Math.max(5,Math.min(120,Math.round(rawLifetime)));out({type:"join",room,nickname:els.nick.value.trim(),token:localStorage.getItem(seatKey(room)),guestId,lastId,role:matchedRole||els.roomRole.value,publish:pendingPublish,roomName:pendingPublishName,roomLifetimeMinutes})}
   function sendWatchJoin(){out({type:"watch_join",room,nickname:els.nick.value.trim(),guestId})}
   function joinAsWatcher(codeValue){
    const nick=els.nick.value.trim(),code=String(codeValue||els.code.value).trim().toUpperCase();
