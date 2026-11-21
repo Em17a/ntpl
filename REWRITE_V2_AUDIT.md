@@ -78,6 +78,7 @@ Nightplay adaptations:
 - Removed the unused duplicate WebSocket matchmaking join/cancel/poll implementation.
 - Extracted request validation and HTTP state mapping into `src/matchmaking-api.ts`.
 - Added tests for the HTTP join/poll/handoff contract, cancellation tombstones, cancellation-vs-poll races, and origin rejection.
+- The browser pauses new polls during cancellation, bounds the cancel request to 8 seconds, restores the cancel control on failure and resumes polling so the UI cannot remain indefinitely in “正在取消”.
 - Added reciprocal voice-preference compatibility tests.
 - Extracted social, public-room/directory and RTC configuration endpoints from the Durable Object class.
 - Restored text contact blocking on both client and server, including 12-second split-message context and in-memory escalation state.
