@@ -719,6 +719,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
      if(m.code==="room_full"&&room)localStorage.removeItem(seatKey(room));
      reset();
     }
+    if(String(m.code||"").startsWith("watch_"))els.watchConsent.disabled=false;
     toast(m.message||"出错了");
    }
   }
@@ -760,7 +761,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
      const title=document.createElement("strong");title.textContent="房间 "+item.room;
      const players=document.createElement("p");players.textContent=(item.players||[]).map(p=>p.nickname+" · "+(p.role==="controller"?"控制方":"受控方")).join(" / ");
      const count=document.createElement("small");count.textContent="旁观人数 "+(Number(item.watchers)||0)+" / 12";
-     const button=document.createElement("button");button.type="button";button.className="primary";button.textContent="进入旁观";button.addEventListener("click",()=>joinAsWatcher(item.room));
+     const button=document.createElement("button");button.type="button";button.className="primary";button.textContent="进入旁观";button.addEventListener("click",()=>{els.code.value=item.room;openActionModal("join")});
      card.append(title,players,count,button);list.appendChild(card);
     });
    }catch(error){list.textContent="暂时无法加载观战列表，请稍后刷新。"}
