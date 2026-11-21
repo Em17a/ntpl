@@ -785,7 +785,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
    if(matchId)message.matchClientId=matchId;
    out(message);
   }
-    function sendWatchJoin(){out({type:"watch_join",room,nickname:els.nick.value.trim(),guestId})}
+  function sendWatchJoin(){out({type:"watch_join",room,nickname:els.nick.value.trim(),guestId})}
   function joinAsWatcher(codeValue){
    const nick=els.nick.value.trim(),code=String(codeValue||els.code.value).trim().toUpperCase();
    els.code.value=code;
