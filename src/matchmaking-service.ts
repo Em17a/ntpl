@@ -54,16 +54,30 @@ async function ensureMatchedSeats(db: D1Database, room: string, timestamp: numbe
   ).bind(room).all<any>();
   if (rows.results.length !== 2) return false;
 
-  await db.batch(rows.results.map((row: any) => db.prepare(
-    'INSERT OR IGNORE INTO room_members(id,room_code,nickname,role,joined_at,last_seen_at) VALUES(?,?,?,?,?,?)'
-  ).bind(String(row.client_id), room, String(row.nickname), row.matched_role, Number(row.created_at) || timestamp, timestamp)));
+  const roles = new Set(rows.results.map((row: any) => row.matched_role));
+  if (roles.size !== 2 || !roles.has('controller') || !roles.has('receiver')) return false;
+
+  const existing = await db.prepare(
+    'SELECT id,role FROM room_members WHERE room_code=? AND left_at IS NULL ORDER BY joined_at'
+  ).bind(room).all<any>();
+  if (existing.results.length > 2) return false;
+  const existingRoles = existing.results.map((seat: any) => seat.role);
+  if (existingRoles.some((role: string) => !roles.has(role)) || new Set(existingRoles).size !== existingRoles.length) return false;
+
+  const missing = rows.results.filter((row: any) => !existingRoles.includes(row.matched_role));
+  if (missing.length) {
+    await db.batch(missing.map((row: any) => db.prepare(
+      'INSERT OR IGNORE INTO room_members(id,room_code,nickname,role,joined_at,last_seen_at) VALUES(?,?,?,?,?,?)'
+    ).bind(String(row.client_id), room, String(row.nickname), row.matched_role, Number(row.created_at) || timestamp, timestamp)));
+  }
 
   const seats = await db.prepare(
     'SELECT id,role FROM room_members WHERE room_code=? AND left_at IS NULL'
   ).bind(room).all<any>();
-  return rows.results.every((row: any) =>
-    seats.results.some((seat: any) => seat.id === row.client_id && seat.role === row.matched_role)
-  );
+  return seats.results.length === 2
+    && roles.has(seats.results[0].role)
+    && roles.has(seats.results[1].role)
+    && new Set(seats.results.map((seat: any) => seat.role)).size === 2;
 }
 
 export async function findOrCreateMatch(
