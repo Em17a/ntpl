@@ -334,7 +334,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
   let makingOffer=false,ignoreOffer=false,settingRemoteAnswerPending=false,voiceGeneration=0,iceConfigCache=null;
   const seatKey=r=>"np_seat_"+r;
   // 节拍器由双方浏览器本地发声，房间服务端只同步参数和运行状态。
-  let metroTimer=null,metroBeat=0,metroRunning=false,metroHasStarted=false,metroStopped=false,audioCtx=null,metroSyncGuard=false,roomHasPartner=false,metroChallengeTimer=null,metroRandomTimer=null,metroEndsAt=0,metroRemainingMs=0,metroModeValue="steady",metroDurationMinutes=5;
+  let metroTimer=null,metroBeat=0,metroRunning=false,metroHasStarted=false,metroStopped=false,audioCtx=null,metroSyncGuard=false,roomHasPartner=false,metroChallengeTimer=null,metroRandomTimer=null,metroEndsAt=0,metroRemainingMs=300000,metroModeValue="steady",metroDurationMinutes=5;
   const metroIntensity=()=>Number(els.intensity.value);
   function updateMetroLabels(){const bpm=Number(els.bpm.value),level=metroIntensity();$("#bpmValue").textContent=bpm;$("#bpmLabel").textContent=bpm;$("#metroSummaryBpm").textContent=bpm;$("#intensityLabel").textContent=level;$("#intensityText").textContent="力度 "+level+" / 5";$("#beatPulse").style.setProperty("--pulse-scale",String(1+level*.035));}
   function stopMetroTimer(){if(metroTimer){clearInterval(metroTimer);metroTimer=null}}
@@ -585,7 +585,7 @@ const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");se
     reset(m.message||"本轮互动已结束，已自动退出房间");
    }else if(m.type==="joined"){
     joining=false;const fresh=!m.resumed||!me||me.id!==m.you.id;
-    if(fresh){closeVoice(false);els.log.innerHTML="";seen=new Set();lastId=0;stopMetroTimer();clearMetroClocks();metroRunning=false;metroHasStarted=false;metroStopped=false;metroEndsAt=0;metroRemainingMs=0;metroBeat=0;$("#beatNumber").textContent="—";renderQuickPhrases()}
+    if(fresh){closeVoice(false);els.log.innerHTML="";seen=new Set();lastId=0;stopMetroTimer();clearMetroClocks();metroRunning=false;metroHasStarted=false;metroStopped=false;metroEndsAt=0;metroRemainingMs=(Number(els.metroDuration.value)||5)*60000;metroBeat=0;$("#beatNumber").textContent="—";renderQuickPhrases()}
     me=m.you;myRole=m.you.role||"controller";matchedRole=null;renderQuickPhrases();room=m.room;iceConfigCache=null;localStorage.setItem(seatKey(room),m.token);localStorage.setItem("np_nick",me.nickname);
     els.label.textContent=room;showRoom(true);setState("on","已连接");setVoiceState("","语音未开启 · 双方需分别授权");
     const u=new URL(location.href);u.searchParams.set("room",room);u.hash="room";history.replaceState(null,"",u);
