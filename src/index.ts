@@ -13,7 +13,6 @@ type Role = 'controller' | 'receiver';
 type Meta = {
   memberId: string; room: string; nickname: string; role: Role;
   bucket: number; bucketAt: number; lastTypingAt: number;
-  contactViolations: number; recentChatText: string; recentChatAt: number; contactMutedUntil: number;
 };
 type Attachment = { meta?: Meta; matchmakingClientId?: string };
 type ClientMessage = Record<string, any> & { type: string };
@@ -40,20 +39,6 @@ const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 const now = () => Date.now();
 const uuid = () => crypto.randomUUID();
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
-const normalizeContactText = (value: string) => {
-  const raw = value.toLowerCase().normalize('NFKC').replace(/[\u200B-\u200D\uFEFF]/g, '');
-  const compact = raw.replace(/[\s·•,，。:：;；_\-—()（）[\]【】]/g, '');
-  return compact.replace(/[零〇洞幺两]/g, c => ({ 零:'0',〇:'0',洞:'0',幺:'1',两:'2' } as Record<string,string>)[c] ?? c)
-    .replace(/[一二三四五六七八九]/g, c => ({ 一:'1',二:'2',三:'3',四:'4',五:'5',六:'6',七:'7',八:'8',九:'9' } as Record<string,string>)[c] ?? c);
-};
-function containsContactInfo(value: string) {
-  const t = normalizeContactText(value); if (!t) return false;
-  return /(?:\+?86)?1[3-9]\d{9}/.test(t) || /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(t) ||
-    /(?:https?\/{1,2}|www\.)|(?:t\.me|telegram\.me|wa\.me|instagram\.com|facebook\.com|line\.me|discord\.gg|discord\.com)/i.test(t) ||
-    /(?:微信|wechat|vx|wx|v信|w信|微x|薇信|威信|qq|扣扣|企鹅号|telegram|电报|飞机号|whatsapp|wats?app|line|instagram|ins号|discord|邮箱|电子邮件)(?:(?:号|id|账号|帐号)?(?:是|为)?|:|：)?[a-z0-9_@.-]{3,}/i.test(t) ||
-    (/\d{6,13}/.test(t) && /(?:qq|扣扣|联系|加我|电话|手机|号码|号|vx|wx|微信|v信|w信)/i.test(t)) || /(?:加我|私我|联系我)(?:v|vx|wx)[a-z0-9_-]{3,}/i.test(t);
-}
-
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -118,13 +103,6 @@ export class NightplayRoom extends DurableObject<Env> {
   private seatLost(ws: WebSocket) { this.send(ws,{type:'error',code:'seat_lost',message:'你的座位已失效，请重新加入房间。'}); this.detach(ws); }
   private async metro(room: string) { return await this.ctx.storage.get<any>('metro:'+room); }
   private async setMetro(room: string, state: any) { await this.ctx.storage.put('metro:'+room,state); }
-  private applyContactViolation(ws: WebSocket, source: 'text'|'voice') {
-    const a=this.attachment(ws),m=a.meta;if(!m)return;
-    m.contactViolations=(m.contactViolations||0)+1;const count=m.contactViolations;
-    const mutedForMs=count>=3?600000:count===2?60000:0;if(mutedForMs)m.contactMutedUntil=now()+mutedForMs;
-    this.save(ws,a);
-    this.send(ws,{type:'contact_blocked',source,count,mutedUntil:mutedForMs?now()+mutedForMs:0,message:mutedForMs?`检测到交换站外联系方式，已暂停发送${source==='voice'?'语音':'消息'}${count>=3?'10分钟':'1分钟'}。`:'检测到疑似站外联系方式，内容已拦截，请勿交换微信、QQ、手机号、邮箱或其他社交账号。'});
-  }
   private compatible(a:any,b:any) {
     const genderOk=(a.preference==='any'||a.preference===b.gender)&&(b.preference==='any'||b.preference===a.gender);
     const roleOk=a.role_preference==='any'||b.role_preference==='any'||a.role_preference!==b.role_preference;
@@ -190,7 +168,7 @@ export class NightplayRoom extends DurableObject<Env> {
       member={id,room_code:room,nickname,role:assignedRole,joined_at:t,last_seen_at:t};
     }
     await this.env.DB.prepare('UPDATE rooms SET last_active_at=? WHERE code=?').bind(t,room).run();
-    const a=this.attachment(ws);a.meta={memberId:member.id,room,nickname:member.nickname,role:member.role,bucket:8,bucketAt:t,lastTypingAt:0,contactViolations:0,recentChatText:'',recentChatAt:0,contactMutedUntil:0};this.save(ws,a);
+    const a=this.attachment(ws);a.meta={memberId:member.id,room,nickname:member.nickname,role:member.role,bucket:8,bucketAt:t,lastTypingAt:0};this.save(ws,a);
     const lastId=Number(msg.lastId)||0;
     this.send(ws,{type:'joined',room,token:member.id,you:{id:member.id,nickname:member.nickname,role:member.role},resumed:!isNew,history:await this.history(room,isNew?0:lastId),members:await this.presence(room),seats:MAX_SEATS});
     if(isNew)await this.addMessage(room,'system',`${member.nickname} 加入了房间`);
@@ -230,14 +208,10 @@ export class NightplayRoom extends DurableObject<Env> {
     }
     if(msg.type==='chat'){
       const text=String(msg.text??'').trim().slice(0,500);if(!text)return;
-      if(m.contactMutedUntil>now())return this.send(ws,{type:'contact_blocked',source:'text',count:m.contactViolations,mutedUntil:m.contactMutedUntil,message:'你暂时无法发送消息，请稍后再试。'});
       if(this.rateLimited(ws,m))return this.send(ws,{type:'error',code:'rate_limited',message:'发送太快了，请稍等片刻。'});
       if(!(await this.touch(m)))return this.seatLost(ws);
-      const t=now(),combined=t-m.recentChatAt<=12000?m.recentChatText+text:text;
-      if(containsContactInfo(text)||containsContactInfo(combined)){m.recentChatText='';m.recentChatAt=0;const a=this.attachment(ws);a.meta=m;this.save(ws,a);return this.applyContactViolation(ws,'text');}
-      m.recentChatText=text.slice(-120);m.recentChatAt=t;const a=this.attachment(ws);a.meta=m;this.save(ws,a);return this.addMessage(m.room,'chat',text,{id:m.memberId,nickname:m.nickname});
+      return this.addMessage(m.room,'chat',text,{id:m.memberId,nickname:m.nickname});
     }
-    if(msg.type==='contact_voice_violation')return this.applyContactViolation(ws,'voice');
     if(msg.type==='action'){
       const actions:Record<string,(n:string)=>string>={next_scene:n=>`${n} 推进到下一幕：${pick(SCENES)}`,challenge:n=>`${n} 发起随机挑战：${pick(CHALLENGES)}`,pause:n=>`${n} 请求暂停。双方确认前请不要继续推进。`,resume:n=>`${n} 表示可以继续。`,stop:n=>`${n} 结束了本轮互动。`};
       const make=actions[msg.action];if(!make)return;if(this.rateLimited(ws,m))return this.send(ws,{type:'error',code:'rate_limited',message:'操作太快了，请稍等片刻。'});if(!(await this.touch(m)))return this.seatLost(ws);
