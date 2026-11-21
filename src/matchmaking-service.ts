@@ -145,6 +145,18 @@ export async function findOrCreateMatch(
       db.prepare('DELETE FROM room_members WHERE room_code=?').bind(room),
       db.prepare('DELETE FROM rooms WHERE code=?').bind(room),
     ]);
+
+    // Another poll may have won the D1 transaction while this request was
+    // preparing its candidate pair. Return that committed result immediately.
+    const winner = await db.prepare("SELECT room_code,matched_role FROM matchmaking_queue WHERE client_id=? AND status='matched'")
+      .bind(clientId).first<any>();
+    if (winner?.room_code && ['controller', 'receiver'].includes(winner.matched_role)) {
+      const winnerRoom = await repairLegacyRoomCode(db, String(winner.room_code), timestamp);
+      if (!winnerRoom) return { status: 'repair_failed' };
+      return await ensureMatchedSeats(db, winnerRoom, timestamp)
+        ? { status: 'matched', room: winnerRoom, role: winner.matched_role }
+        : { status: 'repair_failed' };
+    }
     return { status: 'waiting' };
   }
 
