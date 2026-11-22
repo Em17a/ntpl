@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#09090d">
+<title>Nightplay — Interactive Studio</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
+:root{--bg:#09090d;--panel:#121219;--panel2:#191922;--line:#292934;--text:#f2f0f5;--muted:#9997a5;--accent:#d5a6ff;--accent2:#a77ce0;--green:#87d9b2;--red:#f08b9a}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:Manrope,system-ui,sans-serif}a{color:inherit;text-decoration:none}.topbar{height:76px;padding:0 7vw;border-bottom:1px solid #ffffff10;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#09090de8;backdrop-filter:blur(16px);z-index:5}.logo{font-weight:800;letter-spacing:.16em;font-size:13px;display:flex;align-items:center;gap:10px}.logo-icon{width:27px;height:27px;border:1px solid var(--accent);color:var(--accent);display:grid;place-items:center;border-radius:8px;font-size:14px}.topbar nav{display:flex;gap:32px;color:#c4c1cc;font-size:12px}.topbar nav a:hover,.mode-card a:hover{color:var(--accent)}.status,.eyebrow,.pill,.live-dot{font:10px 'DM Mono',monospace;letter-spacing:.14em}.status{color:var(--green)}.status i,.live-dot:before{display:inline-block;width:6px;height:6px;background:var(--green);border-radius:50%;margin-right:8px}.hero{min-height:540px;padding:100px 10vw 80px;display:grid;grid-template-columns:1.1fr .9fr;align-items:center;overflow:hidden;background:radial-gradient(ellipse at 75% 45%,#4d326329,transparent 42%)}.eyebrow{color:var(--accent);margin:0 0 15px}.hero h1{font-size:clamp(48px,6vw,82px);line-height:1.03;letter-spacing:-.06em;margin:0;font-weight:700}.hero h1 em{font-style:normal;color:var(--accent)}.lead{color:var(--muted);line-height:1.9;max-width:490px;font-size:14px;margin:25px 0 30px}.primary{border:0;background:var(--accent);color:#17111d;padding:13px 20px;border-radius:6px;font-weight:800;cursor:pointer;font-family:inherit}.primary:hover{background:#e4c6ff;transform:translateY(-1px)}.primary:disabled{opacity:.4;cursor:not-allowed;transform:none}.link-button{display:inline-flex;gap:32px;align-items:center;font-size:12px}.hero-art{height:340px;position:relative;display:grid;place-items:center}.orb{position:absolute;border-radius:50%;filter:blur(1px)}.orb-one{width:270px;height:270px;background:radial-gradient(circle at 35% 30%,#e2c0ff88,#8051b722 55%,transparent 72%);box-shadow:0 0 100px #a66ee833}.orb-two{width:180px;height:180px;border:1px solid #d5a6ff66;transform:rotate(35deg) skew(8deg);border-radius:42%}.art-card{position:relative;width:245px;height:155px;padding:24px;background:linear-gradient(135deg,#24202d,#111117);border:1px solid #ffffff26;border-radius:12px;box-shadow:0 30px 80px #0009;transform:rotate(-7deg);display:flex;flex-direction:column;justify-content:space-between}.art-card span,.art-card small{font:9px 'DM Mono';letter-spacing:.16em;color:var(--muted)}.art-card strong{font-size:32px;letter-spacing:-.05em}.art-line{height:2px;background:linear-gradient(90deg,var(--accent),transparent)}.section{padding:76px 10vw}.section-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:28px}.section h2,.safety h2{font-size:30px;letter-spacing:-.04em;margin:0}.muted{color:var(--muted);font-size:12px;line-height:1.7}.mode-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.mode-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:25px;min-height:245px;transition:.2s}.mode-card:hover{border-color:#8f6bb5;transform:translateY(-3px)}.mode-icon{font-size:25px;color:var(--accent);margin-bottom:20px}.mode-card h3{margin:0 0 10px;font-size:19px}.mode-card p:not(.eyebrow){color:var(--muted);font-size:12px;line-height:1.8;min-height:48px}.mode-card a{display:inline-block;margin-top:14px;font-size:11px;color:var(--accent)}.custom-section{background:#0d0d13}.pill{border:1px solid #51405f;color:var(--accent);border-radius:30px;padding:8px 12px}.studio{border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}.tabs{display:flex;border-bottom:1px solid var(--line);padding:0 22px;gap:25px}.tab{background:none;border:0;color:var(--muted);padding:18px 3px;cursor:pointer;font:11px 'DM Mono';border-bottom:2px solid transparent}.tab.active{color:var(--accent);border-color:var(--accent)}.panel{display:none;padding:28px}.panel.active{display:block}.panel-title{display:flex;justify-content:space-between;align-items:center}.panel-title h3{font-size:21px;margin:0 0 8px}.live-dot{color:var(--green)}.command-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:22px 0}.command{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:16px;text-align:left;color:var(--text);cursor:pointer;display:flex;flex-direction:column;gap:8px}.command:hover{border-color:var(--accent)}.command b{font-size:20px;color:var(--accent)}.command strong{font-size:12px}.command small{font-size:10px;color:var(--muted)}.command.danger b{color:var(--red)}.result{background:#0b0b10;border:1px solid var(--line);padding:15px;border-radius:7px;color:#c5c1ce;font-size:12px;line-height:1.8;white-space:pre-wrap;min-height:50px}.room-controls{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin:18px 0 12px}.room-controls input,input,textarea,select{background:#0b0b10;border:1px solid var(--line);border-radius:6px;color:var(--text);padding:12px;font:12px Manrope;outline:none;width:100%}input:focus,textarea:focus,select:focus{border-color:var(--accent)}.chat-log{height:190px;overflow:auto;background:#0b0b10;border:1px solid var(--line);border-radius:7px;padding:12px;margin-bottom:10px}.chat-note{font-size:11px;color:var(--muted)}.chat-line{font-size:12px;padding:7px 0;border-bottom:1px solid #ffffff0b;overflow-wrap:anywhere}.chat-line b{color:var(--accent);margin-right:8px}.chat-line.system{color:var(--muted);font-style:italic}.send-row{display:flex;gap:8px}.send-row input{flex:1}.text-button{background:none;border:0;color:var(--muted);font-size:11px;padding:12px 0;cursor:pointer}.field-label{display:block;color:var(--muted);font-size:11px;margin:18px 0 8px}.panel textarea{min-height:105px;resize:vertical;margin-bottom:14px}.panel select{max-width:340px}.story-result{margin-top:16px;min-height:90px}.safety{margin:25px 10vw 80px;padding:28px 34px;border:1px solid #473b51;background:linear-gradient(100deg,#1c1723,#121219);border-radius:10px;display:flex;gap:24px;align-items:center}.safety-icon{font-size:34px;color:var(--accent)}.safety h2{font-size:23px}.safety p:not(.eyebrow){color:var(--muted);font-size:12px;line-height:1.8;max-width:750px}footer{border-top:1px solid var(--line);padding:25px 7vw;display:flex;justify-content:space-between;color:var(--muted);font-size:10px;letter-spacing:.08em}.toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,20px);background:#eee0ff;color:#17111d;padding:12px 18px;border-radius:7px;font-size:12px;opacity:0;transition:.2s;pointer-events:none;z-index:10}.toast.show{opacity:1;transform:translate(-50%,0)}.gate{position:fixed;inset:0;background:#08080df5;z-index:20;display:grid;place-items:center;padding:20px}.gate.hidden{display:none}.gate-card{max-width:460px;width:100%;padding:38px;background:#14131b;border:1px solid #44364f;border-radius:13px;text-align:center;box-shadow:0 30px 100px #000}.brand-mark{font-size:35px;color:var(--accent);font-weight:800}.brand-mark span{color:#fff}.gate h1{font-size:27px}.gate h1 em{color:var(--accent);font-style:normal}.gate .muted{font-size:12px}.check{display:flex;align-items:center;gap:10px;text-align:left;color:#d1ced9;font-size:11px;margin:15px 0}.check input{width:auto;accent-color:var(--accent)}.gate .primary{width:100%;margin:15px 0}.gate small{display:block;color:#777482;font-size:10px;line-height:1.6}
+@media(max-width:760px){.topbar{padding:0 5vw;height:65px}.topbar nav{gap:12px;font-size:10px}.status{display:none}.hero{padding:70px 7vw 45px;grid-template-columns:1fr}.hero-art{height:240px}.section{padding:55px 7vw}.mode-grid{grid-template-columns:1fr}.mode-card{min-height:0}.command-grid{grid-template-columns:repeat(2,1fr)}.room-controls{grid-template-columns:1fr 1fr}.room-controls button{grid-column:1/-1}.panel{padding:19px}.tabs{gap:14px;padding:0 14px}.tab{font-size:9px}.safety{margin:15px 7vw 50px;padding:22px;align-items:flex-start}footer{gap:12px;flex-wrap:wrap;padding:22px 7vw}}
+.anchor{display:block;position:relative;top:-90px;visibility:hidden}.conn-state{font:10px 'DM Mono',monospace;letter-spacing:.14em;display:inline-flex;align-items:center;gap:8px;color:var(--muted)}.conn-state:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}.conn-state.on{color:var(--green)}.conn-state.wait{color:#f0c987}.conn-state.wait:before{animation:blink 1s infinite}@keyframes blink{50%{opacity:.2}}.room-controls{grid-template-columns:1fr 1.3fr auto}.code-field{display:flex;gap:6px}.code-field input{text-transform:uppercase}.ghost{background:none;border:1px solid var(--line);color:#d8d4df;border-radius:6px;padding:0 12px;font:11px Manrope;cursor:pointer;white-space:nowrap;min-height:40px}.ghost:hover{border-color:var(--accent);color:var(--accent)}.danger-text{color:var(--red)!important}.room-bar{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;margin:18px 0 12px;padding:12px 14px;background:var(--panel2);border:1px solid var(--line);border-radius:8px}.room-id{display:flex;align-items:center;gap:10px}.room-id small{font:9px 'DM Mono';letter-spacing:.16em;color:var(--muted)}.room-id strong{font:600 15px 'DM Mono';letter-spacing:.12em}.room-id .pill{padding:4px 9px}.members{display:flex;gap:8px;flex-wrap:wrap}.member{display:inline-flex;align-items:center;gap:7px;font-size:11px;padding:5px 10px;border:1px solid var(--line);border-radius:20px;color:#d8d4df}.member i{width:7px;height:7px;border-radius:50%;background:#5d5a66}.member.online i{background:var(--green);box-shadow:0 0 8px var(--green)}.member.me{border-color:#51405f}.member.empty{border-style:dashed;color:var(--muted)}.room-actions{display:flex;gap:6px}.chat-log{height:300px}.chat-line{display:flex;flex-direction:column;gap:3px;border:0;padding:6px 0}.chat-line .meta{font-size:10px;color:var(--muted)}.chat-line .meta b{margin-right:6px}.chat-line .bubble{align-self:flex-start;max-width:82%;background:#1d1b26;border:1px solid #2c2a36;padding:8px 12px;border-radius:4px 12px 12px 12px;line-height:1.6;white-space:pre-wrap}.chat-line.mine{align-items:flex-end}.chat-line.mine .bubble{align-self:flex-end;background:#2b2238;border-color:#4a3a5c;border-radius:12px 4px 12px 12px}.chat-line.system{align-items:center;font-style:normal;color:var(--muted);font-size:11px}.chat-line.action .bubble{align-self:center;background:none;border:1px dashed #51405f;color:#e6d4f7;border-radius:8px;max-width:92%;text-align:center}.voice-panel{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin:12px 0;padding:14px 16px;background:#17151f;border:1px solid var(--line);border-radius:8px}.voice-panel strong{font-size:13px}.voice-panel .chat-note{margin:5px 0 0}.voice-actions{display:flex;gap:7px;flex-wrap:wrap}.voice-actions button{min-height:38px}#remoteAudio{display:none}@media(max-width:760px){.voice-panel{align-items:flex-start;flex-direction:column}.voice-actions{width:100%}.voice-actions button{flex:1}}.typing{height:18px;font-size:11px;color:var(--muted);font-style:italic}.quick-actions{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}.qa{background:var(--panel2);border:1px solid var(--line);color:#d8d4df;border-radius:20px;padding:7px 12px;font:11px Manrope;cursor:pointer}.qa:hover{border-color:var(--accent);color:var(--accent)}.qa:disabled,.ghost:disabled{opacity:.4;cursor:not-allowed}
+@media(max-width:760px){.room-controls{grid-template-columns:1fr}.room-bar{flex-direction:column;align-items:flex-start}.chat-log{height:260px}}
+</style>
+</head>
+<body>
+<div id="ageGate" class="gate">
+  <div class="gate-card">
+    <div class="brand-mark">N<span>•</span></div>
+    <p class="eyebrow">PRIVATE INTERACTIVE STUDIO</p>
+    <h1>欢迎来到 <em>Nightplay</em></h1>
+    <p class="muted">本原型仅面向成年人。继续前请确认你已达到所在地法定成年年龄，并同意尊重所有参与者的边界。</p>
+    <label class="check"><input id="ageCheck" type="checkbox"> 我已达到所在地法定成年年龄</label>
+    <label class="check"><input id="consentCheck" type="checkbox"> 我理解所有互动必须自愿，任何人都可以暂停或退出</label>
+    <button id="enterBtn" class="primary" disabled>进入平台</button>
+    <small>演示年龄确认不等同于正式年龄验证。正式上线必须接入合规的年龄验证服务。</small>
+  </div>
+</div>
+<header class="topbar">
+  <a class="logo" href="#"><span class="logo-icon">N</span> NIGHTPLAY</a>
+  <nav><a href="#games">体验</a><a href="#custom">Custom Text</a><a href="#room">双人房间</a></nav>
+  <span class="status"><i></i> STUDIO ONLINE</span>
+</header>
+<main>
+<section class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow">INTERACTIVE ENTERTAINMENT · 18+</p>
+    <h1>Make the story<br><em>your own.</em></h1>
+    <p class="lead">一个由你决定节奏、选择和故事走向的互动空间。创建剧情、发起挑战，或邀请另一位玩家一起参与。</p>
+    <a class="primary link-button" href="#custom">开始创建 <span>↗</span></a>
+  </div>
+  <div class="hero-art"><div class="orb orb-one"></div><div class="orb orb-two"></div><div class="art-card"><span>YOUR STORY</span><strong>01 — 03</strong><div class="art-line"></div><small>CHOOSE WHAT HAPPENS NEXT</small></div></div>
+</section>
+<section id="games" class="section">
+  <div class="section-head"><div><p class="eyebrow">EXPLORE MODES</p><h2>选择互动方式</h2></div><span class="muted">01 / 03</span></div>
+  <div class="mode-grid">
+    <article class="mode-card"><div class="mode-icon">⌘</div><p class="eyebrow">MODE A</p><h3>Game Command</h3><p>使用安全的预设指令推进场景、触发挑战，或随时暂停。</p><a href="#custom">打开模块 ↗</a></article>
+    <article class="mode-card"><div class="mode-icon">↗</div><p class="eyebrow">MODE B</p><h3>Player Message</h3><p>创建私人双人房间，与另一位参与者实时交换文字、推进剧情和选择。</p><a href="#room">进入房间 ↗</a></article>
+    <article class="mode-card"><div class="mode-icon">✳</div><p class="eyebrow">MODE C</p><h3>AI Story</h3><p>从一句设定开始，生成可协商、可修改的互动故事。</p><a href="#custom">生成故事 ↗</a></article>
+  </div>
+</section>
+<section id="custom" class="section custom-section"><span id="room" class="anchor"></span>
+  <div class="section-head"><div><p class="eyebrow">CUSTOM TEXT STUDIO</p><h2>你的文字，你的玩法</h2></div><span class="pill">A / B / C</span></div>
+  <div class="studio">
+    <div class="tabs"><button class="tab active" data-tab="command">A · 指令</button><button class="tab" data-tab="message">B · 双人房间</button><button class="tab" data-tab="story">C · AI 剧情</button></div>
+    <div class="panel active" id="panel-command">
+      <div class="panel-title"><div><p class="eyebrow">GAME COMMAND</p><h3>推进互动体验</h3></div><span class="live-dot">READY</span></div>
+      <p class="muted">选择一个预设事件。任意输入不会被当作代码或系统命令执行。</p>
+      <div class="command-grid">
+        <button class="command" data-command="next_scene"><b>→</b><strong>进入下一幕</strong><small>推进剧情</small></button>
+        <button class="command" data-command="random_challenge"><b>✳</b><strong>随机挑战</strong><small>生成轻量任务</small></button>
+        <button class="command" data-command="pause"><b>Ⅱ</b><strong>暂停</strong><small>暂时停止</small></button>
+        <button class="command danger" data-command="stop"><b>■</b><strong>停止并退出</strong><small>结束当前互动</small></button>
+      </div><div id="commandResult" class="result">等待选择游戏事件…</div>
+    </div>
+    <div class="panel" id="panel-message">
+      <div class="panel-title"><div><p class="eyebrow">PLAYER ROOM · 2 SEATS</p><h3>双人私人房间</h3></div><span id="connState" class="conn-state off">未连接</span></div>
+      <div id="lobby">
+        <p class="muted">输入昵称和房间代码，或生成一个新代码，再把邀请链接发给另一位参与者。每个房间最多两人，聊天记录保存在房间内。</p>
+        <form id="joinForm" class="room-controls">
+          <input id="nickname" maxlength="24" placeholder="你的昵称" autocomplete="nickname" required>
+          <div class="code-field"><input id="roomCode" maxlength="12" placeholder="房间代码（4–12 位字母或数字）" autocomplete="off" required><button type="button" id="randomCodeBtn" class="ghost" title="生成随机代码">↻ 随机</button></div>
+          <button id="connectBtn" class="primary" type="submit">加入 / 创建房间</button>
+        </form>
+        <p id="roomPeek" class="chat-note"></p>
+      </div>
+      <div id="roomView" hidden>
+        <div class="room-bar">
+          <div class="room-id"><small>ROOM</small><strong id="roomLabel">—</strong><span id="seatLabel" class="pill">0 / 2</span></div>
+          <div id="members" class="members"></div>
+          <div class="room-actions"><button type="button" id="copyLinkBtn" class="ghost">复制邀请链接</button><button type="button" id="disconnectBtn" class="ghost danger-text">离开房间</button></div>
+        </div>
+        <section class="voice-panel" aria-label="双人语音">
+          <div><strong>双人实时语音</strong><p id="voiceStatus" class="chat-note">语音默认关闭。双方加入房间后，可分别主动开启麦克风。</p></div>
+          <div class="voice-actions"><button type="button" id="voiceStart" class="primary">🎙 开启麦克风</button><button type="button" id="voiceMute" class="ghost" disabled>静音</button><button type="button" id="voiceHangup" class="ghost danger-text" disabled>结束语音</button></div>
+          <audio id="remoteAudio" autoplay playsinline></audio>
+        </section>
+        <div id="chatLog" class="chat-log" aria-live="polite"></div>
+        <div class="typing" id="typing"></div>
+        <div class="quick-actions">
+          <button type="button" class="qa" data-action="next_scene">→ 下一幕</button>
+          <button type="button" class="qa" data-action="challenge">✳ 随机挑战</button>
+          <button type="button" class="qa" data-action="pause">Ⅱ 请求暂停</button>
+          <button type="button" class="qa" data-action="resume">▶ 可以继续</button>
+          <button type="button" class="qa danger-text" data-action="stop">■ 结束本轮</button>
+        </div>
+        <form id="chatForm" class="send-row"><input id="chatInput" maxlength="500" placeholder="输入消息…（Enter 发送）" autocomplete="off"><button class="primary" id="sendBtn">发送</button></form>
+        <p class="chat-note">请勿分享真实身份、住址或支付信息。任何一方都可以随时暂停或离开。</p>
+      </div>
+    </div>
+    <div class="panel" id="panel-story">
+      <div class="panel-title"><div><p class="eyebrow">AI STORY GENERATOR</p><h3>从一个想法开始</h3></div><span class="pill">SAFE FICTION</span></div>
+      <label class="field-label">故事类型</label><select id="genre"><option value="mystery">悬疑探索</option><option value="adventure">冒险旅程</option><option value="romance">成年角色的浪漫故事</option><option value="comedy">轻松喜剧</option></select>
+      <label class="field-label">你的故事设定</label><textarea id="storyPrompt" maxlength="500" placeholder="例如：两位成年朋友收到一封神秘邀请，必须共同解开谜题……"></textarea>
+      <button id="generateBtn" class="primary">✳ 生成互动剧情</button>
+      <div id="storyResult" class="result story-result">生成的剧情会显示在这里。默认使用本地模板；配置 AI 服务后可启用模型生成。</div>
+    </div>
+  </div>
+</section>
+<section class="safety">
+  <div class="safety-icon">♡</div><div><p class="eyebrow">CONSENT FIRST</p><h2>边界始终优先</h2><p>所有参与者必须是成年人并明确自愿。任何人都可以拒绝、暂停、屏蔽或退出。不要分享真实身份、住址、支付信息或其他敏感资料。</p></div>
+</section>
+</main>
+<footer><span class="logo">NIGHTPLAY</span><span>Interactive Studio · Prototype v0.1</span><span>18+ · Consent · Privacy</span></footer>
+<div id="toast" class="toast"></div>
+<script>
+
+const $=s=>document.querySelector(s);
+const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2000)};
+const gate=$("#ageGate"),age=$("#ageCheck"),consent=$("#consentCheck"),enter=$("#enterBtn");
+function check(){enter.disabled=!(age.checked&&consent.checked)}
+age.onchange=consent.onchange=check;
+enter.onclick=()=>{gate.classList.add("hidden");Room.autoResume()};
+document.querySelectorAll(".tab").forEach(tab=>tab.onclick=()=>showTab(tab.dataset.tab));
+const labels={next_scene:["进入下一幕","剧情已推进到下一场景。"],random_challenge:["随机挑战","新挑战：两位参与者各提出一个故事线索，再共同选择下一步。"],pause:["暂停","互动已暂停。可以随时恢复或退出。"],stop:["停止并退出","本轮互动已结束。"]};
+document.querySelectorAll(".command").forEach(b=>b.onclick=()=>{
+ const [title,desc]=labels[b.dataset.command];
+ $("#commandResult").textContent=title+"\n"+desc+"\n演示模式：此操作仅更新本地预览，不连接外部服务。";
+ if(b.dataset.command==="stop")toast("本轮互动已结束");
+});
+// ===== 双人房间：WebSocket 客户端 =====
+const Room=(()=>{
+ const els={lobby:$("#lobby"),view:$("#roomView"),state:$("#connState"),log:$("#chatLog"),members:$("#members"),seat:$("#seatLabel"),label:$("#roomLabel"),typing:$("#typing"),input:$("#chatInput"),nick:$("#nickname"),code:$("#roomCode"),connect:$("#connectBtn"),peek:$("#roomPeek")};
+ let ws=null,room=null,me=null,want=false,lastId=0,seen=new Set(),retry=0,retryTimer=null,hb=null,typingTimer=null,joining=false;
+ const seatKey=r=>"np_seat_"+r;
+ const setState=(cls,txt)=>{els.state.className="conn-state "+cls;els.state.textContent=txt};
+ const fmt=d=>{const t=new Date(d);return t.toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"})};
+ function render(m){
+  if(seen.has(m.id))return;seen.add(m.id);lastId=Math.max(lastId,m.id);
+  const d=document.createElement("div");
+  if(m.kind==="system"){d.className="chat-line system";d.textContent=m.body+" · "+fmt(m.createdAt)}
+  else{
+   d.className="chat-line "+(m.kind==="action"?"action ":"")+(me&&m.memberId===me.id?"mine":"");
+   const meta=document.createElement("div");meta.className="meta";
+   if(m.kind!=="action"){const b=document.createElement("b");b.textContent=m.nickname;meta.appendChild(b)}
+   meta.appendChild(document.createTextNode(fmt(m.createdAt)));
+   const bub=document.createElement("div");bub.className="bubble";bub.textContent=m.body;
+   d.append(meta,bub);
+  }
+  const atBottom=els.log.scrollHeight-els.log.scrollTop-els.log.clientHeight<60;
+  els.log.appendChild(d);
+  if(atBottom||(me&&m.memberId===me.id))els.log.scrollTop=els.log.scrollHeight;
+ }
+ function note(t){const d=document.createElement("div");d.className="chat-line system";d.textContent=t;els.log.appendChild(d);els.log.scrollTop=els.log.scrollHeight}
+ function renderMembers(list,seats){
+  els.members.innerHTML="";
+  list.forEach(p=>{const s=document.createElement("span");s.className="member"+(p.online?" online":"")+(me&&p.id===me.id?" me":"");const i=document.createElement("i");s.append(i,document.createTextNode(p.nickname+(me&&p.id===me.id?"（你）":"")+(p.online?"":" · 离线")));els.members.appendChild(s)});
+  for(let k=list.length;k<seats;k++){const s=document.createElement("span");s.className="member empty";s.textContent="等待另一位参与者…";els.members.appendChild(s)}
+  els.seat.textContent=list.length+" / "+seats;
+ }
+ function showRoom(on){els.lobby.hidden=on;els.view.hidden=!on}
+ function socketUrl(){return (location.protocol==="https:"?"wss://":"ws://")+location.host+"/ws"}
+ function open(){
+  if(ws&&(ws.readyState===0||ws.readyState===1))return;
+  setState("wait",retry?"重连中…":"连接中…");
+  ws=new WebSocket(socketUrl());
+  ws.onopen=()=>{retry=0;if(want&&room)sendJoin()};
+  ws.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return}handle(m)};
+  ws.onclose=()=>{clearInterval(hb);hb=null;if(!want){setState("off","未连接");return}
+   setState("wait","重连中…");const delay=Math.min(15000,1000*2**retry)+Math.random()*500;retry++;clearTimeout(retryTimer);retryTimer=setTimeout(open,delay)};
+  ws.onerror=()=>{};
+ }
+ const out=o=>{if(ws&&ws.readyState===1){ws.send(JSON.stringify(o));return true}return false};
+ function sendJoin(){joining=true;out({type:"join",room,nickname:els.nick.value.trim(),token:localStorage.getItem(seatKey(room)),lastId})}
+ function handle(m){
+  if(m.type==="joined"){
+   joining=false;const fresh=!m.resumed||!me||me.id!==m.you.id;
+   if(fresh){els.log.innerHTML="";seen=new Set();lastId=0}
+   me=m.you;room=m.room;localStorage.setItem(seatKey(room),m.token);localStorage.setItem("np_nick",me.nickname);
+   els.label.textContent=room;showRoom(true);setState("on","已连接");
+   const u=new URL(location.href);u.searchParams.set("room",room);u.hash="room";history.replaceState(null,"",u);
+   if(fresh&&!m.history.length)note("房间已就绪。把邀请链接发给另一位参与者吧。");
+   m.history.forEach(render);renderMembers(m.members,m.seats);window.__npOtherMemberId=(m.members||[]).find(x=>x.id!==me.id)?.id||"";
+   clearInterval(hb);hb=setInterval(()=>out({type:"ping",lastId}),20000);
+   els.input.focus({preventScroll:true});
+  }else if(m.type==="message"){render(m.message)}
+  else if(m.type==="presence"){renderMembers(m.members,m.seats)}
+  else if(m.type==="pong"){(m.missed||[]).forEach(render);if(m.members)renderMembers(m.members,m.seats)}
+  else if(m.type==="typing"){els.typing.textContent=m.nickname+" 正在输入…";clearTimeout(typingTimer);typingTimer=setTimeout(()=>els.typing.textContent="",2500)}
+  else if(m.type==="left"){reset("已离开房间")}
+  else if(m.type==="error"){
+   if(["room_full","seat_lost","bad_room","bad_nickname"].includes(m.code)){
+    if(m.code==="seat_lost"&&room)localStorage.removeItem(seatKey(room));
+    if(m.code==="room_full"&&room)localStorage.removeItem(seatKey(room));
+    reset();
+   }
+   toast(m.message||"出错了");
+  }
+ }
+ function reset(msg){closeVoice(false);want=false;joining=false;clearInterval(hb);hb=null;clearTimeout(retryTimer);me=null;showRoom(false);els.connect.disabled=false;if(ws){ws.onclose=null;try{ws.close()}catch{}ws=null}setState("off","未连接");if(msg)toast(msg);const u=new URL(location.href);u.searchParams.delete("room");history.replaceState(null,"",u)}
+ function join(){
+  const nick=els.nick.value.trim(),code=els.code.value.trim().toUpperCase();
+  if(!nick){toast("请先填写昵称");els.nick.focus();return}
+  if(!/^[A-Z0-9]{4,12}$/.test(code)){toast("房间代码需为 4–12 位字母或数字");els.code.focus();return}
+  els.code.value=code;if(room!==code){lastId=0;seen=new Set();me=null}
+  room=code;want=true;els.connect.disabled=true;setTimeout(()=>els.connect.disabled=false,1500);
+  if(ws&&ws.readyState===1)sendJoin();else open();
+ }
+ function leave(){closeVoice(true);if(!out({type:"leave"})){if(room)localStorage.removeItem(seatKey(room));reset("已离开房间")}else if(room)localStorage.removeItem(seatKey(room))}
+ function randomCode(){const a="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";const r=crypto.getRandomValues(new Uint8Array(6));r.forEach(x=>s+=a[x%a.length]);els.code.value=s;peek()}
+ let peekTimer;function peek(){clearTimeout(peekTimer);const c=els.code.value.trim().toUpperCase();if(!/^[A-Z0-9]{4,12}$/.test(c)){els.peek.textContent="";return}
+  peekTimer=setTimeout(()=>fetch("/api/rooms/"+c).then(r=>r.ok?r.json():null).then(d=>{if(!d)return;els.peek.textContent=d.taken===0?"房间 "+c+" 空闲，加入后即创建。":d.full?"房间 "+c+" 已满（2/2）。如果你之前在这个房间，可直接重新加入。":"房间 "+c+" 有 1 位参与者在等你。"}).catch(()=>{}),350)}
+ // ===== 双人 WebRTC 语音：默认关闭，必须双方主动授权 =====
+ let pc=null,localStream=null,voiceReady=false,remoteReady=false,muted=false,pendingIce=[];
+ const voiceStatus=$("#voiceStatus"),voiceStart=$("#voiceStart"),voiceMute=$("#voiceMute"),voiceHangup=$("#voiceHangup"),remoteAudio=$("#remoteAudio");
+ const voiceSend=signal=>out({type:"voice-signal",signal});
+ function voiceUi(text,active=false){voiceStatus.textContent=text;voiceStart.disabled=active;voiceMute.disabled=!active;voiceHangup.disabled=!active;voiceMute.textContent=muted?"取消静音":"静音"}
+ function closeVoice(notify=false){voiceReady=false;remoteReady=false;muted=false;pendingIce=[];if(notify)voiceSend({kind:"hangup"});if(pc){pc.ontrack=null;pc.onicecandidate=null;pc.onconnectionstatechange=null;pc.close();pc=null}if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null}remoteAudio.srcObject=null;voiceUi("语音已关闭。需要通话时，请重新点击开启麦克风。")}
+ function makePeer(){if(pc)return pc;pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]});pc.onicecandidate=e=>{if(e.candidate)voiceSend({kind:"ice",candidate:e.candidate})};pc.ontrack=e=>{remoteAudio.srcObject=e.streams[0];remoteAudio.play().catch(()=>voiceUi("已连接。若听不到声音，请点按页面并检查媒体音量。",true))};pc.onconnectionstatechange=()=>{if(!pc)return;if(pc.connectionState==="connected")voiceUi("语音已连接，可以开始交谈。",true);else if(["failed","disconnected"].includes(pc.connectionState))voiceUi("语音连接不稳定/失败。可重新开启；部分网络需要配置 TURN。",!!localStream)};if(localStream)localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));return pc}
+ async function startVoice(){if(!me||!ws||ws.readyState!==1){toast("请先加入房间并连接成功");return}if(!navigator.mediaDevices?.getUserMedia){toast("当前浏览器不支持麦克风，或页面不是 HTTPS");return}voiceStart.disabled=true;voiceUi("正在申请麦克风权限…");try{localStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});voiceReady=true;makePeer();voiceUi("麦克风已开启，等待另一位参与者开启语音…",true);voiceSend({kind:"ready"});if(remoteReady)await createOffer()}catch(e){voiceStart.disabled=false;voiceUi(e?.name==="NotAllowedError"?"麦克风权限被拒绝。请在浏览器网站设置中允许麦克风。":"无法访问麦克风："+(e?.message||"未知错误"));toast("无法开启麦克风")}}
+ async function createOffer(){if(!voiceReady||!remoteReady||!me||!pc)return;const peers=[...document.querySelectorAll("#members .member")];const myId=me.id;const otherId=(window.__npOtherMemberId||"");if(otherId&&myId.localeCompare(otherId)>0)return;try{const offer=await pc.createOffer();await pc.setLocalDescription(offer);voiceSend({kind:"offer",description:pc.localDescription})}catch(e){voiceUi("无法建立语音连接："+(e.message||"未知错误"),true)}}
+ async function onVoiceSignal(signal){try{if(signal.kind==="ready"){remoteReady=true;if(voiceReady){makePeer();await createOffer()}else voiceUi("对方已准备语音。点击“开启麦克风”即可加入。");return}if(signal.kind==="hangup"){closeVoice(false);voiceUi("对方结束了语音。");return}if(signal.kind==="offer"){if(!voiceReady)return;const peer=makePeer();await peer.setRemoteDescription(signal.description);for(const c of pendingIce.splice(0))await peer.addIceCandidate(c);const answer=await peer.createAnswer();await peer.setLocalDescription(answer);voiceSend({kind:"answer",description:peer.localDescription});return}if(signal.kind==="answer"&&pc){await pc.setRemoteDescription(signal.description);for(const c of pendingIce.splice(0))await pc.addIceCandidate(c);return}if(signal.kind==="ice"&&pc&&signal.candidate){if(pc.remoteDescription)await pc.addIceCandidate(signal.candidate);else pendingIce.push(signal.candidate)}}catch(e){voiceUi("语音协商失败："+(e.message||"请重试"),!!localStream)}}
+ voiceStart.onclick=startVoice;voiceMute.onclick=()=>{if(!localStream)return;muted=!muted;localStream.getAudioTracks().forEach(t=>t.enabled=!muted);voiceMute.textContent=muted?"取消静音":"静音"};voiceHangup.onclick=()=>closeVoice(true);
+ window.addEventListener("pagehide",()=>closeVoice(true));
+ // 绑定事件
+ $("#joinForm").onsubmit=e=>{e.preventDefault();join()};
+ $("#randomCodeBtn").onclick=randomCode;
+ els.code.oninput=peek;
+ $("#disconnectBtn").onclick=leave;
+ $("#copyLinkBtn").onclick=()=>{const u=new URL(location.origin+location.pathname);u.searchParams.set("room",room);u.hash="room";const t=u.toString();(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("邀请链接已复制"),()=>{prompt("复制邀请链接：",t)})};
+ $("#chatForm").onsubmit=e=>{e.preventDefault();const v=els.input.value.trim();if(!v)return;if(!me){toast("尚未连接");return}if(out({type:"chat",text:v}))els.input.value="";else toast("连接中断，正在重连…")};
+ els.input.oninput=()=>{if(me&&els.input.value)out({type:"typing"})};
+ document.querySelectorAll(".qa").forEach(b=>b.onclick=()=>{if(!me)return;if(b.dataset.action==="stop"&&!confirm("确定结束本轮互动吗？"))return;if(!out({type:"action",action:b.dataset.action}))toast("连接中断，正在重连…")});
+ document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&want&&(!ws||ws.readyState>1)){retry=0;clearTimeout(retryTimer);open()}});
+ window.addEventListener("online",()=>{if(want&&(!ws||ws.readyState>1)){retry=0;clearTimeout(retryTimer);open()}});
+ // 初始化：昵称、邀请链接
+ els.nick.value=localStorage.getItem("np_nick")||"";
+ const q=new URLSearchParams(location.search).get("room");
+ if(q&&/^[A-Za-z0-9]{4,12}$/.test(q)){els.code.value=q.toUpperCase();peek()}else randomCode();
+ return {join,hasInvite:!!q,autoResume:()=>{const c=els.code.value;if(q&&els.nick.value&&localStorage.getItem(seatKey(c)))join()}};
+})();
+function showTab(name){document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x.dataset.tab===name));document.querySelectorAll(".panel").forEach(x=>x.classList.toggle("active",x.id==="panel-"+name))}
+function openRoomTab(){showTab("message");$("#room").scrollIntoView({behavior:"smooth"})}
+document.querySelectorAll('a[href="#room"]').forEach(a=>a.addEventListener("click",e=>{e.preventDefault();history.replaceState(null,"",location.pathname+location.search+"#room");openRoomTab()}));
+if(location.hash==="#room"||Room.hasInvite)setTimeout(openRoomTab,50);
+$("#generateBtn").onclick=()=>{
+ let p=$("#storyPrompt").value.trim();if(!p){toast("请先输入故事设定");return}
+ $("#storyResult").textContent="故事提示：两位成年角色收到一份神秘邀请，需要共同探索线索并协商下一步。\n\n你的设定："+p+"\n\n请选择：继续、修改设定、暂停，或结束本轮。此为本地模板演示。";
+};
+
+</script>
+</body></html>

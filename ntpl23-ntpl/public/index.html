@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#09090d">
+<title>Nightplay — Interactive Studio</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="logo" href="/"><span class="logo-icon">N</span> NIGHTPLAY</a>
+  <nav><button type="button" data-open-modal="match">开始匹配</button><button type="button" data-open-modal="join">加入房间</button><button type="button" id="publicRoomNavBtn">发布房间</button><button type="button" id="watchDirectoryBtn">观战大厅</button><button type="button" data-open-modal="friends">好友</button></nav>
+  <span class="status"><i></i> 双人空间</span>
+  <span class="online-counter" aria-live="polite"><i></i><span>在线</span><strong id="onlineCount">--</strong></span>
+</header>
+<main>
+  <div id="lobby" class="home-shell">
+    <section class="hero compact-hero">
+      <div class="hero-copy">
+        <p class="eyebrow">NIGHTPLAY · 18+</p>
+        <h1>寻找搭档<br><em>开启双人互动。</em></h1>
+        <p class="lead">选择你的匹配偏好，寻找合适的双人搭档。匹配成功后即可聊天、语音，并体验同步节拍挑战。</p>
+        <button class="primary link-button" type="button" data-open-modal="match">立即开始匹配 <span>↗</span></button>
+      </div>
+      <div class="hero-art"><div class="orb orb-one"></div><div class="orb orb-two"></div><div class="art-card"><span>NIGHTPLAY CHALLENGE</span><strong>2 PLAYERS</strong><div class="art-line"></div><small>CHAT · RHYTHM · CONSENT</small></div></div>
+    </section>
+    <section class="quick-actions" aria-label="快速进入功能">
+      <button class="quick-action quick-match" type="button" data-open-modal="match"><span class="quick-icon">♡</span><span><strong>开始匹配</strong><small>按性别、角色和语音偏好寻找搭档</small></span></button>
+      <button class="quick-action" type="button" data-open-modal="join"><span class="quick-icon">↗</span><span><strong>邀请 / 加入</strong><small>使用房间码快速进入</small></span></button>
+<button class="quick-action" type="button" data-open-modal="history"><span class="quick-icon">▤</span><span><strong>对局历史</strong><small>查看最近的双人记录</small></span></button>
+      <button class="quick-action" type="button" data-open-modal="friends"><span class="quick-icon">♧</span><span><strong>好友</strong><small>添加好友、私信和邀请对局</small></span></button>
+    </section>
+<section id="publicPanel" class="public-home-section" aria-labelledby="publicHomeTitle">
+          <div class="public-home-intro"><div><p class="eyebrow">PUBLIC ROOMS · FIND YOUR PARTNER</p><h2 id="publicHomeTitle">公开房间大厅</h2><p>发布你的房间，设置醒目的名称，让其他玩家一眼找到你。陌生玩家可以直接加入，房间满员后自动关闭招募。</p></div><span class="public-home-mark">OPEN<br>ROOM</span></div>
+          <div class="public-room-create"><label>你的昵称<input id="publicRoomNickname" maxlength="24" placeholder="输入聊天昵称" autocomplete="nickname"></label>
+            <label>自定义房间名称<input id="publicRoomName" maxlength="20" placeholder="例如：S来求调" autocomplete="off"></label>
+            <label>你希望担任的角色<select id="publicRoomRole"><option value="controller">控制方（S）</option><option value="receiver">受控方（M）</option></select></label>
+            <label>房间有效期（5–120 分钟）<input id="publicRoomLifetime" type="number" min="5" max="120" step="1" value="30" inputmode="numeric"></label>
+            <button id="publicRoomPublishBtn" type="button" class="primary">发布房间</button>
+          </div>
+          <div class="public-room-heading"><h3>正在招募的房间</h3><button id="publicRoomRefreshBtn" type="button" class="ghost">刷新列表</button></div>
+          <div id="publicRoomList" class="public-room-list" aria-live="polite">正在加载公开房间…</div>
+        </section>
+    <section id="watchDirectory" class="watch-directory featured-watch-directory" aria-labelledby="watchDirectoryTitle">
+      <div class="watch-directory-head"><div><p class="eyebrow">LIVE ROOMS · SPECTATOR</p><h2 id="watchDirectoryTitle">观战大厅</h2><p class="chat-note">浏览正在开放观战的双人房间。只有双方玩家都主动同意，房间才会出现在这里。</p></div><button id="watchRefreshBtn" type="button" class="primary">刷新房间</button></div>
+      <div id="watchDirectoryList" class="watch-directory-list" aria-live="polite">正在加载可观战房间…</div>
+    </section>
+    <section class="announcement" aria-labelledby="announcementTitle"><p class="eyebrow">PLATFORM NOTICE · 18+</p><h2 id="announcementTitle">平台公告与免责声明</h2><p>Nightplay 仅供年满 18 周岁的成年人自愿使用。平台不保证其他用户身份、陈述或行为的真实性。请勿分享真实姓名、住址、财务资料等敏感信息。任何互动均需双方明确自愿，任何一方都可以随时暂停、结束或离开。用户应遵守所在地法律法规，并对自己的言论与行为负责。</p></section>
+    <div id="actionModal" class="modal" hidden>
+      <div class="modal-backdrop" data-close-modal></div>
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-head"><div><p class="eyebrow">NIGHTPLAY · PRIVATE ROOM</p><h2 id="modalTitle">开始你的双人体验</h2></div><button type="button" class="modal-close" aria-label="关闭" data-close-modal>×</button></div>
+        <label class="field-label">你的昵称<input id="nickname" maxlength="24" placeholder="输入聊天昵称" autocomplete="nickname" required></label>
+        <div class="modal-tabs"><button type="button" class="modal-tab active" data-modal-tab="match">偏好匹配</button><button type="button" class="modal-tab" data-modal-tab="join">邀请 / 加入</button><button type="button" class="modal-tab" data-modal-tab="history">对局历史</button><button type="button" class="modal-tab" data-modal-tab="friends">好友</button></div>
+        <section id="matchPanel" class="modal-panel">
+          <p class="muted">设置你的性别、希望匹配的对象和挑战角色。只有双方偏好互相符合时才会配对。</p>
+          <div class="match-grid">
+            <label>你的性别<select id="matchGender"><option value="male">男性</option><option value="female">女性</option><option value="other">其他 / 不便透露</option></select></label>
+            <label>希望匹配的性别<select id="matchPreference"><option value="female">女性</option><option value="male">男性</option><option value="any">不限</option></select></label>
+            <label>希望自己担任的角色<select id="matchRole"><option value="controller">控制方（S）</option><option value="receiver">受控方（M）</option><option value="any" selected>不限（自动分配）</option></select></label><label>语音偏好<select id="matchVoicePreference"><option value="any">不限</option><option value="off">双方都不开麦</option><option value="both">双方都开麦</option><option value="self">我开麦，对方不开</option><option value="peer">对方开麦，我不开</option></select></label>
+          </div>
+          <div class="match-actions"><button id="matchStartBtn" type="button" class="primary">开始匹配</button><button id="matchCancelBtn" type="button" class="ghost" disabled>取消匹配</button></div>
+          <p id="matchStatus" class="chat-note" aria-live="polite">尚未开始匹配</p>
+        </section>
+        <section id="joinPanel" class="modal-panel" hidden>
+          <p class="muted">输入对方分享的房间代码，或生成新房间后复制邀请链接。两位参与者需分别选择不同的挑战角色。</p>
+          <form id="joinForm" class="room-controls">
+            <div class="code-field"><input id="roomCode" maxlength="12" placeholder="房间代码（4–12 位字母或数字）" autocomplete="off" required><button type="button" id="randomCodeBtn" class="ghost" title="生成随机代码">↻ 随机</button></div>
+            <label class="role-picker">进入房间后担任<select id="roomRole"><option value="controller">控制方</option><option value="receiver">受控方</option><option value="any">由系统自动分配</option></select></label>
+            <label style="grid-column:1/-1">新建房间有效期（5–120 分钟）<input id="roomLifetime" type="number" min="5" max="120" step="1" value="30" inputmode="numeric"><small class="chat-note">仅创建新房间时生效，加入已有房间不会改变有效期。</small></label>
+            <button id="connectBtn" class="primary" type="submit">加入 / 创建房间</button>
+          </form>
+          <p id="roomPeek" class="chat-note"></p>
+          <button id="watchJoinBtn" type="button" class="ghost">以观战身份加入（需双方允许）</button>
+        </section>
+        <section id="historyPanel" class="modal-panel" hidden>
+          <p class="muted">使用本设备的随机游客 ID 保存最近 30 条对局记录，无需注册。记录会在你主动离开房间或结束对局时生成。</p>
+          <div id="historyList" class="result" aria-live="polite">正在读取对局历史…</div>
+          <div class="match-actions"><button id="historyRefresh" type="button" class="ghost">刷新记录</button></div>
+        </section>
+        <section id="friendsPanel" class="modal-panel" hidden>
+          <div class="friend-profile">
+            <div><small>我的好友码</small><strong id="myFriendCode">加载中…</strong></div>
+            <button type="button" id="copyFriendCode" class="ghost">复制好友码</button>
+          </div>
+          <label class="friend-visibility"><input type="checkbox" id="onlineVisibility" checked> 向好友公开我的在线状态</label>
+          <div class="friend-add-row"><input id="friendCodeInput" maxlength="8" placeholder="输入对方 8 位好友码" autocomplete="off"><button type="button" id="addFriendBtn" class="primary">发送申请</button></div>
+          <section class="friend-subsection"><h3>好友申请 <span id="incomingCount">0</span></h3><div id="incomingRequests" class="friend-list">暂无新的好友申请。</div><div id="outgoingRequests" class="friend-muted"></div></section>
+          <section class="friend-subsection"><h3>我的好友</h3><div id="friendsList" class="friend-list">正在读取好友…</div></section>
+          <section id="dmSection" class="dm-section" hidden>
+            <div class="dm-heading"><div><small>好友私信</small><strong id="dmFriendName">—</strong></div><button type="button" id="dmClose" class="ghost">返回好友列表</button></div>
+            <div id="dmLog" class="dm-log" aria-live="polite"></div>
+            <form id="dmForm" class="dm-send-row"><input id="dmInput" maxlength="1000" placeholder="给好友发送私信…" autocomplete="off"><button type="submit" class="primary">发送</button></form>
+            <button type="button" id="dmInvite" class="ghost dm-invite">邀请好友进行双人对局</button>
+          </section>
+          <div class="match-actions"><button id="friendsRefresh" type="button" class="ghost">刷新好友</button></div>
+        </section>
+      </section>
+    </div>
+  </div>
+  <section id="matchingScreen" hidden aria-live="polite" aria-label="匹配等待页面">
+    <div class="matching-card">
+      <p class="matching-eyebrow">NIGHTPLAY · MATCHMAKING</p>
+      <div class="matching-orbit" aria-hidden="true">♡</div>
+      <h2>正在寻找搭档</h2>
+      <p class="matching-subtitle">正在寻找符合你偏好的玩家，请稍候…</p>
+      <div class="matching-time-label">本次等待时间</div>
+      <div id="matchingElapsed" class="matching-time" role="timer">00:00</div>
+      <div class="matching-detail">
+        <strong>本次匹配条件</strong>
+        <div class="matching-preferences"><span id="matchingGender">性别：—</span><span id="matchingPreference">匹配对象：—</span><span id="matchingRole">角色：—</span><span id="matchingVoice">语音：—</span></div>
+      </div>
+      <p id="matchingStatus" class="matching-status">正在连接匹配服务…</p>
+      <button id="matchingCancelBtn" type="button" class="matching-cancel">取消匹配</button>
+    </div>
+  </section>
+  <div id="roomView" hidden>
+  <div class="room-shell">
+    <div class="room-bar">
+      <div class="room-id"><small>ROOM</small><strong id="roomLabel">—</strong><span id="seatLabel" class="pill">0 / 2</span></div>
+      <div id="members" class="members"></div>
+      <div class="room-actions"><span id="watcherCount" class="pill">旁观 0</span><button type="button" id="watchConsentBtn" class="ghost" disabled>允许观战</button><button type="button" id="copyLinkBtn" class="ghost">复制邀请链接</button><a id="disconnectBtn" class="ghost danger-text" href="/" aria-label="离开房间并返回主页">离开房间</a></div>
+      <p id="watchStatus" class="chat-note" aria-live="polite">双方都允许后，其他人才能旁观。</p>
+    </div>
+    <section id="challenge" class="metronome-card" aria-label="寸止挑战">
+      <div class="metro-summary">
+          <span class="metro-summary-icon">◉</span>
+          <span class="metro-summary-copy"><strong>寸止挑战</strong><small>控制方调整节奏 · 受控方可随时紧急停止</small></span>
+          <span class="metro-summary-readout"><b id="metroSummaryBpm">80</b><small>BPM</small></span>
+          <span id="metroStatus" class="pill">尚未开始</span><span class="metro-chevron">⌄</span>
+        </div>
+        <div class="metro-content">
+          <div id="metroLivePanel">
+          <div class="quick-phrase-wrap"><div class="quick-phrase-head"><strong id="quickPhraseRole">角色快捷语</strong><span>点击即可发送</span></div><div id="quickPhrases" class="quick-phrases" aria-label="角色聊天快捷语"></div><div id="quickPhraseDisplay" class="quick-phrase-display" aria-live="polite">快捷语发送后会在这里同步显示</div></div>
+          <div class="beat-display"><div id="beatPulse" class="beat-pulse"><span id="beatNumber">—</span></div><div class="beat-readout"><strong><span id="bpmValue">80</span> <small>BPM</small></strong><span id="intensityText">力度 3 / 5</span></div></div>
+          <div class="metro-extra-controls"><label>挑战模式<select id="metroMode"><option value="steady">固定节奏</option><option value="random">随机变速</option></select></label><label>挑战难度<select id="metroDifficulty"><option value="easy">轻松</option><option value="normal" selected>标准</option><option value="hard">进阶</option></select></label><label>挑战时长<select id="metroDuration"><option value="1">1 分钟</option><option value="3">3 分钟</option><option value="5" selected>5 分钟</option><option value="10">10 分钟</option><option value="15">15 分钟</option></select></label><span class="metro-countdown">剩余 <b id="metroCountdown">05:00</b></span><span class="metro-countdown">已寸止 <b id="metroHoldCountLive">0</b> 次</span></div>
+          <div class="metro-cues"><button type="button" id="metroSlow" class="ghost">慢拍 55</button><button type="button" id="metroNormal" class="ghost">均速 75</button><button type="button" id="metroFast" class="ghost">快拍 110</button><button type="button" id="metroHold" class="ghost danger-text">寸止</button><button type="button" id="metroResume" class="ghost">恢复节奏</button></div>
+          <div class="metro-controls">
+            <div class="metro-control"><div class="control-title"><label for="bpmRange">节奏速度</label><strong><span id="bpmLabel">80</span> BPM</strong></div><input id="bpmRange" type="range" min="40" max="220" step="1" value="80"><div class="range-ends"><span>慢 40</span><span>快 220</span></div></div>
+            <div class="metro-control"><div class="control-title"><label for="intensityRange">节拍力度</label><strong><span id="intensityLabel">3</span> / 5</strong></div><input id="intensityRange" type="range" min="1" max="5" step="1" value="3"><div class="range-ends"><span>轻柔</span><span>强烈</span></div></div>
+          </div>
+          <div class="metro-actions"><button id="metroStart" class="primary" type="button">▶ 开始挑战</button><button id="metroPause" class="ghost" type="button" disabled>Ⅱ 暂停</button><button id="metroStop" class="ghost danger-text" type="button" disabled>■ 结束挑战</button><button id="metroEmergency" class="ghost danger-text" type="button" disabled>紧急停止</button></div>
+          <p id="roleStatus" class="chat-note" aria-live="polite">进入房间后显示你的挑战角色。</p>
+
+          <p class="chat-note">力度只影响节拍提示音量与视觉脉冲。请双方先确认规则；任何一方不适或不愿继续时立即暂停。</p>
+          </div>
+        <div id="metroEndScreen" class="metro-end-screen" hidden>
+          <div class="metro-end-mark">✓</div>
+          <p class="eyebrow">CHALLENGE COMPLETE</p>
+          <h3>本轮挑战结束</h3>
+          <div class="metro-end-stats">
+            <div><strong id="metroEndDuration">00:00</strong><span>有效挑战时长</span></div>
+            <div><strong id="metroEndHoldCount">0</strong><span>寸止次数</span></div>
+          </div>
+          <p id="metroEndReason" class="chat-note">本轮挑战已结束，结果已记录。</p>
+          <button type="button" id="metroAddFriendBtn" class="ghost" hidden>添加对方为好友</button>
+          <button type="button" id="metroRestartBtn" class="primary">再来一轮</button>
+          <a id="metroHomeBtn" class="ghost" href="/" aria-label="回到主页">回到主页</a>
+        </div>
+      </div>
+    </section>
+    <section class="chat-panel">
+      <div class="panel-title"><div><p class="eyebrow">PRIVATE LIVE ROOM</p><h2>双人聊天</h2></div><span id="connState" class="conn-state off">未连接</span></div>
+      <div class="voice-panel" aria-label="双人实时语音">
+        <div class="voice-copy"><div class="voice-heading"><strong>🎙 实时语音</strong><span id="voiceStatus" class="voice-status" aria-live="polite">语音未开启 · 双方需分别授权</span></div></div>
+        <div class="voice-actions"><button type="button" id="voiceStartBtn" class="primary" disabled>开启麦克风</button><button type="button" id="voiceMuteBtn" class="ghost" disabled>静音</button><button type="button" id="voiceHangupBtn" class="ghost danger-text" disabled>结束语音</button><button type="button" id="voiceListenBtn" class="ghost" hidden>播放对方声音</button></div>
+        <p class="chat-note">语音保护：仅在支持中文设备端识别的浏览器中开放麦克风；识别在本机完成，不上传录音、不保存完整转写。语音上行增加约 1.6 秒缓冲，但识别可能延迟或漏检，不能保证绝对防泄漏。</p>
+        <audio id="remoteAudio" autoplay playsinline></audio>
+      </div>
+      <div id="chatLog" class="chat-log" aria-live="polite"></div>
+      <div class="typing" id="typing"></div>
+      <form id="chatForm" class="send-row"><input id="chatInput" maxlength="500" placeholder="输入消息…（Enter 发送）" autocomplete="off"><button class="primary" id="sendBtn">发送</button></form>
+      <p class="chat-note">双方自愿参与；任何一方都可以随时静音、暂停或离开。</p>
+    </section>
+  </div>
+</div>
+</main>
+<footer><span class="logo">NIGHTPLAY</span><span>Private two-player experience</span><span>18+ · Consent · Privacy</span></footer>
+<div id="toast" class="toast"></div>
+<script src="/app.js" defer></script>
+</body></html>

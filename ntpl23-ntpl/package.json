@@ -1,0 +1,20 @@
+{
+  "name": "nightplay-cloudflare",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "npm run typecheck && wrangler d1 migrations apply nightplay-db --remote && wrangler deploy",
+    "db:local": "wrangler d1 migrations apply nightplay-db --local",
+    "db:remote": "wrangler d1 migrations apply nightplay-db --remote",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-sqlite --experimental-strip-types --test tests/*.test.mjs",
+    "check": "npm run typecheck && npm test && npm run build",
+    "build": "wrangler deploy --dry-run"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261120.1",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.45.0"
+  }
+}
