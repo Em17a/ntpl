@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "nightplay",
+  "name": "ntpl",
   "main": "src/index.ts",
   "compatibility_date": "2026-11-20",
   "compatibility_flags": ["nodejs_compat"],
@@ -18,6 +18,6 @@
     { "tag": "v1", "new_sqlite_classes": ["NightplayRoom"] }
   ],
   "d1_databases": [
-    { "binding": "DB", "database_name": "nightplay-db", "database_id": "在Cloudflare创建D1后替换为实际ID" }
+    { "binding": "DB", "database_name": "nightplay-db", "database_id": "2b9b9f97-46de-4d53-b944-4294f5aa5265" }
   ]
 }

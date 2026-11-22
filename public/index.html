@@ -4,500 +4,178 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#09090d">
 <title>Nightplay — Interactive Studio</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
-:root{--bg:#09090d;--panel:#121219;--panel2:#191922;--line:#292934;--text:#f2f0f5;--muted:#9997a5;--accent:#d5a6ff;--accent2:#a77ce0;--green:#87d9b2;--red:#f08b9a}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:Manrope,system-ui,sans-serif}a{color:inherit;text-decoration:none}.topbar{height:76px;padding:0 7vw;border-bottom:1px solid #ffffff10;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#09090de8;backdrop-filter:blur(16px);z-index:5}.logo{font-weight:800;letter-spacing:.16em;font-size:13px;display:flex;align-items:center;gap:10px}.logo-icon{width:27px;height:27px;border:1px solid var(--accent);color:var(--accent);display:grid;place-items:center;border-radius:8px;font-size:14px}.topbar nav{display:flex;gap:32px;color:#c4c1cc;font-size:12px}.topbar nav a:hover,.mode-card a:hover{color:var(--accent)}.status,.eyebrow,.pill,.live-dot{font:10px 'DM Mono',monospace;letter-spacing:.14em}.status{color:var(--green)}.status i,.live-dot:before{display:inline-block;width:6px;height:6px;background:var(--green);border-radius:50%;margin-right:8px}.hero{min-height:540px;padding:100px 10vw 80px;display:grid;grid-template-columns:1.1fr .9fr;align-items:center;overflow:hidden;background:radial-gradient(ellipse at 75% 45%,#4d326329,transparent 42%)}.eyebrow{color:var(--accent);margin:0 0 15px}.hero h1{font-size:clamp(48px,6vw,82px);line-height:1.03;letter-spacing:-.06em;margin:0;font-weight:700}.hero h1 em{font-style:normal;color:var(--accent)}.lead{color:var(--muted);line-height:1.9;max-width:490px;font-size:14px;margin:25px 0 30px}.primary{border:0;background:var(--accent);color:#17111d;padding:13px 20px;border-radius:6px;font-weight:800;cursor:pointer;font-family:inherit}.primary:hover{background:#e4c6ff;transform:translateY(-1px)}.primary:disabled{opacity:.4;cursor:not-allowed;transform:none}.link-button{display:inline-flex;gap:32px;align-items:center;font-size:12px}.hero-art{height:340px;position:relative;display:grid;place-items:center}.orb{position:absolute;border-radius:50%;filter:blur(1px)}.orb-one{width:270px;height:270px;background:radial-gradient(circle at 35% 30%,#e2c0ff88,#8051b722 55%,transparent 72%);box-shadow:0 0 100px #a66ee833}.orb-two{width:180px;height:180px;border:1px solid #d5a6ff66;transform:rotate(35deg) skew(8deg);border-radius:42%}.art-card{position:relative;width:245px;height:155px;padding:24px;background:linear-gradient(135deg,#24202d,#111117);border:1px solid #ffffff26;border-radius:12px;box-shadow:0 30px 80px #0009;transform:rotate(-7deg);display:flex;flex-direction:column;justify-content:space-between}.art-card span,.art-card small{font:9px 'DM Mono';letter-spacing:.16em;color:var(--muted)}.art-card strong{font-size:32px;letter-spacing:-.05em}.art-line{height:2px;background:linear-gradient(90deg,var(--accent),transparent)}.section{padding:76px 10vw}.section-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:28px}.section h2,.safety h2{font-size:30px;letter-spacing:-.04em;margin:0}.muted{color:var(--muted);font-size:12px;line-height:1.7}.mode-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.mode-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:25px;min-height:245px;transition:.2s}.mode-card:hover{border-color:#8f6bb5;transform:translateY(-3px)}.mode-icon{font-size:25px;color:var(--accent);margin-bottom:20px}.mode-card h3{margin:0 0 10px;font-size:19px}.mode-card p:not(.eyebrow){color:var(--muted);font-size:12px;line-height:1.8;min-height:48px}.mode-card a{display:inline-block;margin-top:14px;font-size:11px;color:var(--accent)}.custom-section{background:#0d0d13}.pill{border:1px solid #51405f;color:var(--accent);border-radius:30px;padding:8px 12px}.studio{border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}.tabs{display:flex;border-bottom:1px solid var(--line);padding:0 22px;gap:25px}.tab{background:none;border:0;color:var(--muted);padding:18px 3px;cursor:pointer;font:11px 'DM Mono';border-bottom:2px solid transparent}.tab.active{color:var(--accent);border-color:var(--accent)}.panel{display:none;padding:28px}.panel.active{display:block}.panel-title{display:flex;justify-content:space-between;align-items:center}.panel-title h3{font-size:21px;margin:0 0 8px}.live-dot{color:var(--green)}.command-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:22px 0}.command{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:16px;text-align:left;color:var(--text);cursor:pointer;display:flex;flex-direction:column;gap:8px}.command:hover{border-color:var(--accent)}.command b{font-size:20px;color:var(--accent)}.command strong{font-size:12px}.command small{font-size:10px;color:var(--muted)}.command.danger b{color:var(--red)}.result{background:#0b0b10;border:1px solid var(--line);padding:15px;border-radius:7px;color:#c5c1ce;font-size:12px;line-height:1.8;white-space:pre-wrap;min-height:50px}.room-controls{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin:18px 0 12px}.room-controls input,input,textarea,select{background:#0b0b10;border:1px solid var(--line);border-radius:6px;color:var(--text);padding:12px;font:12px Manrope;outline:none;width:100%}input:focus,textarea:focus,select:focus{border-color:var(--accent)}.chat-log{height:190px;overflow:auto;background:#0b0b10;border:1px solid var(--line);border-radius:7px;padding:12px;margin-bottom:10px}.chat-note{font-size:11px;color:var(--muted)}.chat-line{font-size:12px;padding:7px 0;border-bottom:1px solid #ffffff0b;overflow-wrap:anywhere}.chat-line b{color:var(--accent);margin-right:8px}.chat-line.system{color:var(--muted);font-style:italic}.send-row{display:flex;gap:8px}.send-row input{flex:1}.text-button{background:none;border:0;color:var(--muted);font-size:11px;padding:12px 0;cursor:pointer}.field-label{display:block;color:var(--muted);font-size:11px;margin:18px 0 8px}.panel textarea{min-height:105px;resize:vertical;margin-bottom:14px}.panel select{max-width:340px}.story-result{margin-top:16px;min-height:90px}.safety{margin:25px 10vw 80px;padding:28px 34px;border:1px solid #473b51;background:linear-gradient(100deg,#1c1723,#121219);border-radius:10px;display:flex;gap:24px;align-items:center}.safety-icon{font-size:34px;color:var(--accent)}.safety h2{font-size:23px}.safety p:not(.eyebrow){color:var(--muted);font-size:12px;line-height:1.8;max-width:750px}footer{border-top:1px solid var(--line);padding:25px 7vw;display:flex;justify-content:space-between;color:var(--muted);font-size:10px;letter-spacing:.08em}.toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,20px);background:#eee0ff;color:#17111d;padding:12px 18px;border-radius:7px;font-size:12px;opacity:0;transition:.2s;pointer-events:none;z-index:10}.toast.show{opacity:1;transform:translate(-50%,0)}.gate{position:fixed;inset:0;background:#08080df5;z-index:20;display:grid;place-items:center;padding:20px}.gate.hidden{display:none}.gate-card{max-width:460px;width:100%;padding:38px;background:#14131b;border:1px solid #44364f;border-radius:13px;text-align:center;box-shadow:0 30px 100px #000}.brand-mark{font-size:35px;color:var(--accent);font-weight:800}.brand-mark span{color:#fff}.gate h1{font-size:27px}.gate h1 em{color:var(--accent);font-style:normal}.gate .muted{font-size:12px}.check{display:flex;align-items:center;gap:10px;text-align:left;color:#d1ced9;font-size:11px;margin:15px 0}.check input{width:auto;accent-color:var(--accent)}.gate .primary{width:100%;margin:15px 0}.gate small{display:block;color:#777482;font-size:10px;line-height:1.6}
-
-.match-card{padding:20px;margin:18px 0;background:linear-gradient(135deg,#1b1722,#121219);border:1px solid #51405f;border-radius:10px}.match-card h3{font-size:18px;margin:0}.match-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}.match-grid label{font-size:11px;color:var(--muted)}.match-grid select{display:block;margin-top:7px;max-width:none}.match-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:15px}.match-actions .primary,.match-actions .ghost{min-height:40px}.private-room-divider{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:10px;margin:22px 0}.private-room-divider:before,.private-room-divider:after{content:"";height:1px;background:var(--line);flex:1}
-.room-controls{grid-template-columns:minmax(0,1fr) auto}.room-controls .code-field{min-width:0}.role-picker{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:11px}.role-picker select{min-width:160px}
-@media(max-width:760px){.match-grid{grid-template-columns:1fr}.match-actions{align-items:stretch}.match-actions button{flex:1}.room-controls{grid-template-columns:1fr}.room-controls button{grid-column:auto}.role-picker select{width:100%}}
-
-@media(max-width:760px){.topbar{padding:0 5vw;height:65px}.topbar nav{gap:12px;font-size:10px}.status{display:none}.hero{padding:70px 7vw 45px;grid-template-columns:1fr}.hero-art{height:240px}.section{padding:55px 7vw}.mode-grid{grid-template-columns:1fr}.mode-card{min-height:0}.command-grid{grid-template-columns:repeat(2,1fr)}.room-controls{grid-template-columns:1fr}.room-controls button{grid-column:auto}.role-picker select{width:100%}.panel{padding:19px}.tabs{gap:14px;padding:0 14px}.tab{font-size:9px}.safety{margin:15px 7vw 50px;padding:22px;align-items:flex-start}footer{gap:12px;flex-wrap:wrap;padding:22px 7vw}}
-.anchor{display:block;position:relative;top:-90px;visibility:hidden}.conn-state{font:10px 'DM Mono',monospace;letter-spacing:.14em;display:inline-flex;align-items:center;gap:8px;color:var(--muted)}.conn-state:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}.conn-state.on{color:var(--green)}.conn-state.wait{color:#f0c987}.conn-state.wait:before{animation:blink 1s infinite}@keyframes blink{50%{opacity:.2}}.room-controls{grid-template-columns:minmax(0,1fr) auto}.code-field{display:flex;gap:6px}.code-field input{text-transform:uppercase}.ghost{background:none;border:1px solid var(--line);color:#d8d4df;border-radius:6px;padding:0 12px;font:11px Manrope;cursor:pointer;white-space:nowrap;min-height:40px}.ghost:hover{border-color:var(--accent);color:var(--accent)}.danger-text{color:var(--red)!important}.room-bar{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;margin:18px 0 12px;padding:12px 14px;background:var(--panel2);border:1px solid var(--line);border-radius:8px}.room-id{display:flex;align-items:center;gap:10px}.room-id small{font:9px 'DM Mono';letter-spacing:.16em;color:var(--muted)}.room-id strong{font:600 15px 'DM Mono';letter-spacing:.12em}.room-id .pill{padding:4px 9px}.members{display:flex;gap:8px;flex-wrap:wrap}.member{display:inline-flex;align-items:center;gap:7px;font-size:11px;padding:5px 10px;border:1px solid var(--line);border-radius:20px;color:#d8d4df}.member i{width:7px;height:7px;border-radius:50%;background:#5d5a66}.member.online i{background:var(--green);box-shadow:0 0 8px var(--green)}.member.me{border-color:#51405f}.member.empty{border-style:dashed;color:var(--muted)}.room-actions{display:flex;gap:6px}.chat-log{height:300px}.chat-line{display:flex;flex-direction:column;gap:3px;border:0;padding:6px 0}.chat-line .meta{font-size:10px;color:var(--muted)}.chat-line .meta b{margin-right:6px}.chat-line .bubble{align-self:flex-start;max-width:82%;background:#1d1b26;border:1px solid #2c2a36;padding:8px 12px;border-radius:4px 12px 12px 12px;line-height:1.6;white-space:pre-wrap}.chat-line.mine{align-items:flex-end}.chat-line.mine .bubble{align-self:flex-end;background:#2b2238;border-color:#4a3a5c;border-radius:12px 4px 12px 12px}.chat-line.system{align-items:center;font-style:normal;color:var(--muted);font-size:11px}.chat-line.action .bubble{align-self:center;background:none;border:1px dashed #51405f;color:#e6d4f7;border-radius:8px;max-width:92%;text-align:center}.typing{height:18px;font-size:11px;color:var(--muted);font-style:italic}.quick-actions{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}.qa{background:var(--panel2);border:1px solid var(--line);color:#d8d4df;border-radius:20px;padding:7px 12px;font:11px Manrope;cursor:pointer}.qa:hover{border-color:var(--accent);color:var(--accent)}.qa:disabled,.ghost:disabled{opacity:.4;cursor:not-allowed}
-@media(max-width:760px){.room-controls{grid-template-columns:1fr}.room-bar{flex-direction:column;align-items:flex-start}.chat-log{height:260px}}
-
-.voice-panel{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin:12px 0;padding:14px;background:#0b0b10;border:1px solid var(--line);border-radius:8px}
-.voice-copy{flex:1 1 260px;min-width:0}.voice-heading{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.voice-heading strong{font-size:12px}.voice-status{font:10px 'DM Mono',monospace;color:var(--muted);letter-spacing:.04em}.voice-status:before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:7px}.voice-status.wait{color:#f0c987}.voice-status.on{color:var(--green)}.voice-status.error{color:var(--red)}.voice-copy p{margin:7px 0 0}.voice-actions{display:flex;gap:7px;flex-wrap:wrap}.voice-actions button{min-height:38px}.voice-actions .primary{padding:10px 14px;font-size:11px}.voice-panel audio{display:none}
-@media(max-width:760px){.voice-panel{align-items:stretch}.voice-copy{flex-basis:100%}.voice-actions{display:grid;grid-template-columns:1fr 1fr}.voice-actions button{width:100%}}
-
-
-.compact-hero{min-height:420px;padding-top:70px;padding-bottom:55px}.room-studio{padding:24px}.lobby-wrap{max-width:850px;margin:auto}.chat-panel{margin-top:24px}.metronome-card{margin-top:24px;padding:22px;background:linear-gradient(145deg,#1a1621,#101016);border:1px solid #51405f;border-radius:12px}.metronome-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.metronome-head h3,.chat-panel h3{font-size:21px;margin:0 0 8px}.beat-display{display:flex;justify-content:center;align-items:center;gap:28px;padding:24px 10px}.beat-pulse{width:116px;height:116px;border-radius:50%;display:grid;place-items:center;border:1px solid #b88be8;background:radial-gradient(circle,#b88be833,#b88be808 68%);box-shadow:0 0 28px #b88be822;transition:transform .08s,box-shadow .08s;transform:scale(1)}.beat-pulse.active{transform:scale(var(--pulse-scale,1.12));box-shadow:0 0 44px #b88be866}.beat-pulse span{font:500 30px 'DM Mono';color:var(--accent)}.beat-readout{display:flex;flex-direction:column;gap:8px}.beat-readout strong{font:700 36px 'DM Mono'}.beat-readout strong small{font-size:12px;color:var(--muted)}.beat-readout>span{font-size:12px;color:var(--muted)}.metro-controls{display:grid;grid-template-columns:1fr 1fr;gap:20px}.metro-control{padding:16px;background:#0d0d13;border:1px solid var(--line);border-radius:9px}.control-title{display:flex;justify-content:space-between;gap:10px;font-size:12px}.control-title label{color:var(--muted)}.control-title strong{color:var(--accent)}.metro-control input[type=range]{padding:0;margin:20px 0 8px;accent-color:var(--accent);cursor:pointer}.range-ends{display:flex;justify-content:space-between;color:var(--muted);font-size:10px}.metro-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}.metro-actions button{min-height:42px}.room-studio .room-controls{margin-top:14px}.room-studio .match-card{margin-top:0}.room-studio .chat-log{height:260px}.room-studio .voice-panel{margin-top:20px}.safety{margin-top:25px}
-@media(max-width:760px){.compact-hero{padding:58px 7vw 35px}.room-studio{padding:14px}.metronome-card{padding:16px}.metro-controls{grid-template-columns:1fr}.beat-display{gap:18px}.beat-pulse{width:92px;height:92px}.beat-readout strong{font-size:30px}.metronome-head{align-items:flex-start}.metro-actions button{flex:1}}
-</style>
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <header class="topbar">
   <a class="logo" href="/"><span class="logo-icon">N</span> NIGHTPLAY</a>
-  <nav><a href="#room">双人聊天</a><a href="#challenge">节拍器挑战</a></nav>
+  <nav><button type="button" data-open-modal="match">开始匹配</button><button type="button" data-open-modal="join">加入房间</button><button type="button" id="publicRoomNavBtn">发布房间</button><button type="button" id="watchDirectoryBtn">观战大厅</button><button type="button" data-open-modal="friends">好友</button></nav>
   <span class="status"><i></i> 双人空间</span>
+  <span class="online-counter" aria-live="polite"><i></i><span>在线</span><strong id="onlineCount">--</strong></span>
 </header>
 <main>
-<section class="hero compact-hero">
-  <div class="hero-copy">
-    <p class="eyebrow">NIGHTPLAY · 18+</p>
-    <h1>双人互动<br><em>由你掌控节奏。</em></h1>
-    <p class="lead">创建私人双人房间，与对方实时聊天，并在双方同意下开启节拍器寸止挑战。速度和力度均可随时调整，也可以立即暂停或结束。</p>
-    <a class="primary link-button" href="#room">进入双人房间 <span>↗</span></a>
-  </div>
-  <div class="hero-art"><div class="orb orb-one"></div><div class="orb orb-two"></div><div class="art-card"><span>NIGHTPLAY CHALLENGE</span><strong>2 PLAYERS</strong><div class="art-line"></div><small>CHAT · RHYTHM · CONSENT</small></div></div>
-</section>
-<section id="room" class="section custom-section">
-  <div class="section-head"><div><p class="eyebrow">PRIVATE ROOM · 2 SEATS</p><h2>双人私人房间</h2></div><span class="pill">聊天 + 节拍器挑战</span></div>
-  <div class="studio room-studio">
-    <div id="lobby" class="lobby-wrap">
-      <section class="match-card">
-        <div class="panel-title"><div><p class="eyebrow">SMART MATCHMAKING</p><h3>偏好匹配</h3></div><span class="pill">1 对 1</span></div>
-        <p class="muted">设置昵称、性别和希望匹配的对象。只有双方偏好互相符合时才会配对；匹配成功后自动进入双人房间。</p>
-        <label class="field-label">你的昵称<input id="nickname" maxlength="24" placeholder="你的昵称" autocomplete="nickname" required></label>
-        <div class="match-grid">
-          <label>你的性别<select id="matchGender"><option value="male">男性</option><option value="female">女性</option><option value="other">其他 / 不便透露</option></select></label>
-          <label>希望匹配的性别<select id="matchPreference"><option value="female">女性</option><option value="male">男性</option><option value="any">不限</option></select></label>
-          <label>希望自己担任的角色<select id="matchRole"><option value="controller">控制方</option><option value="receiver">受控方</option><option value="any" selected>不限（自动分配）</option></select></label>
-        </div>
-        <div class="match-actions"><button id="matchStartBtn" type="button" class="primary">开始偏好匹配</button><button id="matchCancelBtn" type="button" class="ghost" disabled>取消匹配</button><span id="matchStatus" class="chat-note" aria-live="polite">尚未开始匹配</span></div>
-      </section>
-      <div class="private-room-divider"><span>或使用邀请链接 / 房间代码</span></div>
-      <p class="muted">输入昵称和房间代码，或生成新代码后把邀请链接发给另一位参与者。进入时可选择控制方或受控方；同一房间两人必须分别担任不同角色。</p>
-      <form id="joinForm" class="room-controls">
-        <div class="code-field"><input id="roomCode" maxlength="12" placeholder="房间代码（4–12 位字母或数字）" autocomplete="off" required><button type="button" id="randomCodeBtn" class="ghost" title="生成随机代码">↻ 随机</button></div>
-        <label class="role-picker">进入房间后担任<select id="roomRole"><option value="controller">控制方</option><option value="receiver">受控方</option><option value="any">由系统自动分配</option></select></label>
-        <button id="connectBtn" class="primary" type="submit">加入 / 创建房间</button>
-      </form>
-      <p id="roomPeek" class="chat-note"></p>
-    </div>
-    <div id="roomView" hidden>
-      <div class="room-bar">
-        <div class="room-id"><small>ROOM</small><strong id="roomLabel">—</strong><span id="seatLabel" class="pill">0 / 2</span></div>
-        <div id="members" class="members"></div>
-        <div class="room-actions"><button type="button" id="copyLinkBtn" class="ghost">复制邀请链接</button><button type="button" id="disconnectBtn" class="ghost danger-text">离开房间</button></div>
+  <div id="lobby" class="home-shell">
+    <section class="hero compact-hero">
+      <div class="hero-copy">
+        <p class="eyebrow">NIGHTPLAY · 18+</p>
+        <h1>寻找搭档<br><em>开启双人互动。</em></h1>
+        <p class="lead">选择你的匹配偏好，寻找合适的双人搭档。匹配成功后即可聊天、语音，并体验同步节拍挑战。</p>
+        <button class="primary link-button" type="button" data-open-modal="match">立即开始匹配 <span>↗</span></button>
       </div>
-      <section class="voice-panel" aria-label="双人实时语音">
-        <div class="voice-copy"><div class="voice-heading"><strong>实时语音 · 双人自由通话</strong><span id="voiceStatus" class="voice-status" aria-live="polite">语音未开启 · 双方需分别授权</span></div><p class="chat-note">双方可自愿开启麦克风；不开启的一方不会发送声音。可随时静音或结束语音。</p><p class="chat-note" id="voicePrivacyNotice">语音防泄漏：仅在浏览器明确支持 processLocally 设备端中文语音识别时开启；本网站不录制语音、不保存完整转写；发送音频会短暂缓冲约1.6秒以便先检测。若设备端识别不可用，将阻止开启麦克风。</p></div>
-        <div class="voice-actions"><button type="button" id="voiceStartBtn" class="primary" disabled>🎙 开启麦克风</button><button type="button" id="voiceMuteBtn" class="ghost" disabled>静音</button><button type="button" id="voiceHangupBtn" class="ghost danger-text" disabled>结束语音</button><button type="button" id="voiceListenBtn" class="ghost" hidden>播放对方声音</button></div>
-        <audio id="remoteAudio" autoplay playsinline></audio>
-      </section>
-      <section id="challenge" class="metronome-card" aria-label="节拍器寸止挑战">
-        <div class="metronome-head"><div><p class="eyebrow">RHYTHM CHALLENGE</p><h3>节拍器寸止挑战</h3><p class="muted">控制方负责调整节拍；受控方跟随。受控方始终可以紧急停止或退出。</p></div><span id="metroStatus" class="pill">尚未开始</span></div>
-        <div class="beat-display"><div id="beatPulse" class="beat-pulse"><span id="beatNumber">—</span></div><div class="beat-readout"><strong><span id="bpmValue">80</span> <small>BPM</small></strong><span id="intensityText">力度 3 / 5</span></div></div>
-        <div class="metro-controls">
-          <div class="metro-control"><div class="control-title"><label for="bpmRange">节奏速度</label><strong><span id="bpmLabel">80</span> BPM</strong></div><input id="bpmRange" type="range" min="40" max="220" step="1" value="80"><div class="range-ends"><span>慢 40</span><span>快 220</span></div></div>
-          <div class="metro-control"><div class="control-title"><label for="intensityRange">节拍力度</label><strong><span id="intensityLabel">3</span> / 5</strong></div><input id="intensityRange" type="range" min="1" max="5" step="1" value="3"><div class="range-ends"><span>轻柔</span><span>强烈</span></div></div>
-        </div>
-        <div class="metro-actions"><button id="metroStart" class="primary" type="button">▶ 开始挑战</button><button id="metroPause" class="ghost" type="button" disabled>Ⅱ 暂停</button><button id="metroStop" class="ghost danger-text" type="button" disabled>■ 结束挑战</button><button id="metroEmergency" class="ghost danger-text" type="button" disabled>紧急停止</button></div><p id="roleStatus" class="chat-note" aria-live="polite">进入房间后显示你的挑战角色。</p>
-        <p class="chat-note">说明：力度控制节拍提示音量与视觉脉冲强度，不会控制外接设备。请双方先确认规则；不适或不愿继续时立即暂停。</p>
-      </section>
-      <section class="chat-panel"><div class="panel-title"><div><p class="eyebrow">LIVE CHAT</p><h3>双人聊天</h3></div><span id="connState" class="conn-state off">未连接</span></div>
-        <div id="chatLog" class="chat-log" aria-live="polite"></div><div class="typing" id="typing"></div>
-        <form id="chatForm" class="send-row"><input id="chatInput" maxlength="500" placeholder="输入消息…（Enter 发送）" autocomplete="off"><button class="primary" id="sendBtn">发送</button></form>
-        <p class="chat-note">请勿分享真实身份、住址或支付信息。任何一方都可以随时暂停或离开。发送内容会经过自动联系方式检测，命中后不会发送给对方。</p>
+      <div class="hero-art"><div class="orb orb-one"></div><div class="orb orb-two"></div><div class="art-card"><span>NIGHTPLAY CHALLENGE</span><strong>2 PLAYERS</strong><div class="art-line"></div><small>CHAT · RHYTHM · CONSENT</small></div></div>
+    </section>
+    <section class="quick-actions" aria-label="快速进入功能">
+      <button class="quick-action quick-match" type="button" data-open-modal="match"><span class="quick-icon">♡</span><span><strong>开始匹配</strong><small>按性别、角色和语音偏好寻找搭档</small></span></button>
+      <button class="quick-action" type="button" data-open-modal="join"><span class="quick-icon">↗</span><span><strong>邀请 / 加入</strong><small>使用房间码快速进入</small></span></button>
+<button class="quick-action" type="button" data-open-modal="history"><span class="quick-icon">▤</span><span><strong>对局历史</strong><small>查看最近的双人记录</small></span></button>
+      <button class="quick-action" type="button" data-open-modal="friends"><span class="quick-icon">♧</span><span><strong>好友</strong><small>添加好友、私信和邀请对局</small></span></button>
+    </section>
+<section id="publicPanel" class="public-home-section" aria-labelledby="publicHomeTitle">
+          <div class="public-home-intro"><div><p class="eyebrow">PUBLIC ROOMS · FIND YOUR PARTNER</p><h2 id="publicHomeTitle">公开房间大厅</h2><p>发布你的房间，设置醒目的名称，让其他玩家一眼找到你。陌生玩家可以直接加入，房间满员后自动关闭招募。</p></div><span class="public-home-mark">OPEN<br>ROOM</span></div>
+          <div class="public-room-create"><label>你的昵称<input id="publicRoomNickname" maxlength="24" placeholder="输入聊天昵称" autocomplete="nickname"></label>
+            <label>自定义房间名称<input id="publicRoomName" maxlength="20" placeholder="例如：S来求调" autocomplete="off"></label>
+            <label>你希望担任的角色<select id="publicRoomRole"><option value="controller">控制方（S）</option><option value="receiver">受控方（M）</option></select></label>
+            <label>房间有效期（5–120 分钟）<input id="publicRoomLifetime" type="number" min="5" max="120" step="1" value="30" inputmode="numeric"></label>
+            <button id="publicRoomPublishBtn" type="button" class="primary">发布房间</button>
+          </div>
+          <div class="public-room-heading"><h3>正在招募的房间</h3><button id="publicRoomRefreshBtn" type="button" class="ghost">刷新列表</button></div>
+          <div id="publicRoomList" class="public-room-list" aria-live="polite">正在加载公开房间…</div>
+        </section>
+    <section id="watchDirectory" class="watch-directory featured-watch-directory" aria-labelledby="watchDirectoryTitle">
+      <div class="watch-directory-head"><div><p class="eyebrow">LIVE ROOMS · SPECTATOR</p><h2 id="watchDirectoryTitle">观战大厅</h2><p class="chat-note">浏览正在开放观战的双人房间。只有双方玩家都主动同意，房间才会出现在这里。</p></div><button id="watchRefreshBtn" type="button" class="primary">刷新房间</button></div>
+      <div id="watchDirectoryList" class="watch-directory-list" aria-live="polite">正在加载可观战房间…</div>
+    </section>
+    <section class="announcement" aria-labelledby="announcementTitle"><p class="eyebrow">PLATFORM NOTICE · 18+</p><h2 id="announcementTitle">平台公告与免责声明</h2><p>Nightplay 仅供年满 18 周岁的成年人自愿使用。平台不保证其他用户身份、陈述或行为的真实性。请勿分享真实姓名、住址、财务资料等敏感信息。任何互动均需双方明确自愿，任何一方都可以随时暂停、结束或离开。用户应遵守所在地法律法规，并对自己的言论与行为负责。</p></section>
+    <div id="actionModal" class="modal" hidden>
+      <div class="modal-backdrop" data-close-modal></div>
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-head"><div><p class="eyebrow">NIGHTPLAY · PRIVATE ROOM</p><h2 id="modalTitle">开始你的双人体验</h2></div><button type="button" class="modal-close" aria-label="关闭" data-close-modal>×</button></div>
+        <label class="field-label">你的昵称<input id="nickname" maxlength="24" placeholder="输入聊天昵称" autocomplete="nickname" required></label>
+        <div class="modal-tabs"><button type="button" class="modal-tab active" data-modal-tab="match">偏好匹配</button><button type="button" class="modal-tab" data-modal-tab="join">邀请 / 加入</button><button type="button" class="modal-tab" data-modal-tab="history">对局历史</button><button type="button" class="modal-tab" data-modal-tab="friends">好友</button></div>
+        <section id="matchPanel" class="modal-panel">
+          <p class="muted">设置你的性别、希望匹配的对象和挑战角色。只有双方偏好互相符合时才会配对。</p>
+          <div class="match-grid">
+            <label>你的性别<select id="matchGender"><option value="male">男性</option><option value="female">女性</option><option value="other">其他 / 不便透露</option></select></label>
+            <label>希望匹配的性别<select id="matchPreference"><option value="female">女性</option><option value="male">男性</option><option value="any">不限</option></select></label>
+            <label>希望自己担任的角色<select id="matchRole"><option value="controller">控制方（S）</option><option value="receiver">受控方（M）</option><option value="any" selected>不限（自动分配）</option></select></label><label>语音偏好<select id="matchVoicePreference"><option value="any">不限</option><option value="off">双方都不开麦</option><option value="both">双方都开麦</option><option value="self">我开麦，对方不开</option><option value="peer">对方开麦，我不开</option></select></label>
+          </div>
+          <div class="match-actions"><button id="matchStartBtn" type="button" class="primary">开始匹配</button><button id="matchCancelBtn" type="button" class="ghost" disabled>取消匹配</button></div>
+          <p id="matchStatus" class="chat-note" aria-live="polite">尚未开始匹配</p>
+        </section>
+        <section id="joinPanel" class="modal-panel" hidden>
+          <p class="muted">输入对方分享的房间代码，或生成新房间后复制邀请链接。两位参与者需分别选择不同的挑战角色。</p>
+          <form id="joinForm" class="room-controls">
+            <div class="code-field"><input id="roomCode" maxlength="12" placeholder="房间代码（4–12 位字母或数字）" autocomplete="off" required><button type="button" id="randomCodeBtn" class="ghost" title="生成随机代码">↻ 随机</button></div>
+            <label class="role-picker">进入房间后担任<select id="roomRole"><option value="controller">控制方</option><option value="receiver">受控方</option><option value="any">由系统自动分配</option></select></label>
+            <label style="grid-column:1/-1">新建房间有效期（5–120 分钟）<input id="roomLifetime" type="number" min="5" max="120" step="1" value="30" inputmode="numeric"><small class="chat-note">仅创建新房间时生效，加入已有房间不会改变有效期。</small></label>
+            <button id="connectBtn" class="primary" type="submit">加入 / 创建房间</button>
+          </form>
+          <p id="roomPeek" class="chat-note"></p>
+          <button id="watchJoinBtn" type="button" class="ghost">以观战身份加入（需双方允许）</button>
+        </section>
+        <section id="historyPanel" class="modal-panel" hidden>
+          <p class="muted">使用本设备的随机游客 ID 保存最近 30 条对局记录，无需注册。记录会在你主动离开房间或结束对局时生成。</p>
+          <div id="historyList" class="result" aria-live="polite">正在读取对局历史…</div>
+          <div class="match-actions"><button id="historyRefresh" type="button" class="ghost">刷新记录</button></div>
+        </section>
+        <section id="friendsPanel" class="modal-panel" hidden>
+          <div class="friend-profile">
+            <div><small>我的好友码</small><strong id="myFriendCode">加载中…</strong></div>
+            <button type="button" id="copyFriendCode" class="ghost">复制好友码</button>
+          </div>
+          <label class="friend-visibility"><input type="checkbox" id="onlineVisibility" checked> 向好友公开我的在线状态</label>
+          <div class="friend-add-row"><input id="friendCodeInput" maxlength="8" placeholder="输入对方 8 位好友码" autocomplete="off"><button type="button" id="addFriendBtn" class="primary">发送申请</button></div>
+          <section class="friend-subsection"><h3>好友申请 <span id="incomingCount">0</span></h3><div id="incomingRequests" class="friend-list">暂无新的好友申请。</div><div id="outgoingRequests" class="friend-muted"></div></section>
+          <section class="friend-subsection"><h3>我的好友</h3><div id="friendsList" class="friend-list">正在读取好友…</div></section>
+          <section id="dmSection" class="dm-section" hidden>
+            <div class="dm-heading"><div><small>好友私信</small><strong id="dmFriendName">—</strong></div><button type="button" id="dmClose" class="ghost">返回好友列表</button></div>
+            <div id="dmLog" class="dm-log" aria-live="polite"></div>
+            <form id="dmForm" class="dm-send-row"><input id="dmInput" maxlength="1000" placeholder="给好友发送私信…" autocomplete="off"><button type="submit" class="primary">发送</button></form>
+            <button type="button" id="dmInvite" class="ghost dm-invite">邀请好友进行双人对局</button>
+          </section>
+          <div class="match-actions"><button id="friendsRefresh" type="button" class="ghost">刷新好友</button></div>
+        </section>
       </section>
     </div>
   </div>
-</section>
-<section class="safety"><div class="safety-icon">♡</div><div><p class="eyebrow">CONSENT FIRST</p><h2>双方自愿，随时可停</h2><p>仅限成年人参与。节拍器挑战需要双方明确同意；任何一方都可以调整设置、暂停或退出。不要分享真实身份、住址或支付信息。</p></div></section>
+  <section id="matchingScreen" hidden aria-live="polite" aria-label="匹配等待页面">
+    <div class="matching-card">
+      <p class="matching-eyebrow">NIGHTPLAY · MATCHMAKING</p>
+      <div class="matching-orbit" aria-hidden="true">♡</div>
+      <h2>正在寻找搭档</h2>
+      <p class="matching-subtitle">正在寻找符合你偏好的玩家，请稍候…</p>
+      <div class="matching-time-label">本次等待时间</div>
+      <div id="matchingElapsed" class="matching-time" role="timer">00:00</div>
+      <div class="matching-detail">
+        <strong>本次匹配条件</strong>
+        <div class="matching-preferences"><span id="matchingGender">性别：—</span><span id="matchingPreference">匹配对象：—</span><span id="matchingRole">角色：—</span><span id="matchingVoice">语音：—</span></div>
+      </div>
+      <p id="matchingStatus" class="matching-status">正在连接匹配服务…</p>
+      <button id="matchingCancelBtn" type="button" class="matching-cancel">取消匹配</button>
+    </div>
+  </section>
+  <div id="roomView" hidden>
+  <div class="room-shell">
+    <div class="room-bar">
+      <div class="room-id"><small>ROOM</small><strong id="roomLabel">—</strong><span id="seatLabel" class="pill">0 / 2</span></div>
+      <div id="members" class="members"></div>
+      <div class="room-actions"><span id="watcherCount" class="pill">旁观 0</span><button type="button" id="watchConsentBtn" class="ghost" disabled>允许观战</button><button type="button" id="copyLinkBtn" class="ghost">复制邀请链接</button><a id="disconnectBtn" class="ghost danger-text" href="/" aria-label="离开房间并返回主页">离开房间</a></div>
+      <p id="watchStatus" class="chat-note" aria-live="polite">双方都允许后，其他人才能旁观。</p>
+    </div>
+    <section id="challenge" class="metronome-card" aria-label="寸止挑战">
+      <div class="metro-summary">
+          <span class="metro-summary-icon">◉</span>
+          <span class="metro-summary-copy"><strong>寸止挑战</strong><small>控制方调整节奏 · 受控方可随时紧急停止</small></span>
+          <span class="metro-summary-readout"><b id="metroSummaryBpm">80</b><small>BPM</small></span>
+          <span id="metroStatus" class="pill">尚未开始</span><span class="metro-chevron">⌄</span>
+        </div>
+        <div class="metro-content">
+          <div id="metroLivePanel">
+          <div class="quick-phrase-wrap"><div class="quick-phrase-head"><strong id="quickPhraseRole">角色快捷语</strong><span>点击即可发送</span></div><div id="quickPhrases" class="quick-phrases" aria-label="角色聊天快捷语"></div><div id="quickPhraseDisplay" class="quick-phrase-display" aria-live="polite">快捷语发送后会在这里同步显示</div></div>
+          <div class="beat-display"><div id="beatPulse" class="beat-pulse"><span id="beatNumber">—</span></div><div class="beat-readout"><strong><span id="bpmValue">80</span> <small>BPM</small></strong><span id="intensityText">力度 3 / 5</span></div></div>
+          <div class="metro-extra-controls"><label>挑战模式<select id="metroMode"><option value="steady">固定节奏</option><option value="random">随机变速</option></select></label><label>挑战难度<select id="metroDifficulty"><option value="easy">轻松</option><option value="normal" selected>标准</option><option value="hard">进阶</option></select></label><label>挑战时长<select id="metroDuration"><option value="1">1 分钟</option><option value="3">3 分钟</option><option value="5" selected>5 分钟</option><option value="10">10 分钟</option><option value="15">15 分钟</option></select></label><span class="metro-countdown">剩余 <b id="metroCountdown">05:00</b></span><span class="metro-countdown">已寸止 <b id="metroHoldCountLive">0</b> 次</span></div>
+          <div class="metro-cues"><button type="button" id="metroSlow" class="ghost">慢拍 55</button><button type="button" id="metroNormal" class="ghost">均速 75</button><button type="button" id="metroFast" class="ghost">快拍 110</button><button type="button" id="metroHold" class="ghost danger-text">寸止</button><button type="button" id="metroResume" class="ghost">恢复节奏</button></div>
+          <div class="metro-controls">
+            <div class="metro-control"><div class="control-title"><label for="bpmRange">节奏速度</label><strong><span id="bpmLabel">80</span> BPM</strong></div><input id="bpmRange" type="range" min="40" max="220" step="1" value="80"><div class="range-ends"><span>慢 40</span><span>快 220</span></div></div>
+            <div class="metro-control"><div class="control-title"><label for="intensityRange">节拍力度</label><strong><span id="intensityLabel">3</span> / 5</strong></div><input id="intensityRange" type="range" min="1" max="5" step="1" value="3"><div class="range-ends"><span>轻柔</span><span>强烈</span></div></div>
+          </div>
+          <div class="metro-actions"><button id="metroStart" class="primary" type="button">▶ 开始挑战</button><button id="metroPause" class="ghost" type="button" disabled>Ⅱ 暂停</button><button id="metroStop" class="ghost danger-text" type="button" disabled>■ 结束挑战</button><button id="metroEmergency" class="ghost danger-text" type="button" disabled>紧急停止</button></div>
+          <p id="roleStatus" class="chat-note" aria-live="polite">进入房间后显示你的挑战角色。</p>
+
+          <p class="chat-note">力度只影响节拍提示音量与视觉脉冲。请双方先确认规则；任何一方不适或不愿继续时立即暂停。</p>
+          </div>
+        <div id="metroEndScreen" class="metro-end-screen" hidden>
+          <div class="metro-end-mark">✓</div>
+          <p class="eyebrow">CHALLENGE COMPLETE</p>
+          <h3>本轮挑战结束</h3>
+          <div class="metro-end-stats">
+            <div><strong id="metroEndDuration">00:00</strong><span>有效挑战时长</span></div>
+            <div><strong id="metroEndHoldCount">0</strong><span>寸止次数</span></div>
+          </div>
+          <p id="metroEndReason" class="chat-note">本轮挑战已结束，结果已记录。</p>
+          <button type="button" id="metroAddFriendBtn" class="ghost" hidden>添加对方为好友</button>
+          <button type="button" id="metroRestartBtn" class="primary">再来一轮</button>
+          <a id="metroHomeBtn" class="ghost" href="/" aria-label="回到主页">回到主页</a>
+        </div>
+      </div>
+    </section>
+    <section class="chat-panel">
+      <div class="panel-title"><div><p class="eyebrow">PRIVATE LIVE ROOM</p><h2>双人聊天</h2></div><span id="connState" class="conn-state off">未连接</span></div>
+      <div class="voice-panel" aria-label="双人实时语音">
+        <div class="voice-copy"><div class="voice-heading"><strong>🎙 实时语音</strong><span id="voiceStatus" class="voice-status" aria-live="polite">语音未开启 · 双方需分别授权</span></div></div>
+        <div class="voice-actions"><button type="button" id="voiceStartBtn" class="primary" disabled>开启麦克风</button><button type="button" id="voiceMuteBtn" class="ghost" disabled>静音</button><button type="button" id="voiceHangupBtn" class="ghost danger-text" disabled>结束语音</button><button type="button" id="voiceListenBtn" class="ghost" hidden>播放对方声音</button></div>
+        <p class="chat-note">语音保护：仅在支持中文设备端识别的浏览器中开放麦克风；识别在本机完成，不上传录音、不保存完整转写。语音上行增加约 1.6 秒缓冲，但识别可能延迟或漏检，不能保证绝对防泄漏。</p>
+        <audio id="remoteAudio" autoplay playsinline></audio>
+      </div>
+      <div id="chatLog" class="chat-log" aria-live="polite"></div>
+      <div class="typing" id="typing"></div>
+      <form id="chatForm" class="send-row"><input id="chatInput" maxlength="500" placeholder="输入消息…（Enter 发送）" autocomplete="off"><button class="primary" id="sendBtn">发送</button></form>
+      <p class="chat-note">双方自愿参与；任何一方都可以随时静音、暂停或离开。</p>
+    </section>
+  </div>
+</div>
 </main>
 <footer><span class="logo">NIGHTPLAY</span><span>Private two-player experience</span><span>18+ · Consent · Privacy</span></footer>
 <div id="toast" class="toast"></div>
-<script>
-
-const $=s=>document.querySelector(s);
-const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2600)};
-function normalizeContactText(value){return String(value||"").toLowerCase().normalize("NFKC").replace(/[\u200B-\u200D\uFEFF]/g,"").replace(/[\s·•,，。:：;；_\-—()（）[\]【】]/g,"").replace(/[零〇洞幺两]/g,c=>({零:"0",〇:"0",洞:"0",幺:"1",两:"2"}[c]||c)).replace(/[一二三四五六七八九]/g,c=>({一:"1",二:"2",三:"3",四:"4",五:"5",六:"6",七:"7",八:"8",九:"9"}[c]||c))}
-function containsContactInfo(value){const t=normalizeContactText(value);if(!t)return false;return /(?:\+?86)?1[3-9]\d{9}/.test(t)||/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(t)||/(?:https?\/{1,2}|www\.)|(?:t\.me|telegram\.me|wa\.me|instagram\.com|facebook\.com|line\.me|discord\.gg|discord\.com)/i.test(t)||/(?:微信|wechat|vx|wx|v信|w信|微x|薇信|威信|qq|扣扣|企鹅号|telegram|电报|飞机号|whatsapp|wats?app|line|instagram|ins号|discord|邮箱|电子邮件)(?:(?:号|id|账号|帐号)?(?:是|为)?|:|：)?[a-z0-9_@.-]{3,}/i.test(t)||(/\d{6,13}/.test(t)&&/(?:qq|扣扣|联系|加我|电话|手机|号码|号|vx|wx|微信|v信|w信)/i.test(t))||/(?:加我|私我|联系我)(?:v|vx|wx)[a-z0-9_-]{3,}/i.test(t)}
- // ===== 双人房间：WebSocket + WebRTC 双人语音 =====
- const Room=(()=>{
-  const els={lobby:$("#lobby"),view:$("#roomView"),state:$("#connState"),log:$("#chatLog"),members:$("#members"),seat:$("#seatLabel"),label:$("#roomLabel"),typing:$("#typing"),input:$("#chatInput"),nick:$("#nickname"),code:$("#roomCode"),connect:$("#connectBtn"),peek:$("#roomPeek"),voiceStatus:$("#voiceStatus"),voiceStart:$("#voiceStartBtn"),voiceMute:$("#voiceMuteBtn"),voiceHangup:$("#voiceHangupBtn"),voiceListen:$("#voiceListenBtn"),remoteAudio:$("#remoteAudio"),matchGender:$("#matchGender"),matchPreference:$("#matchPreference"),matchRole:$("#matchRole"),roomRole:$("#roomRole"),roleStatus:$("#roleStatus"),metroEmergency:$("#metroEmergency"),matchStart:$("#matchStartBtn"),matchCancel:$("#matchCancelBtn"),matchStatus:$("#matchStatus"),bpm:$("#bpmRange"),intensity:$("#intensityRange"),metroStart:$("#metroStart"),metroPause:$("#metroPause"),metroStop:$("#metroStop"),metroStatus:$("#metroStatus")};
-  let ws=null,room=null,me=null,myRole=null,matchedRole=null,want=false,lastId=0,seen=new Set(),retry=0,retryTimer=null,hb=null,typingTimer=null,joining=false,matching=false,matchClientId=null,matchPoll=null;
-  // WebRTC 状态：麦克风只会在用户主动点击后申请，不会自动开启。
-  let pc=null,pcPromise=null,localStream=null,remoteStream=null,pendingCandidates=[];
-  let makingOffer=false,ignoreOffer=false,settingRemoteAnswerPending=false,voiceGeneration=0,iceConfigCache=null;
-  let voiceRecognition=null,voiceGuardBlocked=false,voiceRestartTimer=null,voiceGuardGeneration=0,contactMutedUntil=0;
-  let voiceAudioContext=null,voiceGate=null,voiceDestination=null;
-  let lastLocalChat="",lastLocalChatAt=0;
-  const seatKey=r=>"np_seat_"+r;
-  // 节拍器由双方浏览器本地发声，房间服务端只同步参数和运行状态。
-  let metroTimer=null,metroBeat=0,metroRunning=false,audioCtx=null,metroSyncGuard=false,roomHasPartner=false;
-  const metroIntensity=()=>Number(els.intensity.value);
-  function updateMetroLabels(){const bpm=Number(els.bpm.value),level=metroIntensity();$("#bpmValue").textContent=bpm;$("#bpmLabel").textContent=bpm;$("#intensityLabel").textContent=level;$("#intensityText").textContent="力度 "+level+" / 5";$("#beatPulse").style.setProperty("--pulse-scale",String(1+level*.035));}
-  function stopMetroTimer(){if(metroTimer){clearInterval(metroTimer);metroTimer=null}}
-  function tick(){if(!metroRunning)return;metroBeat=(metroBeat%4)+1;const level=metroIntensity(),accent=metroBeat===1;const pulse=$("#beatPulse");pulse.classList.remove("active");void pulse.offsetWidth;pulse.classList.add("active");$("#beatNumber").textContent=String(metroBeat);setTimeout(()=>pulse.classList.remove("active"),110);
-   try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume();const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type="sine";osc.frequency.value=accent?1050:760;gain.gain.setValueAtTime(Math.min(.32,.035+level*.045),audioCtx.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.075);osc.connect(gain);gain.connect(audioCtx.destination);osc.start();osc.stop(audioCtx.currentTime+.08)}catch(e){console.warn("节拍提示音不可用",e)}
-  }
-  function renderMetroState(){updateMetroLabels();els.metroStatus.textContent=metroRunning?"挑战进行中":"已暂停";const controller=myRole==="controller";els.bpm.disabled=!controller;els.intensity.disabled=!controller;els.metroStart.disabled=!controller||metroRunning||!roomHasPartner;els.metroPause.disabled=!controller||!metroRunning;els.metroStop.disabled=!controller;els.metroEmergency.disabled=!me;els.roleStatus.textContent=!myRole?"进入房间后显示你的挑战角色。":controller?"你的角色：控制方 · 你可以调整节拍速度、力度并控制挑战。":"你的角色：受控方 · 跟随控制方节拍，可随时紧急停止。";}
-  function startMetro(sync=true){if(metroRunning)return;if(!roomHasPartner){toast("请等待另一位参与者进入房间后再开始挑战");return}metroRunning=true;metroBeat=0;stopMetroTimer();tick();metroTimer=setInterval(tick,60000/Number(els.bpm.value));renderMetroState();if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:true});}
-  function pauseMetro(sync=true){if(!metroRunning){stopMetroTimer();els.metroStatus.textContent="已暂停";renderMetroState();if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:false});return}metroRunning=false;stopMetroTimer();$("#beatNumber").textContent="Ⅱ";renderMetroState();if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:false});}
-  function stopMetro(sync=true){metroRunning=false;stopMetroTimer();metroBeat=0;$("#beatNumber").textContent="—";renderMetroState();els.metroStatus.textContent="挑战已结束";if(sync&&!metroSyncGuard)out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:false,stopped:true});}
-  function applyMetroRemote(m){metroSyncGuard=true;els.bpm.value=String(Math.max(40,Math.min(220,Number(m.bpm)||80)));els.intensity.value=String(Math.max(1,Math.min(5,Number(m.intensity)||3)));updateMetroLabels();if(m.stopped)stopMetro(false);else if(m.running)startMetro(false);else pauseMetro(false);renderMetroState();els.metroStatus.textContent=m.stopped?"挑战已结束":m.running?"挑战进行中":"已暂停";metroSyncGuard=false;}
-  function restartMetroInterval(){if(!metroRunning)return;stopMetroTimer();metroTimer=setInterval(tick,60000/Number(els.bpm.value));}
-  const setState=(cls,txt)=>{els.state.className="conn-state "+cls;els.state.textContent=txt};
-  const setVoiceState=(cls,txt)=>{els.voiceStatus.className="voice-status"+(cls?" "+cls:"");els.voiceStatus.textContent=txt};
-  const fmt=d=>{const t=new Date(d);return t.toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"})};
-  function render(m){
-   if(seen.has(m.id))return;seen.add(m.id);lastId=Math.max(lastId,m.id);
-   const d=document.createElement("div");
-   if(m.kind==="system"){d.className="chat-line system";d.textContent=m.body+" · "+fmt(m.createdAt)}
-   else{
-    d.className="chat-line "+(m.kind==="action"?"action ":"")+(me&&m.memberId===me.id?"mine":"");
-    const meta=document.createElement("div");meta.className="meta";
-    if(m.kind!=="action"){const b=document.createElement("b");b.textContent=m.nickname;meta.appendChild(b)}
-    meta.appendChild(document.createTextNode(fmt(m.createdAt)));
-    const bub=document.createElement("div");bub.className="bubble";bub.textContent=m.body;
-    d.append(meta,bub);
-   }
-   const atBottom=els.log.scrollHeight-els.log.scrollTop-els.log.clientHeight<60;
-   els.log.appendChild(d);
-   if(atBottom||(me&&m.memberId===me.id))els.log.scrollTop=els.log.scrollHeight;
-  }
-  function note(t){const d=document.createElement("div");d.className="chat-line system";d.textContent=t;els.log.appendChild(d);els.log.scrollTop=els.log.scrollHeight}
-  function renderMembers(list,seats){
-   roomHasPartner=list.filter(p=>p.online).length>=2;
-   els.members.innerHTML="";
-   list.forEach(p=>{const s=document.createElement("span");s.className="member"+(p.online?" online":"")+(me&&p.id===me.id?" me":"");const i=document.createElement("i");const roleText=p.role==="controller"?"控制方":"受控方";s.append(i,document.createTextNode(p.nickname+" · "+roleText+(me&&p.id===me.id?"（你）":"")+(p.online?"":" · 离线")));els.members.appendChild(s)});
-   for(let k=list.length;k<seats;k++){const s=document.createElement("span");s.className="member empty";s.textContent="等待另一位参与者…";els.members.appendChild(s)}
-   els.seat.textContent=list.length+" / "+seats;
-   renderMetroState();
-  }
-  function showRoom(on){els.lobby.hidden=on;els.view.hidden=!on;els.voiceStart.disabled=!on||!me}
-  function socketUrl(){return (location.protocol==="https:"?"wss://":"ws://")+location.host+"/ws"}
-  function open(){
-   if(ws&&(ws.readyState===0||ws.readyState===1))return;
-   setState("wait",retry?"重连中…":"连接中…");
-   ws=new WebSocket(socketUrl());
-   ws.onopen=()=>{retry=0;if(matching&&matchClientId){out({type:"matchmaking_join",clientId:matchClientId,nickname:els.nick.value.trim(),gender:els.matchGender.value,preference:els.matchPreference.value,rolePreference:els.matchRole.value})}else if(want&&room)sendJoin()};
-   ws.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return}handle(m)};
-   ws.onclose=()=>{clearInterval(hb);hb=null;closeVoice(false,"语音已断开，请重新开启");els.voiceStart.disabled=true;if(!want){setState("off","未连接");return}
-    setState("wait","重连中…");const delay=Math.min(15000,1000*2**retry)+Math.random()*500;retry++;clearTimeout(retryTimer);retryTimer=setTimeout(open,delay)};
-   ws.onerror=()=>{};
-  }
-  const out=o=>{if(ws&&ws.readyState===1){ws.send(JSON.stringify(o));return true}return false};
-  function sendJoin(){joining=true;out({type:"join",room,nickname:els.nick.value.trim(),token:localStorage.getItem(seatKey(room)),lastId,role:matchedRole||els.roomRole.value})}
-
-  function updateMicControls(){
-   const active=!!(localStream&&localStream.getAudioTracks().some(t=>t.readyState==="live"));
-   const enabled=active&&localStream.getAudioTracks().some(t=>t.enabled);
-   els.voiceStart.disabled=!me||active;
-   els.voiceStart.textContent=active?"麦克风已开启":"🎙 开启麦克风";
-   els.voiceMute.disabled=!active||voiceGuardBlocked;
-   els.voiceMute.textContent=voiceGuardBlocked?"语音已拦截":enabled?"静音":"取消静音";
-   els.voiceHangup.disabled=!pc&&!localStream;
-  }
-  async function getIceServers(){
-   if(iceConfigCache)return iceConfigCache;
-   const fallback=[{urls:"stun:stun.l.google.com:19302"}];
-   try{
-    const u="/api/rtc-config?room="+encodeURIComponent(room||"");
-    const r=await fetch(u,{cache:"no-store",headers:{Authorization:"Bearer "+(me?.id||"")}});
-    if(!r.ok)throw new Error("RTC 配置暂不可用");
-    const data=await r.json();
-    iceConfigCache=Array.isArray(data.iceServers)&&data.iceServers.length?data.iceServers:fallback;
-    if(!data.turnEnabled)console.info("Nightplay: 未配置 TURN，部分网络环境可能无法建立语音连接。");
-    return iceConfigCache;
-   }catch(e){console.warn("获取 ICE 配置失败，先使用 STUN",e);iceConfigCache=fallback;return fallback}
-  }
-  async function ensurePeerConnection(){
-   if(pc)return pc;
-   if(pcPromise)return pcPromise;
-   if(!window.RTCPeerConnection)throw new Error("当前浏览器不支持 WebRTC 语音");
-   const generation=voiceGeneration;
-   pcPromise=(async()=>{
-    const iceServers=await getIceServers();
-    if(generation!==voiceGeneration||!me)throw new Error("房间连接已结束");
-    const connection=new RTCPeerConnection({iceServers});
-    pc=connection;
-    connection.onicecandidate=e=>{if(e.candidate)out({type:"voice_signal",kind:"candidate",candidate:e.candidate.toJSON?e.candidate.toJSON():e.candidate})};
-    connection.ontrack=e=>{
-     if(!remoteStream)remoteStream=new MediaStream();
-     if(!remoteStream.getTracks().some(t=>t.id===e.track.id))remoteStream.addTrack(e.track);
-     els.remoteAudio.srcObject=remoteStream;
-     els.remoteAudio.play().then(()=>{els.voiceListen.hidden=true}).catch(()=>{
-      els.voiceListen.hidden=false;setVoiceState("wait","收到对方声音 · 点击“播放对方声音”开始收听");
-     });
-    };
-    connection.onconnectionstatechange=()=>{
-     if(connection!==pc)return;
-     if(connection.connectionState==="connected")setVoiceState("on","语音已连接 · 双向通话中");
-     else if(connection.connectionState==="connecting")setVoiceState("wait","正在建立语音连接…");
-     else if(connection.connectionState==="disconnected")setVoiceState("wait","语音暂时中断，正在尝试恢复…");
-     else if(connection.connectionState==="failed")setVoiceState("error","连接失败 · 可检查网络或配置 TURN 服务");
-    };
-    connection.oniceconnectionstatechange=()=>{
-     if(connection===pc&&connection.iceConnectionState==="failed")setVoiceState("error","网络穿透失败 · 建议配置 TURN 服务");
-    };
-    connection.onnegotiationneeded=async()=>{
-     if(connection!==pc)return;
-     try{
-      makingOffer=true;
-      await connection.setLocalDescription();
-      out({type:"voice_signal",kind:"description",description:connection.localDescription});
-     }catch(e){console.error("WebRTC 协商失败",e);setVoiceState("error","语音协商失败，请重新开启语音")}
-     finally{makingOffer=false}
-    };
-    return connection;
-   })();
-   try{return await pcPromise}finally{pcPromise=null}
-  }
-  function stopVoiceRecognition(){
-   clearTimeout(voiceRestartTimer);voiceRestartTimer=null;voiceGuardGeneration++;
-   const rec=voiceRecognition;voiceRecognition=null;
-   if(rec){rec.onend=null;rec.onresult=null;rec.onerror=null;try{rec.stop()}catch{}}
-  }
-  async function startLocalVoiceRecognition(){
-   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-   if(!SR)throw new Error("当前浏览器不支持语音识别，出于隐私保护，本版本不会改用云端识别；请使用支持设备端语音识别的浏览器。");
-   const rec=new SR();
-   if(!("processLocally" in rec))throw new Error("当前浏览器不支持设备端语音识别，已阻止开启语音，避免将语音发送到云端识别。");
-   rec.processLocally=true;rec.lang="zh-CN";rec.continuous=true;rec.interimResults=true;rec.maxAlternatives=1;
-   if(typeof SR.available==="function"){
-    let availability;
-    try{availability=await SR.available({langs:["zh-CN"],processLocally:true})}catch{availability="unavailable"}
-    if(availability==="downloadable"&&typeof SR.install==="function"){
-     const installed=await SR.install({langs:["zh-CN"]});if(!installed)throw new Error("设备端中文语音模型安装失败，暂不能开启受保护语音。");
-    }else if(availability!=="available"&&availability!=="downloading")throw new Error("设备尚未准备好中文设备端语音模型，请更新浏览器或稍后重试。");
-   }
-   const generation=++voiceGuardGeneration;voiceGuardBlocked=false;voiceRecognition=rec;
-   let voiceTextBuffer="",voiceTextAt=0;
-   rec.onresult=e=>{
-    if(generation!==voiceGuardGeneration||voiceGuardBlocked)return;
-    let transcript="";
-    for(let i=e.resultIndex;i<e.results.length;i++)transcript+=e.results[i][0]?.transcript||"";
-    const now=Date.now();voiceTextBuffer=now-voiceTextAt<=8000?voiceTextBuffer+transcript:transcript;voiceTextAt=now;
-    if(transcript&&containsContactInfo(voiceTextBuffer)){
-     voiceGuardBlocked=true;
-     muteGuardedVoice();
-     stopVoiceRecognition();updateMicControls();setVoiceState("error","检测到疑似联系方式 · 麦克风已自动静音，请结束语音后再重新开启");
-     note("语音防泄漏已拦截疑似联系方式。本地识别结果不会作为聊天记录保存。");
-     out({type:"contact_voice_violation"});
-    }
-   };
-   rec.onerror=e=>{
-    if(generation!==voiceGuardGeneration||voiceGuardBlocked)return;
-    if(e.error==="no-speech"||e.error==="aborted")return;
-    voiceGuardBlocked=true;muteGuardedVoice();
-    updateMicControls();setVoiceState("error","设备端语音识别中断，麦克风已自动静音；请结束后重试");
-   };
-   rec.onend=()=>{
-    if(generation!==voiceGuardGeneration||voiceGuardBlocked||!localStream)return;
-    voiceRestartTimer=setTimeout(()=>{try{rec.start()}catch{voiceGuardBlocked=true;muteGuardedVoice();updateMicControls();setVoiceState("error","设备端语音识别无法继续，麦克风已静音")}},500);
-   };
-   await new Promise((resolve,reject)=>{
-    const timeout=setTimeout(()=>reject(new Error("设备端语音识别启动超时，麦克风未开启。")),6000);
-    rec.onstart=()=>{clearTimeout(timeout);resolve()};
-    const previousError=rec.onerror;
-    rec.onerror=e=>{previousError(e);if(e.error!=="no-speech"&&e.error!=="aborted"){clearTimeout(timeout);reject(new Error("设备端语音识别启动失败，麦克风未开启。"))}};
-    try{rec.start()}catch{clearTimeout(timeout);reject(new Error("无法启动设备端语音识别，麦克风未开启。"))}
-   });
-   voiceRecognition=rec;
-  }
-  async function createGuardedOutboundStream(stream){
-   const AudioContextCtor=window.AudioContext||window.webkitAudioContext;
-   if(!AudioContextCtor)throw new Error("当前浏览器不支持安全语音缓冲，已阻止直接发送麦克风音频。");
-   voiceAudioContext=new AudioContextCtor();await voiceAudioContext.resume();
-   const source=voiceAudioContext.createMediaStreamSource(stream);
-   const delay=voiceAudioContext.createDelay(3);delay.delayTime.value=1.6;
-   voiceGate=voiceAudioContext.createGain();voiceGate.gain.value=1;
-   voiceDestination=voiceAudioContext.createMediaStreamDestination();
-   source.connect(delay);delay.connect(voiceGate);voiceGate.connect(voiceDestination);
-   return voiceDestination.stream;
-  }
-  function muteGuardedVoice(){
-   if(voiceGate&&voiceAudioContext){try{voiceGate.gain.cancelScheduledValues(voiceAudioContext.currentTime);voiceGate.gain.setValueAtTime(0,voiceAudioContext.currentTime)}catch{}}
-   if(localStream)localStream.getAudioTracks().forEach(track=>track.enabled=false);
-  }
-  async function startMic(){
-   if(!me){toast("请先加入房间");return}
-   if(contactMutedUntil>Date.now()){toast("联系方式违规限制尚未解除，暂时不能开启语音");return}
-   if(!ws||ws.readyState!==1){toast("房间连接暂时中断，请等待重新连接");return}
-   if(localStream){toast("麦克风已经开启");return}
-   if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){toast("麦克风需要 HTTPS 安全连接，并使用支持的浏览器");setVoiceState("error","当前页面无法访问麦克风 · 请使用 HTTPS");return}
-   const generation=voiceGeneration;
-   els.voiceStart.disabled=true;setVoiceState("wait","正在请求麦克风权限…");
-   let stream=null;
-   try{
-    // 只有点击此按钮才调用 getUserMedia；绝不自动开麦。
-    stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
-    if(generation!==voiceGeneration||!me){stream.getTracks().forEach(t=>t.stop());return}
-    localStream=stream;
-    await startLocalVoiceRecognition();
-    if(generation!==voiceGeneration||!me){stopVoiceRecognition();stream.getTracks().forEach(t=>t.stop());localStream=null;return}
-    const outboundStream=await createGuardedOutboundStream(stream);
-    const connection=await ensurePeerConnection();
-    if(generation!==voiceGeneration||!me){stream.getTracks().forEach(t=>t.stop());return}
-    outboundStream.getAudioTracks().forEach(track=>connection.addTrack(track,outboundStream));
-    updateMicControls();
-    setVoiceState("wait","麦克风已开启 · 等待对方加入语音…");
-    note("你已开启麦克风。对方也需要主动开启麦克风，才能进行双向语音。");
-   }catch(e){
-    stopVoiceRecognition();if(stream)stream.getTracks().forEach(t=>t.stop());if(localStream===stream)localStream=null;
-    if(voiceAudioContext){voiceAudioContext.close().catch(()=>{});voiceAudioContext=null}voiceGate=null;voiceDestination=null;
-    if(generation!==voiceGeneration)return;
-    console.error("麦克风启动失败",e);els.voiceStart.disabled=!me;
-    const name=e?.name||"";
-    if(name==="NotAllowedError"||name==="PermissionDeniedError")setVoiceState("error","麦克风权限被拒绝 · 请在浏览器设置中允许麦克风");
-    else if(name==="NotFoundError"||name==="DevicesNotFoundError")setVoiceState("error","未找到可用的麦克风设备");
-    else setVoiceState("error",e?.message||"无法开启麦克风");
-    toast(els.voiceStatus.textContent);
-   }
-  }
-  function closeVoice(notify=false,statusText="语音未开启 · 双方需分别授权"){
-   if(notify)out({type:"voice_signal",kind:"hangup"});
-   voiceGeneration++;stopVoiceRecognition();voiceGuardBlocked=false;
-   const old=pc;pc=null;pcPromise=null;pendingCandidates=[];makingOffer=false;ignoreOffer=false;settingRemoteAnswerPending=false;
-   if(old){old.ontrack=null;old.onicecandidate=null;old.onnegotiationneeded=null;try{old.close()}catch{}}
-   if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null}
-   if(voiceAudioContext){voiceAudioContext.close().catch(()=>{});voiceAudioContext=null}voiceGate=null;voiceDestination=null;
-   if(remoteStream){remoteStream.getTracks().forEach(t=>t.stop());remoteStream=null}
-   els.remoteAudio.pause();els.remoteAudio.srcObject=null;els.voiceListen.hidden=true;
-   updateMicControls();setVoiceState("",statusText);
-   if(me){els.voiceStart.disabled=false;els.voiceHangup.disabled=true;els.voiceMute.disabled=true}
-   else{els.voiceStart.disabled=true;els.voiceHangup.disabled=true;els.voiceMute.disabled=true}
-  }
-  async function handleVoiceSignal(m){
-   if(!me||!m.from||m.from===me.id)return;
-   if(m.kind==="hangup"){closeVoice(false,"对方已结束语音");note("对方结束了语音通话。");return}
-   try{
-    const connection=await ensurePeerConnection();
-    if(m.kind==="candidate"){
-     // 丢弃属于被忽略的碰撞 offer 的 ICE candidate。
-     if(ignoreOffer||!m.candidate)return;
-     if(!connection.remoteDescription)pendingCandidates.push(m.candidate);
-     else{try{await connection.addIceCandidate(m.candidate)}catch(e){if(!ignoreOffer)throw e}}
-     return;
-    }
-    if(m.kind==="description"&&m.description){
-     const description=m.description;
-     const polite=me.id.localeCompare(m.from)>0;
-     const readyForOffer=!makingOffer&&(connection.signalingState==="stable"||settingRemoteAnswerPending);
-     const offerCollision=description.type==="offer"&&!readyForOffer;
-     ignoreOffer=!polite&&offerCollision;
-     if(ignoreOffer){pendingCandidates=[];return;}
-     settingRemoteAnswerPending=description.type==="answer";
-     await connection.setRemoteDescription(description);
-     settingRemoteAnswerPending=false;
-     for(const candidate of pendingCandidates.splice(0)){
-      try{await connection.addIceCandidate(candidate)}catch(e){if(!ignoreOffer)throw e}
-     }
-     if(description.type==="offer"){
-      await connection.setLocalDescription();
-      out({type:"voice_signal",kind:"description",description:connection.localDescription});
-     }
-     setVoiceState("wait","已收到语音邀请 · 正在连接…");
-    }
-   }catch(e){console.error("处理语音信令失败",e);setVoiceState("error","语音连接协商失败 · 请结束后重试")}
-  }
-  function handle(m){
-   if(m.type==="match_waiting"){
-    matching=true;els.matchStart.disabled=true;els.matchCancel.disabled=false;els.connect.disabled=true;els.matchStatus.textContent=m.message||"正在寻找匹配对象…";
-   }else if(m.type==="match_found"){
-    if(!matching)return;
-    matching=false;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;els.matchStatus.textContent="匹配成功，正在进入房间…";
-    els.code.value=m.room;room=m.room;matchedRole=m.role||"any";lastId=0;seen=new Set();want=true;sendJoin();
-   }else if(m.type==="matchmaking_cancelled"){
-    matching=false;want=!!me;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;els.matchStatus.textContent="已取消匹配";
-   }else if(m.type==="match_expired"){
-    matching=false;want=!!me;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;els.matchStatus.textContent=m.message||"匹配等待已超时，请重新开始匹配";toast(els.matchStatus.textContent);
-   }else if(m.type==="room_ended"){
-    reset(m.message||"本轮互动已结束，已自动退出房间");
-   }else if(m.type==="joined"){
-    joining=false;const fresh=!m.resumed||!me||me.id!==m.you.id;
-    if(fresh){closeVoice(false);els.log.innerHTML="";seen=new Set();lastId=0}
-    me=m.you;myRole=m.you.role||"controller";matchedRole=null;room=m.room;iceConfigCache=null;localStorage.setItem(seatKey(room),m.token);localStorage.setItem("np_nick",me.nickname);
-    els.label.textContent=room;showRoom(true);setState("on","已连接");setVoiceState("","语音未开启 · 双方需分别授权");
-    const u=new URL(location.href);u.searchParams.set("room",room);u.hash="room";history.replaceState(null,"",u);
-    if(fresh&&!m.history.length)note("房间已就绪。把邀请链接发给另一位参与者吧。");
-    m.history.forEach(render);renderMembers(m.members,m.seats);
-    clearInterval(hb);hb=setInterval(()=>out({type:"ping",lastId}),20000);
-    els.input.focus({preventScroll:true});
-   }else if(m.type==="message"){render(m.message)}
-   else if(m.type==="contact_blocked"){
-    toast(m.message||"检测到联系方式，已拦截");
-    if(m.source==="voice"||m.mutedUntil>Date.now()){
-     voiceGuardBlocked=true;muteGuardedVoice();
-     updateMicControls();setVoiceState("error",m.message||"语音已暂时静音");
-    }
-   }
-   else if(m.type==="presence"){renderMembers(m.members,m.seats)}
-   else if(m.type==="metronome_state"){applyMetroRemote(m);note((m.nickname||"对方")+(m.stopped?"结束了节拍器挑战":m.running?"开始/调整了节拍器挑战":"暂停了节拍器挑战"))}
-   else if(m.type==="pong"){(m.missed||[]).forEach(render);if(m.members)renderMembers(m.members,m.seats)}
-   else if(m.type==="typing"){els.typing.textContent=m.nickname+" 正在输入…";clearTimeout(typingTimer);typingTimer=setTimeout(()=>els.typing.textContent="",2500)}
-   else if(m.type==="voice_signal"){handleVoiceSignal(m)}
-   else if(m.type==="voice_peer_ready"){
-    // 若本端先开麦、此前对方尚未上线，重发尚未送达的 offer。
-    if(pc&&pc.signalingState==="have-local-offer"&&pc.localDescription?.type==="offer"){
-     out({type:"voice_signal",kind:"description",description:pc.localDescription});
-     setVoiceState("wait","对方已加入 · 正在连接语音…");
-    }
-   }
-   else if(m.type==="voice_notice"){setVoiceState("wait",m.message||"等待另一位参与者上线");toast(m.message||"另一位参与者当前不在线")}
-   else if(m.type==="left"){reset("已离开房间")}
-   else if(m.type==="error"){
-    if(["room_full","seat_lost","bad_room","bad_nickname"].includes(m.code)){
-     if(m.code==="seat_lost"&&room)localStorage.removeItem(seatKey(room));
-     if(m.code==="room_full"&&room)localStorage.removeItem(seatKey(room));
-     reset();
-    }
-    toast(m.message||"出错了");
-   }
-  }
-  function reset(msg){stopMetro(false);closeVoice(false);want=false;joining=false;matching=false;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;clearInterval(hb);hb=null;clearTimeout(retryTimer);me=null;myRole=null;matchedRole=null;showRoom(false);els.connect.disabled=false;if(ws){ws.onclose=null;try{ws.close()}catch{}ws=null}setState("off","未连接");if(msg)toast(msg);const u=new URL(location.href);u.searchParams.delete("room");history.replaceState(null,"",u)}
-  function startMatching(){
-   const nick=els.nick.value.trim();
-   if(!nick){toast("请先填写昵称");els.nick.focus();return}
-   matchClientId=crypto.randomUUID();matching=true;want=true;els.matchStart.disabled=true;els.matchCancel.disabled=false;els.connect.disabled=true;els.matchStatus.textContent="正在寻找性别与角色偏好都符合的参与者…";
-   clearInterval(matchPoll);matchPoll=setInterval(()=>out({type:"ping",lastId:0}),2500);
-   if(ws&&ws.readyState===1)out({type:"matchmaking_join",clientId:matchClientId,nickname:nick,gender:els.matchGender.value,preference:els.matchPreference.value,rolePreference:els.matchRole.value});
-   else open();
-  }
-  function cancelMatching(){
-   if(matchClientId&&out({type:"matchmaking_cancel",clientId:matchClientId})){els.matchCancel.disabled=true;els.matchStatus.textContent="正在取消匹配…";return}
-   matching=false;want=!!me;clearInterval(matchPoll);matchPoll=null;els.matchStart.disabled=false;els.matchCancel.disabled=true;els.connect.disabled=false;els.matchStatus.textContent="已取消匹配";
-  }
-  function join(){
-   const nick=els.nick.value.trim(),code=els.code.value.trim().toUpperCase();
-   if(!nick){toast("请先填写昵称");els.nick.focus();return}
-   if(!/^[A-Z0-9]{4,12}$/.test(code)){toast("房间代码需为 4–12 位字母或数字");els.code.focus();return}
-   els.code.value=code;if(room!==code){closeVoice(false);lastId=0;seen=new Set();me=null}
-   room=code;want=true;els.connect.disabled=true;setTimeout(()=>els.connect.disabled=false,1500);
-   if(ws&&ws.readyState===1)sendJoin();else open();
-  }
-  function leave(){if(metroRunning)stopMetro(true);closeVoice(true,"语音已结束");if(!out({type:"leave"})){if(room)localStorage.removeItem(seatKey(room));reset("已离开房间")}else if(room)localStorage.removeItem(seatKey(room))}
-  function randomCode(){const a="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";const r=crypto.getRandomValues(new Uint8Array(6));r.forEach(x=>s+=a[x%a.length]);els.code.value=s;peek()}
-  let peekTimer;function peek(){clearTimeout(peekTimer);const c=els.code.value.trim().toUpperCase();if(!/^[A-Z0-9]{4,12}$/.test(c)){els.peek.textContent="";return}
-   peekTimer=setTimeout(()=>fetch("/api/rooms/"+c).then(r=>r.ok?r.json():null).then(d=>{if(!d)return;els.peek.textContent=d.taken===0?"房间 "+c+" 空闲，加入后即创建。":d.full?"房间 "+c+" 已满（2/2）。如果你之前在这个房间，可直接重新加入。":"房间 "+c+" 有 1 位参与者在等你。"}).catch(()=>{}),350)}
-  // 绑定事件
-  $("#joinForm").onsubmit=e=>{e.preventDefault();join()};
-  els.matchStart.onclick=startMatching;
-  els.matchCancel.onclick=cancelMatching;
-  $("#randomCodeBtn").onclick=randomCode;
-  els.code.oninput=peek;
-  $("#disconnectBtn").onclick=leave;
-  $("#copyLinkBtn").onclick=()=>{const u=new URL(location.origin+location.pathname);u.searchParams.set("room",room);u.hash="room";const t=u.toString();(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("邀请链接已复制"),()=>{prompt("复制邀请链接：",t)})};
-  $("#chatForm").onsubmit=e=>{e.preventDefault();const v=els.input.value.trim();if(!v)return;if(!me){toast("尚未连接");return}if(contactMutedUntil>Date.now()){toast("联系方式违规限制尚未解除，暂时不能发送消息");return}const now=Date.now(),combined=now-lastLocalChatAt<=12000?lastLocalChat+v:v;if(containsContactInfo(v)||containsContactInfo(combined)){toast("检测到疑似站外联系方式，消息已拦截");lastLocalChat="";lastLocalChatAt=0;return}if(out({type:"chat",text:v})){lastLocalChat=v.slice(-120);lastLocalChatAt=now;els.input.value=""}else toast("连接中断，正在重连…")};
-  els.input.oninput=()=>{if(me&&els.input.value)out({type:"typing"})};
-  const syncMetroSettings=()=>{if(me&&myRole==="controller")out({type:"metronome_state",bpm:Number(els.bpm.value),intensity:metroIntensity(),running:metroRunning});};
-  els.bpm.oninput=()=>{if(myRole!=="controller")return;updateMetroLabels();restartMetroInterval()};
-  els.bpm.onchange=syncMetroSettings;
-  els.intensity.oninput=()=>{if(myRole==="controller")updateMetroLabels()};
-  els.intensity.onchange=syncMetroSettings;
-  els.metroStart.onclick=()=>{if(!me){toast("请先进入双人房间");return}if(myRole!=="controller"){toast("只有控制方可以开始挑战");return}startMetro(true)};
-  els.metroPause.onclick=()=>{if(myRole==="controller")pauseMetro(true)};
-  els.metroStop.onclick=()=>{if(myRole==="controller")stopMetro(true)};
-  els.metroEmergency.onclick=()=>{if(!me)return;metroRunning=false;stopMetroTimer();renderMetroState();out({type:"metronome_emergency_stop"});};
-  updateMetroLabels();renderMetroState();
-  els.voiceStart.onclick=startMic;
-  els.voiceMute.onclick=()=>{if(!localStream)return;const tracks=localStream.getAudioTracks();const next=tracks.some(t=>t.enabled);tracks.forEach(t=>t.enabled=!next);updateMicControls();setVoiceState("on",next?"麦克风已静音":"麦克风已开启")};
-  els.voiceHangup.onclick=()=>{closeVoice(true,"语音已结束")};
-  els.voiceListen.onclick=()=>{els.remoteAudio.play().then(()=>{els.voiceListen.hidden=true}).catch(()=>toast("浏览器暂时无法播放对方声音"))};
-  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&want&&(!ws||ws.readyState>1)){retry=0;clearTimeout(retryTimer);open()}});
-  window.addEventListener("online",()=>{if(want&&(!ws||ws.readyState>1)){retry=0;clearTimeout(retryTimer);open()}});
-  // 初始化：昵称、邀请链接
-  els.nick.value=localStorage.getItem("np_nick")||"";
-  const q=new URLSearchParams(location.search).get("room");
-  if(q&&/^[A-Za-z0-9]{4,12}$/.test(q)){els.code.value=q.toUpperCase();peek()}else randomCode();
-  return {join,hasInvite:!!q,autoResume:()=>{const c=els.code.value;if(q&&els.nick.value&&localStorage.getItem(seatKey(c)))join()}};
- })();
-document.querySelectorAll('a[href="#room"],a[href="#challenge"]').forEach(a=>a.addEventListener("click",e=>{if(!$("#roomView").hidden){return}if(a.getAttribute("href")==="#challenge"){e.preventDefault();$("#room").scrollIntoView({behavior:"smooth"})}}));
-setTimeout(()=>Room.autoResume(),0);
-
-</script>
+<script src="/app.js" defer></script>
 </body></html>

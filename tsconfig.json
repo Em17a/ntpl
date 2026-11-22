@@ -12,7 +12,9 @@
     "noEmit": true,
     "types": [
       "@cloudflare/workers-types"
-    ]
+    ],
+    "allowImportingTsExtensions": true,
+    "noUnusedLocals": true
   },
   "include": [
     "src/**/*.ts",
